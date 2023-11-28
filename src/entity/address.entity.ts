@@ -32,7 +32,7 @@ export class Address {
     nullable: false,
     unique: false,
   })
-  public latitude: string;
+  public latitude: number;
 
   @Column({
     type: 'decimal',
@@ -41,7 +41,7 @@ export class Address {
     nullable: false,
     unique: false,
   })
-  public longitude: string;
+  public longitude: number;
 
   @CreateDateColumn({
     type: 'datetime',
