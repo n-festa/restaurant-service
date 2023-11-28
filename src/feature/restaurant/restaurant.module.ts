@@ -6,10 +6,17 @@ import { Restaurant } from 'src/entity/restaurant.entity';
 import { Address } from 'src/entity/address.entity';
 import { RestaurantOwner } from 'src/entity/restaurant-owner.entity';
 import { Media } from 'src/entity/media.entity';
+import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Restaurant, Address, RestaurantOwner, Media]),
+    TypeOrmModule.forFeature([
+      Restaurant,
+      Address,
+      RestaurantOwner,
+      Media,
+      RestaurantExt,
+    ]),
   ],
   controllers: [RestaurantController],
   providers: [RestaurantService],

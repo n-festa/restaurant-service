@@ -5,10 +5,12 @@ import {
   OneToOne,
   JoinColumn,
   Column,
+  OneToMany,
 } from 'typeorm';
 import { Address } from './address.entity';
 import { RestaurantOwner } from './restaurant-owner.entity';
 import { Media } from './media.entity';
+import { RestaurantExt } from './restaurant-ext.entity';
 
 @Entity('Restaurant')
 export class Restaurant {
@@ -77,4 +79,13 @@ export class Restaurant {
     default: () => 'CURRENT_TIMESTAMP',
   })
   public created_at: Date;
+
+  @OneToMany(() => RestaurantExt, (restaurantExt) => restaurantExt.restaurant, {
+    eager: true,
+  })
+  @JoinColumn({
+    name: 'restaurant_id',
+    referencedColumnName: 'restaurant_id',
+  })
+  public restaurant_ext: RestaurantExt[];
 }

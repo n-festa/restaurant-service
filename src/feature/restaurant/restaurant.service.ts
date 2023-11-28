@@ -24,7 +24,7 @@ export class RestaurantService {
     lat: number,
     long: number,
     radius: number, //meter
-  ): Promise<any> {
+  ): Promise<Restaurant[]> {
     //
     const EARTH_CIRCUMFERENCE_AT_EQUATOR = 40075884; //meter
     //1 degree of latitude = 111,111 meter
