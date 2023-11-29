@@ -72,6 +72,9 @@ export class Restaurant {
   })
   public is_active: number;
 
+  @Column({ type: 'int', nullable: true, unique: false })
+  public intro_video: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,
@@ -88,4 +91,11 @@ export class Restaurant {
     referencedColumnName: 'restaurant_id',
   })
   public restaurant_ext: RestaurantExt[];
+
+  @OneToOne(() => Media, { eager: true })
+  @JoinColumn({
+    name: 'intro_video',
+    referencedColumnName: 'media_id',
+  })
+  public intro_video_obj: Media;
 }

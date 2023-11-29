@@ -7,6 +7,7 @@ import { Address } from 'src/entity/address.entity';
 import { RestaurantOwner } from 'src/entity/restaurant-owner.entity';
 import { Media } from 'src/entity/media.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
+import { AhamoveModule } from 'src/intergration/ahamove/ahamove.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
       Media,
       RestaurantExt,
     ]),
+    AhamoveModule,
   ],
   controllers: [RestaurantController],
   providers: [RestaurantService],

@@ -1,20 +1,63 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Res } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { Between, Repository } from 'typeorm';
 import { RestaurantRecommendationRequest } from './dto/restaurant-recommendation-request.dto';
+import { RestaurantDTO } from './dto/restaurant.dto';
+import { AhamoveService } from 'src/intergration/ahamove/ahamove.service';
 
 @Injectable()
 export class RestaurantService {
   constructor(
     @InjectRepository(Restaurant)
     private restaurantRepo: Repository<Restaurant>,
+    private readonly ahamoveService: AhamoveService,
   ) {}
   async getGeneralRestaurantRecomendation(
-    location: RestaurantRecommendationRequest,
+    lat,
+    long,
+    lang: string = 'vie',
   ): Promise<any> {
-    console.log(location);
-    return await this.getRestaurantByRadius(location.lat, location.long, 5000);
+    let restaurantList: RestaurantDTO[] = [];
+    const restaurants = await this.getRestaurantByRadius(lat, long, 5000);
+    // restaurants.forEach(async (restaurant) => {
+    for (const restaurant of restaurants) {
+      const restaurantExt = restaurant.restaurant_ext.find(
+        (ext) => ext.ISO_language_code === lang,
+      );
+      const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
+        {
+          lat: lat,
+          long: long,
+        },
+        {
+          lat: Number(restaurant.address.latitude),
+          long: Number(restaurant.address.longitude),
+        },
+      );
+      console.log(typeof restaurant.address.latitude);
+      const restaurantDTO: RestaurantDTO = {
+        id: restaurant.restaurant_id,
+        intro_video: restaurant.intro_video_obj.url,
+        logo_img: restaurant.logo.url,
+        name: restaurantExt.name,
+        rating: null, //???
+        distance: timeAnhDistance.distance, //km
+        delivery_time: timeAnhDistance.duration, //minutes
+        specialty: restaurantExt.specialty,
+        top_food: null, //???
+        promotion: null, //???
+        customization_cutoff_time: null, //???
+        having_vegeterian_food: null, //???
+        max_price: null, //???
+        min_price: null, //???
+        unit: null, //???
+      };
+      console.log(restaurantDTO);
+      restaurantList.push(restaurantDTO);
+    }
+
+    return restaurantList;
   }
   async findAll(): Promise<Restaurant[]> {
     return await this.restaurantRepo.find();

@@ -12,7 +12,8 @@ export class RestaurantController {
     inputData: RestaurantRecommendationRequest,
   ): Promise<any> {
     return await this.restaurantService.getGeneralRestaurantRecomendation(
-      inputData,
+      inputData.lat,
+      inputData.long,
     );
   }
 }
