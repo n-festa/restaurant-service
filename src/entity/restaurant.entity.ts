@@ -11,6 +11,7 @@ import { Address } from './address.entity';
 import { RestaurantOwner } from './restaurant-owner.entity';
 import { Media } from './media.entity';
 import { RestaurantExt } from './restaurant-ext.entity';
+import { MenuItem } from './menu-item.entity';
 
 @Entity('Restaurant')
 export class Restaurant {
@@ -86,10 +87,6 @@ export class Restaurant {
   @OneToMany(() => RestaurantExt, (restaurantExt) => restaurantExt.restaurant, {
     eager: true,
   })
-  @JoinColumn({
-    name: 'restaurant_id',
-    referencedColumnName: 'restaurant_id',
-  })
   public restaurant_ext: RestaurantExt[];
 
   @OneToOne(() => Media, { eager: true })
@@ -98,4 +95,7 @@ export class Restaurant {
     referencedColumnName: 'media_id',
   })
   public intro_video_obj: Media;
+
+  @OneToMany(() => MenuItem, (item) => item.restaurant, { eager: true })
+  public menu_items: MenuItem[];
 }

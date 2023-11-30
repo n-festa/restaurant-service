@@ -24,8 +24,8 @@ export class MenuItem {
   @Column({ type: 'int', nullable: true, unique: false })
   public cooking_time_s: number;
 
-  @Column({ type: 'datetime', nullable: true, unique: false })
-  public cutoff_time: Date;
+  @Column({ type: 'time', nullable: true, unique: false })
+  public cutoff_time: string;
 
   @Column({ type: 'int', nullable: true, unique: false })
   public quantity_available: number;
@@ -62,7 +62,7 @@ export class MenuItem {
 
   //Relations
 
-  @ManyToOne(() => Restaurant)
+  @ManyToOne(() => Restaurant, (res) => res.menu_items)
   @JoinColumn({
     name: 'restaurant_id',
     referencedColumnName: 'restaurant_id',

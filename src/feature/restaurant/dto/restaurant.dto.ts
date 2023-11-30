@@ -8,8 +8,8 @@ export class RestaurantDTO {
   delivery_time: number;
   specialty: string;
   top_food: string;
-  promotion: string[];
-  customization_cutoff_time: string;
+  promotion: string;
+  cutoff_time: string[];
   having_vegeterian_food: boolean;
   max_price: number;
   min_price: number;

@@ -13,7 +13,6 @@ export class AhamoveService {
     destination: Coordinate,
   ) {
     try {
-      console.log(destination);
       let data: any = JSON.stringify({
         token:
           'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhaGEiLCJ0eXAiOiJ1c2VyIiwiY2lkIjoiODQ5MDUwMDUyNDgiLCJzdGF0dXMiOiJPTkxJTkUiLCJlb2MiOiJjb25uZWN0QDJhbGwuY29tLnZuIiwibm9jIjoiMkFMTCBBZG1pbiIsImN0eSI6IlNHTiIsImFjY291bnRfc3RhdHVzIjoiQUNUSVZBVEVEIiwiZXhwIjoxNzMyMTA3MjgxLCJwYXJ0bmVyIjoiMmFsbCIsInR5cGUiOiJhcGkifQ.ER58SJ37_HIZktn6FCnbPF4S-08dE2nlBTgPi73esf0',
@@ -35,7 +34,7 @@ export class AhamoveService {
             _id: 'SGN-EXPRESS',
           },
         ],
-        payment_method: 'CASH',
+        payment_method: 'BALANCE',
       });
 
       let config: AxiosRequestConfig = {
