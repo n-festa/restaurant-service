@@ -36,7 +36,9 @@ export class MenuItemExt {
   })
   public created_at: Date;
 
-  @ManyToOne(() => MenuItem, (menuItem) => menuItem.menuItemExt)
+  @ManyToOne(() => MenuItem, (menuItem) => menuItem.menuItemExt, {
+    eager: true,
+  })
   @JoinColumn({
     name: 'menu_item_id',
     referencedColumnName: 'menu_item_id',

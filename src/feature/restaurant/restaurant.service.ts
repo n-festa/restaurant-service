@@ -20,9 +20,9 @@ export class RestaurantService {
   ): Promise<any> {
     let restaurantList: RestaurantDTO[] = [];
     const restaurants = await this.getRestaurantByRadius(lat, long, 5000);
-    console.log(typeof restaurants[0].menu_items[0].cutoff_time);
     // restaurants.forEach(async (restaurant) => {
     for (const restaurant of restaurants) {
+      console.log(restaurant.unit_obj);
       const restaurantExt = restaurant.restaurant_ext.find(
         (ext) => ext.ISO_language_code === lang,
       );
@@ -41,17 +41,17 @@ export class RestaurantService {
         intro_video: restaurant.intro_video_obj.url,
         logo_img: restaurant.logo.url,
         name: restaurantExt.name,
-        rating: null, //???
+        rating: restaurant.rating, //???
         distance: timeAnhDistance.distance, //km
         delivery_time: timeAnhDistance.duration, //minutes
         specialty: restaurantExt.specialty,
-        top_food: null, //???
-        promotion: null, //???
-        cutoff_time: null, //???
-        having_vegeterian_food: null, //???
-        max_price: null, //???
-        min_price: null, //???
-        unit: null, //???
+        top_food: restaurant.top_food, //???
+        promotion: restaurant.promotion, //???
+        cutoff_time: null, //??? calculate
+        having_vegeterian_food: null, //??calculate
+        max_price: null, //???calculate
+        min_price: null, //???calculate
+        unit: restaurant.unit_obj.symbol, //???
       };
       console.log(restaurantDTO);
       restaurantList.push(restaurantDTO);

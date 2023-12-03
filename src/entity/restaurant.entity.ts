@@ -6,12 +6,14 @@ import {
   JoinColumn,
   Column,
   OneToMany,
+  ManyToOne,
 } from 'typeorm';
 import { Address } from './address.entity';
 import { RestaurantOwner } from './restaurant-owner.entity';
 import { Media } from './media.entity';
 import { RestaurantExt } from './restaurant-ext.entity';
 import { MenuItem } from './menu-item.entity';
+import { Unit } from './unit.entity';
 
 @Entity('Restaurant')
 export class Restaurant {
@@ -28,7 +30,7 @@ export class Restaurant {
   @Column({ type: 'varchar', length: 25, nullable: false, unique: false })
   public phone_number: string;
 
-  @OneToOne(() => RestaurantOwner, { eager: true })
+  @ManyToOne(() => RestaurantOwner, { eager: true })
   @JoinColumn({
     name: 'restaurant_owner_id',
     referencedColumnName: 'restaurant_owner_id',
@@ -76,6 +78,24 @@ export class Restaurant {
   @Column({ type: 'int', nullable: true, unique: false })
   public intro_video: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    unique: false,
+  })
+  public rating: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
+  public top_food: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
+  public promotion: string;
+
+  @Column({ type: 'int', nullable: true, unique: false })
+  public unit: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,
@@ -84,18 +104,27 @@ export class Restaurant {
   })
   public created_at: Date;
 
+  //RELATIONSHIPS
+
   @OneToMany(() => RestaurantExt, (restaurantExt) => restaurantExt.restaurant, {
     eager: true,
   })
   public restaurant_ext: RestaurantExt[];
 
-  @OneToOne(() => Media, { eager: true })
+  @ManyToOne(() => Media, { eager: true })
   @JoinColumn({
     name: 'intro_video',
     referencedColumnName: 'media_id',
   })
   public intro_video_obj: Media;
 
-  @OneToMany(() => MenuItem, (item) => item.restaurant, { eager: true })
-  public menu_items: MenuItem[];
+  @OneToMany(() => MenuItem, (item) => item.restaurant)
+  public menu_items: Promise<MenuItem[]>;
+
+  @ManyToOne(() => Unit, { eager: true })
+  @JoinColumn({
+    name: 'unit',
+    referencedColumnName: 'unit_id',
+  })
+  public unit_obj: Unit;
 }

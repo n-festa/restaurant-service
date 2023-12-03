@@ -9,6 +9,8 @@ import { Media } from 'src/entity/media.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { AhamoveModule } from 'src/intergration/ahamove/ahamove.module';
 import { MenuItem } from 'src/entity/menu-item.entity';
+import { Unit } from 'src/entity/unit.entity';
+import { UnitExt } from 'src/entity/unit-ext.entity';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { MenuItem } from 'src/entity/menu-item.entity';
       Media,
       RestaurantExt,
       MenuItem,
+      Unit,
+      UnitExt,
     ]),
     AhamoveModule,
   ],
