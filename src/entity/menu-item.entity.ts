@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 import { Restaurant } from './restaurant.entity';
 import { MenuItemExt } from './menu-item-ext.entity';
+import { SKU } from './sku.entity';
+import { Media } from './media.entity';
 
 @Entity('Menu_Item')
 export class MenuItem {
@@ -52,6 +54,9 @@ export class MenuItem {
   @Column({ type: 'int', nullable: false, unique: false })
   public res_category_id: number;
 
+  @Column({ type: 'int', nullable: false, unique: false })
+  public image: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,
@@ -70,9 +75,15 @@ export class MenuItem {
   public restaurant: Restaurant;
 
   @OneToMany(() => MenuItemExt, (menuItemExt) => menuItemExt.menu_item)
-  @JoinColumn({
-    name: 'menu_item_id',
-    referencedColumnName: 'menu_item_id',
-  })
   public menuItemExt: MenuItemExt[];
+
+  @OneToMany(() => SKU, (sku) => sku.menu_item)
+  public skus: SKU[];
+
+  @ManyToOne(() => Media)
+  @JoinColumn({
+    name: 'image',
+    referencedColumnName: 'media_id',
+  })
+  public image_obj: Media;
 }

@@ -7,7 +7,6 @@ import { Address } from 'src/entity/address.entity';
 import { RestaurantOwner } from 'src/entity/restaurant-owner.entity';
 import { Media } from 'src/entity/media.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
-import { AhamoveModule } from 'src/intergration/ahamove/ahamove.module';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { Unit } from 'src/entity/unit.entity';
 import { UnitExt } from 'src/entity/unit-ext.entity';
@@ -24,7 +23,6 @@ import { UnitExt } from 'src/entity/unit-ext.entity';
       Unit,
       UnitExt,
     ]),
-    AhamoveModule,
   ],
   controllers: [RestaurantController],
   providers: [RestaurantService],

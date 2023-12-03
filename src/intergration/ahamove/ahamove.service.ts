@@ -47,11 +47,11 @@ export class AhamoveService {
         },
         data: data,
       };
-      console.log(config);
+      // console.log(config);
       const request = this.httpService.request(config);
 
       const result = await firstValueFrom(request);
-      console.log(result.data);
+      // console.log(result.data);
       return {
         distance: result.data[0].distance, //km
         duration: result.data[0].duration, //minutes
