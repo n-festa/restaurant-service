@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { PriceRange, RestaurantSimpleInfo } from 'src/type';
 import { SKU } from 'src/entity/sku.entity';
+import { SkuDiscount } from 'src/entity/sku-discount.entity';
+import { PERCENTAGE } from 'src/constant/unit.constant';
+import { TRUE } from 'src/constant';
 
 @Injectable()
 export class FoodService {
   constructor(
     @InjectRepository(MenuItem) private menuItemRepo: Repository<MenuItem>,
     @InjectRepository(SKU) private skuRepo: Repository<SKU>,
+    @InjectRepository(SkuDiscount)
+    private skuDiscountRepo: Repository<SkuDiscount>,
   ) {}
 
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
@@ -29,11 +34,13 @@ export class FoodService {
   async getFoodsWithListOfRestaurants(restaurantIds: number[]) {
     const foodList = await this.menuItemRepo
       .createQueryBuilder('menuItem')
-      .leftJoinAndSelect('menuItem.restaurant', 'restaurant')
       .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
       .leftJoinAndSelect('menuItem.image_obj', 'media')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
       .where('menuItem.restaurant_id IN (:...restaurantIds)', { restaurantIds })
       .andWhere('menuItem.is_active = :active', { active: 1 })
+      .andWhere('sku.is_standard = :standard', { standard: 1 })
+      .andWhere('sku.is_active = :active', { active: 1 })
       .getMany();
     // const foodListWithRestaurantExt = foodList.map((food) => {
     //   return {
@@ -48,7 +55,42 @@ export class FoodService {
     //     },
     //   };
     // });
-    console.log(foodList);
+    console.log(foodList[0]);
     return foodList;
+  }
+
+  async getAvailableSkuDiscountBySkuId(skuId: number): Promise<SkuDiscount> {
+    const now = new Date();
+    const skuDiscount = await this.skuDiscountRepo.findOne({
+      where: {
+        sku_id: skuId,
+        is_active: TRUE,
+        valid_from: LessThanOrEqual(now),
+        valid_until: MoreThanOrEqual(now),
+      },
+      order: {
+        valid_from: 'DESC',
+      },
+    });
+    return skuDiscount;
+  }
+  async getAvailableDiscountPrice(sku: SKU) {
+    let discountPrice = sku.price;
+    const skuDiscount = await this.getAvailableSkuDiscountBySkuId(sku.sku_id);
+    if (!skuDiscount) {
+      return discountPrice;
+    }
+
+    switch (skuDiscount.discount_unit_obj.symbol) {
+      case PERCENTAGE:
+        discountPrice = sku.price * (1 - skuDiscount.discount_value / 100);
+        break;
+
+      default: //VND, USD
+        discountPrice = sku.price - skuDiscount.discount_value;
+        break;
+    }
+
+    return discountPrice;
   }
 }

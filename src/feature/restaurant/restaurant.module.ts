@@ -10,6 +10,7 @@ import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { Unit } from 'src/entity/unit.entity';
 import { UnitExt } from 'src/entity/unit-ext.entity';
+import { AhamoveModule } from 'src/intergration/ahamove/ahamove.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UnitExt } from 'src/entity/unit-ext.entity';
       Unit,
       UnitExt,
     ]),
+    AhamoveModule,
   ],
   controllers: [RestaurantController],
   providers: [RestaurantService],

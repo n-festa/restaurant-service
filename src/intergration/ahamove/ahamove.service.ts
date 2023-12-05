@@ -53,8 +53,8 @@ export class AhamoveService {
       const result = await firstValueFrom(request);
       // console.log(result.data);
       return {
-        distance: result.data[0].distance, //km
-        duration: result.data[0].duration, //minutes
+        distance_km: result.data[0].distance, //km
+        duration_s: result.data[0].duration, //minutes
       };
     } catch (error) {
       console.log(error);

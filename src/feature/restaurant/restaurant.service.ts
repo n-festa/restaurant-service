@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Restaurant } from 'src/entity/restaurant.entity';
+import { AhamoveService } from 'src/intergration/ahamove/ahamove.service';
+import { RestaurantByRadius } from 'src/type';
 import { Between, Repository } from 'typeorm';
 
 @Injectable()
@@ -8,6 +10,7 @@ export class RestaurantService {
   constructor(
     @InjectRepository(Restaurant)
     private restaurantRepo: Repository<Restaurant>,
+    private readonly ahamoveService: AhamoveService,
   ) {}
 
   async findAll(): Promise<Restaurant[]> {
@@ -18,7 +21,7 @@ export class RestaurantService {
     lat: number,
     long: number,
     radius: number, //meter
-  ): Promise<Restaurant[]> {
+  ): Promise<RestaurantByRadius[]> {
     //
     const EARTH_CIRCUMFERENCE_AT_EQUATOR = 40075884; //meter
     //1 degree of latitude = 111,111 meter
@@ -33,7 +36,7 @@ export class RestaurantService {
       longMin: long - radius / ONE_LONGITUDE_DEGREE_DISTANCE,
       longMax: long + radius / ONE_LONGITUDE_DEGREE_DISTANCE,
     };
-    return await this.restaurantRepo.find({
+    const restaurants = await this.restaurantRepo.find({
       where: {
         address: {
           latitude: Between(search_area.latMin, search_area.latMax),
@@ -41,5 +44,25 @@ export class RestaurantService {
         },
       },
     });
+    const restaurantsByRadius: RestaurantByRadius[] = [];
+    for (const restaurant of restaurants) {
+      const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
+        {
+          lat: lat,
+          long: long,
+        },
+        {
+          lat: Number(restaurant.address.latitude),
+          long: Number(restaurant.address.longitude),
+        },
+      );
+      restaurantsByRadius.push({
+        ...restaurant,
+        menu_items: restaurant.menu_items,
+        distance_km: timeAnhDistance.distance_km,
+        delivery_time_s: timeAnhDistance.duration_s,
+      });
+    }
+    return restaurantsByRadius;
   }
 }

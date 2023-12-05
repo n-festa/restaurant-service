@@ -11,6 +11,7 @@ import { Restaurant } from './restaurant.entity';
 import { MenuItemExt } from './menu-item-ext.entity';
 import { SKU } from './sku.entity';
 import { Media } from './media.entity';
+import { Recipe } from './recipe.entity';
 
 @Entity('Menu_Item')
 export class MenuItem {
@@ -57,6 +58,27 @@ export class MenuItem {
   @Column({ type: 'int', nullable: false, unique: false })
   public image: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    unique: false,
+  })
+  public rating: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: false })
+  ingredient_brief_vie: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: false })
+  ingredient_brief_eng: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
+  public promotion: string;
+
+  @Column({ type: 'int', nullable: true, unique: false })
+  public units_sold: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,
@@ -86,4 +108,7 @@ export class MenuItem {
     referencedColumnName: 'media_id',
   })
   public image_obj: Media;
+
+  @OneToMany(() => Recipe, (recipe) => recipe.menu_item)
+  public recipe: Promise<Recipe>;
 }

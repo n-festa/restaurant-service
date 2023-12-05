@@ -35,37 +35,61 @@ export class RecommendationService {
         topLabel = 'CHAY';
       }
 
-      const foodExt = await food.menuItemExt;
-      const nameByLang: TextByLang[] = foodExt.map((ext) => {
+      const foodNameByLang: TextByLang[] = food.menuItemExt.map((ext) => {
         return {
           ISO_language_code: ext.ISO_language_code,
           text: ext.name,
         };
       });
 
+      const mainCookingMethodByLang: TextByLang[] = food.menuItemExt.map(
+        (ext) => {
+          return {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.main_cooking_method,
+          };
+        },
+      );
+
+      const restaurant = restaurants.find(
+        (res) => res.restaurant_id === food.restaurant_id,
+      );
+      const restaurantNameByLang: TextByLang[] = restaurant.restaurant_ext.map(
+        (ext) => {
+          return {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+        },
+      );
+
       const foodDTO: FoodDTO = {
         id: food.menu_item_id,
         image: food.image_obj.url,
         top_label: topLabel,
-        bottom_label: null, //???
-        name: nameByLang, //???
-        restaurant_name: null, //???
-        restaurant_id: null, //???
-        kalorie: null, //???
-        rating: null, //???
-        distance: null, //???
-        delivery_time: null, //???
-        main_cooking_method: null, //???
-        ingredients: null, //???
-        price: null, //???
-        price_after_discount: null, //???
-        promotion: null, //???
-        cutoff_time: null, //???
-        preparing_time_s: null, //???
-        cooking_time_s: null, //???
-        quantity_available: null, //???
-        is_vegetarian: Boolean(food.is_vegetarian), //???
-        cooking_schedule: null, //???
+        bottom_label: null,
+        name: foodNameByLang,
+        restaurant_name: restaurantNameByLang,
+        restaurant_id: food.restaurant_id,
+        calorie_kcal: food.skus[0].calorie_kcal,
+        rating: food.rating,
+        distance_km: restaurant.distance_km,
+        delivery_time_s: restaurant.delivery_time_s,
+        main_cooking_method: mainCookingMethodByLang,
+        ingredient_brief_vie: food.ingredient_brief_vie,
+        ingredient_brief_eng: food.ingredient_brief_eng,
+        price: food.skus[0].price,
+        price_after_discount: await this.foodService.getAvailableDiscountPrice(
+          food.skus[0],
+        ),
+        promotion: food.promotion,
+        cutoff_time: food.cutoff_time,
+        preparing_time_s: food.preparing_time_s,
+        cooking_time_s: food.cooking_time_s,
+        quantity_available: food.quantity_available,
+        is_vegetarian: Boolean(food.is_vegetarian),
+        cooking_schedule: food.cooking_schedule,
+        units_sold: food.units_sold,
       };
       foodDTOs.push(foodDTO);
     }
@@ -101,24 +125,15 @@ export class RecommendationService {
       }
       const priceRange: PriceRange =
         await this.foodService.getPriceRangeByMenuItem(menuItemIds);
-      const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
-        {
-          lat: lat,
-          long: long,
-        },
-        {
-          lat: Number(restaurant.address.latitude),
-          long: Number(restaurant.address.longitude),
-        },
-      );
+
       const restaurantDTO: RestaurantDTO = {
         id: restaurant.restaurant_id,
         intro_video: restaurant.intro_video_obj.url,
         logo_img: restaurant.logo.url,
         name: restaurantExt.name,
         rating: restaurant.rating,
-        distance: timeAnhDistance.distance, //km
-        delivery_time: timeAnhDistance.duration, //minutes
+        distance_km: restaurant.distance_km,
+        delivery_time_s: restaurant.delivery_time_s,
         specialty: restaurantExt.specialty,
         top_food: restaurant.top_food,
         promotion: restaurant.promotion,

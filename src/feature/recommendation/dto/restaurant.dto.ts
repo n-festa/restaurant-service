@@ -4,8 +4,8 @@ export class RestaurantDTO {
   logo_img: string;
   name: string;
   rating: number;
-  distance: number;
-  delivery_time: number;
+  distance_km: number;
+  delivery_time_s: number;
   specialty: string;
   top_food: string;
   promotion: string;
