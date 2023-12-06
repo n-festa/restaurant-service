@@ -28,6 +28,8 @@ export class RecommendationService {
     const foods =
       await this.foodService.getFoodsWithListOfRestaurants(restauranIds);
 
+    console.log('foods', foods);
+
     for (const food of foods) {
       //Defind Logic of Top Label later, currently just present the vegeterian sign
       let topLabel = '';

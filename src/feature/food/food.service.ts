@@ -55,7 +55,6 @@ export class FoodService {
     //     },
     //   };
     // });
-    console.log(foodList[0]);
     return foodList;
   }
 

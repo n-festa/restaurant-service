@@ -5,6 +5,7 @@ import { FoodModule } from './feature/food/food.module';
 import { RestaurantModule } from './feature/restaurant/restaurant.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RecommendationModule } from './feature/recommendation/recommendation.module';
+import { CategoryModule } from './feature/category/category.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RecommendationModule } from './feature/recommendation/recommendation.mo
     FoodModule,
     RestaurantModule,
     RecommendationModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
