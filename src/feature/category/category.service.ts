@@ -4,12 +4,22 @@ import { TRUE } from 'src/constant';
 import { SysCategory } from 'src/entity/sys-category.entity';
 import { Repository } from 'typeorm';
 import { SysCategoryDTO } from './dto/sys-category.dto';
+import { SearchResult } from 'src/dto/search-result.dto';
+import { SysCategoryMenuItem } from 'src/entity/sys-category-menu-item.entity';
+import { FoodService } from '../food/food.service';
+import { SearchByCategory } from './dto/search-by-category-request.dto';
+import { RestaurantService } from '../restaurant/restaurant.service';
+import { PriceRange } from 'src/type';
 
 @Injectable()
 export class CategoryService {
   constructor(
     @InjectRepository(SysCategory)
     private readonly sysCategoryRepo: Repository<SysCategory>,
+    @InjectRepository(SysCategoryMenuItem)
+    private readonly sysCatMenuItemRepo: Repository<SysCategoryMenuItem>,
+    private readonly foodService: FoodService,
+    private readonly restaurantService: RestaurantService,
   ) {}
 
   async getCategories(): Promise<SysCategoryDTO[]> {
@@ -40,5 +50,68 @@ export class CategoryService {
     }
 
     return categoriesDTO;
+  }
+
+  async searchFoodAndRestaurantByCategory(
+    data: SearchByCategory,
+  ): Promise<SearchResult> {
+    const { category_id, lat, long } = data;
+    const searchResult = new SearchResult();
+
+    //Get list of menu_item_id
+    const menuItemIds = (
+      await this.sysCatMenuItemRepo.find({
+        select: {
+          menu_item_id: true,
+        },
+        where: {
+          sys_category_id: category_id,
+        },
+      })
+    ).map((item) => item.menu_item_id);
+
+    //Check if there is no menu_item -> return []
+    if (!menuItemIds || menuItemIds.length === 0) {
+      return searchResult;
+    }
+
+    const foodList =
+      await this.foodService.getFoodsWithListOfMenuItem(menuItemIds);
+
+    const restaurants =
+      await this.restaurantService.getDeliveryRestaurantByListOfId(
+        foodList.map((food) => food.restaurant_id),
+        lat,
+        long,
+      );
+
+    //Fill up Food data
+    for (const food of foodList) {
+      const restaurant = restaurants.find(
+        (res) => res.restaurant_id === food.restaurant_id,
+      );
+      const foodDTO = await this.foodService.convertIntoFoodDTO(
+        food,
+        restaurant,
+      );
+      searchResult.byFoods.push(foodDTO);
+    }
+
+    //Fill up Restaurant data
+    for (const restaurant of restaurants) {
+      const menuItems = await restaurant.menu_items;
+      const priceRange: PriceRange =
+        await this.foodService.getPriceRangeByMenuItem(
+          menuItems.map((item) => item.menu_item_id),
+        );
+      const restaurantDTO =
+        await this.restaurantService.convertIntoRestaurantDTO(
+          restaurant,
+          priceRange,
+        );
+      searchResult.byRestaurants.push(restaurantDTO);
+    }
+
+    return searchResult;
   }
 }

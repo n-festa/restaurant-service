@@ -17,7 +17,7 @@ export interface TextByLang {
   text: string;
 }
 
-export class RestaurantByRadius extends Restaurant {
+export class DeliveryRestaurant extends Restaurant {
   distance_km: number;
   delivery_time_s: number;
 }
