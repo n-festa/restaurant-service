@@ -6,24 +6,37 @@ import { RestaurantModule } from './feature/restaurant/restaurant.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RecommendationModule } from './feature/recommendation/recommendation.module';
 import { CategoryModule } from './feature/category/category.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import configuration from './config/configuration';
+import { FlagsmithModule } from './dependency/flagsmith/flagsmith.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'db-2all-free-backup.cmwyof2iqn6u.ap-southeast-2.rds.amazonaws.com',
-      port: 3306,
-      username: 'admin',
-      password: 'Goodfood4goodlife',
-      database: 'new-2all-dev',
-      entities: [],
-      synchronize: false,
-      autoLoadEntities: true,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      load: [configuration],
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('database.host'),
+        port: configService.get<number>('database.port'),
+        username: configService.get<string>('database.username'),
+        password: configService.get<string>('database.password'),
+        database: configService.get<string>('database.name'),
+        entities: [],
+        synchronize: false,
+        autoLoadEntities: true,
+      }),
+      inject: [ConfigService],
     }),
     FoodModule,
     RestaurantModule,
     RecommendationModule,
     CategoryModule,
+    FlagsmithModule,
   ],
   controllers: [AppController],
   providers: [AppService],

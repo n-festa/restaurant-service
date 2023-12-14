@@ -3,7 +3,7 @@ import { RestaurantService } from '../restaurant/restaurant.service';
 import { RestaurantDTO } from './dto/restaurant.dto';
 import { PriceRange, TextByLang } from 'src/type';
 import { FoodService } from '../food/food.service';
-import { AhamoveService } from 'src/intergration/ahamove/ahamove.service';
+import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { FoodDTO } from './dto/food.dto';
 
 @Injectable()
