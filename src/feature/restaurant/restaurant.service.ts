@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Restaurant } from 'src/entity/restaurant.entity';
-import { AhamoveService } from 'src/intergration/ahamove/ahamove.service';
+import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { DeliveryRestaurant, PriceRange, TextByLang } from 'src/type';
 import { Between, In, Repository } from 'typeorm';
 import { RestaurantDTO } from '../recommendation/dto/restaurant.dto';

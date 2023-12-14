@@ -1,6 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { DEFAULT_PORT } from './constant/config.constant';
+
+const appPort = parseInt(process.env.APP_PORT) || DEFAULT_PORT;
 
 async function bootstrap() {
   // const app = await NestFactory.create(AppModule);
@@ -10,7 +13,7 @@ async function bootstrap() {
     {
       transport: Transport.TCP,
       options: {
-        port: 3014,
+        port: appPort,
       },
     },
   );
