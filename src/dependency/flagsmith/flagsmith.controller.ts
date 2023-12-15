@@ -10,7 +10,7 @@ export class FlagsmithController {
   ) {}
 
   @EventPattern('refresh_flags')
-  async refreshFlags(identifier: string) {
-    return await this.flagsmithService.refreshFlags(identifier);
+  async refreshFlags() {
+    return await this.flagsmithService.refreshFlags();
   }
 }
