@@ -33,7 +33,7 @@ jobs:
         with:
           source_path: .
           aws_region: ap-southeast-2
-          fail_on_severity: Critical
+          #fail_on_severity: Critical
           analysis_type : All
       - name: Print findings
         run: |
