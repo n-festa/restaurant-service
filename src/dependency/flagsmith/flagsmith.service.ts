@@ -17,13 +17,15 @@ export class FlagsmithService {
   public getFlags() {
     return this.flags;
   }
-  public async refreshFlags(identifier: string = '') {
-    if (identifier == '') {
-      this.flags = await this.flagsmith.getEnvironmentFlags();
-      console.debug('refreshFlags - getEnvironmentFlags');
-    } else if (identifier != '') {
-      this.flags = await this.flagsmith.getIdentityFlags(identifier);
-      console.debug('refreshFlags - getIdentityFlags');
+  public async refreshFlags() {
+    this.flags = await this.flagsmith.getEnvironmentFlags();
+    console.debug('refreshFlags - getEnvironmentFlags');
+  }
+  public isFeatureEnabled(featureName: string): boolean {
+    const configFeatureName = this.configService.get<string>('featureFlag');
+    if (configFeatureName != '' && configFeatureName == featureName) {
+      return true;
     }
+    return this.flags.isFeatureEnabled(featureName);
   }
 }
