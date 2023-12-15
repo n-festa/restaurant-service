@@ -6,8 +6,6 @@ import { DEFAULT_PORT } from './constant/config.constant';
 const appPort = parseInt(process.env.APP_PORT) || DEFAULT_PORT;
 
 async function bootstrap() {
-  // const app = await NestFactory.create(AppModule);
-  // await app.listen(3000);
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
     {
