@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
@@ -8,10 +8,12 @@ import { SkuDiscount } from 'src/entity/sku-discount.entity';
 import { PERCENTAGE } from 'src/constant/unit.constant';
 import { TRUE } from 'src/constant';
 import { FoodDTO } from '../../dto/food.dto';
+import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 
 @Injectable()
 export class FoodService {
   constructor(
+    @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectRepository(MenuItem) private menuItemRepo: Repository<MenuItem>,
     @InjectRepository(SKU) private skuRepo: Repository<SKU>,
     @InjectRepository(SkuDiscount)
@@ -19,17 +21,31 @@ export class FoodService {
   ) {}
 
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
-    let query =
-      'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
-      menuItemList.join(',') +
-      ')';
-    const rawData = await this.menuItemRepo.query(query);
-    console.log(rawData);
-    const range: PriceRange = {
-      min: rawData[0].min,
-      max: rawData[0].max,
-    };
-    return range;
+    if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
+      //Get the before-discount price for only standard SKUs
+      let query =
+        'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
+        menuItemList.join(',') +
+        ') and sku.is_standard = 1';
+      const rawData = await this.menuItemRepo.query(query);
+      const range: PriceRange = {
+        min: rawData[0].min,
+        max: rawData[0].max,
+      };
+      return range;
+    } else {
+      let query =
+        'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
+        menuItemList.join(',') +
+        ')';
+      const rawData = await this.menuItemRepo.query(query);
+      console.log(rawData);
+      const range: PriceRange = {
+        min: rawData[0].min,
+        max: rawData[0].max,
+      };
+      return range;
+    }
   }
 
   async getFoodsWithListOfRestaurants(restaurantIds: number[]) {
@@ -46,21 +62,53 @@ export class FoodService {
     return foodList;
   }
 
-  async getFoodsWithListOfMenuItem(menuItems: number[]) {
-    if (!menuItems || menuItems.length === 0) {
-      return [];
+  async getFoodsWithListOfMenuItem(menuItems: number[], langs: string[] = []) {
+    if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
+      if (!menuItems || menuItems.length === 0) {
+        return [];
+      }
+      let foodList: MenuItem[];
+      if (langs.length === 0) {
+        foodList = await this.menuItemRepo
+          .createQueryBuilder('menuItem')
+          .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+          .leftJoinAndSelect('menuItem.image_obj', 'media')
+          .leftJoinAndSelect('menuItem.skus', 'sku')
+          .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+          .andWhere('menuItem.is_active = :active', { active: TRUE })
+          .andWhere('sku.is_standard = :standard', { standard: TRUE })
+          .andWhere('sku.is_active = :active', { active: TRUE })
+          .getMany();
+      } else if (langs.length > 0) {
+        foodList = await this.menuItemRepo
+          .createQueryBuilder('menuItem')
+          .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+          .leftJoinAndSelect('menuItem.image_obj', 'media')
+          .leftJoinAndSelect('menuItem.skus', 'sku')
+          .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+          .andWhere('menuItem.is_active = :active', { active: TRUE })
+          .andWhere('sku.is_standard = :standard', { standard: TRUE })
+          .andWhere('sku.is_active = :active', { active: TRUE })
+          .andWhere('menuItemExt.ISO_language_code IN (:...langs)', { langs })
+          .getMany();
+      }
+      return foodList;
+    } else {
+      if (!menuItems || menuItems.length === 0) {
+        return [];
+      }
+      const foodList = await this.menuItemRepo
+        .createQueryBuilder('menuItem')
+        .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+        .leftJoinAndSelect('menuItem.image_obj', 'media')
+        .leftJoinAndSelect('menuItem.skus', 'sku')
+        .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+        .andWhere('menuItem.is_active = :active', { active: TRUE })
+        .andWhere('sku.is_standard = :standard', { standard: TRUE })
+        .andWhere('sku.is_active = :active', { active: TRUE })
+        .getMany();
+      return foodList;
     }
-    const foodList = await this.menuItemRepo
-      .createQueryBuilder('menuItem')
-      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-      .leftJoinAndSelect('menuItem.image_obj', 'media')
-      .leftJoinAndSelect('menuItem.skus', 'sku')
-      .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-      .andWhere('menuItem.is_active = :active', { active: TRUE })
-      .andWhere('sku.is_standard = :standard', { standard: TRUE })
-      .andWhere('sku.is_active = :active', { active: TRUE })
-      .getMany();
-    return foodList;
   }
 
   async getAvailableSkuDiscountBySkuId(skuId: number): Promise<SkuDiscount> {
@@ -111,7 +159,7 @@ export class FoodService {
     const foodNameByLang: TextByLang[] = menuItem.menuItemExt.map((ext) => {
       return {
         ISO_language_code: ext.ISO_language_code,
-        text: ext.name,
+        text: ext.short_name,
       };
     });
 

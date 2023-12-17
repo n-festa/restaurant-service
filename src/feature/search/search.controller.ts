@@ -3,6 +3,7 @@ import { SearchService } from './search.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { SearchFoodByNameRequest } from './dto/search-food-by-name-request.dto';
+import { SearchResult } from 'src/dto/search-result.dto';
 
 @Controller()
 export class SearchController {
@@ -12,7 +13,7 @@ export class SearchController {
   ) {}
 
   @MessagePattern({ cmd: 'search_food_by_name' })
-  async searchFoodByName(data: SearchFoodByNameRequest) {
+  async searchFoodByName(data: SearchFoodByNameRequest): Promise<SearchResult> {
     if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
       return await this.searchService.searchFoodByName(
         data.keyword,
