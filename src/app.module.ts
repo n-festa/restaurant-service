@@ -9,6 +9,7 @@ import { CategoryModule } from './feature/category/category.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import configuration from './config/configuration';
 import { FlagsmithModule } from './dependency/flagsmith/flagsmith.module';
+import { SearchModule } from './feature/search/search.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { FlagsmithModule } from './dependency/flagsmith/flagsmith.module';
     RecommendationModule,
     CategoryModule,
     FlagsmithModule,
+    SearchModule, //fes-12-search-food-by-name
   ],
   controllers: [AppController],
   providers: [AppService],
