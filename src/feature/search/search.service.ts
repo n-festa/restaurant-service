@@ -30,6 +30,13 @@ export class SearchService {
     base_distance_for_grouping_m: number,
   ): Promise<SearchResult> {
     if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
+      //Get the total number of search result
+      const foodTotalCount = +(
+        await this.entityManager.query(
+          `SELECT COUNT(*) AS count FROM (SELECT food_search.menu_item_id, food_search.restaurant_id, calculate_distance(${lat}, ${long}, food_search.latitude, food_search.longitude, ${base_distance_for_grouping_m}) AS distance, MATCH (food_search.name , food_search.short_name) AGAINST ('${keyword}' IN NATURAL LANGUAGE MODE) AS score FROM Food_Search AS food_search Where food_search.ISO_language_code = '${ISO_language_code}' GROUP BY menu_item_id HAVING distance > ${distance_offset_m} AND distance <= ${distance_limit_m} AND score > 0 ORDER BY distance ASC , score DESC) as subquery`,
+        )
+      )[0].count;
+
       // Search with raw SQL query in the full-search table Food_Search
       const rawData = await this.entityManager.query(
         `SELECT food_search.menu_item_id, food_search.restaurant_id, calculate_distance(${lat}, ${long}, food_search.latitude, food_search.longitude, ${base_distance_for_grouping_m}) AS distance, MATCH (food_search.name , food_search.short_name) AGAINST ('${keyword}' IN NATURAL LANGUAGE MODE) AS score FROM Food_Search AS food_search Where food_search.ISO_language_code = '${ISO_language_code}' GROUP BY menu_item_id HAVING distance > ${distance_offset_m} AND distance <= ${distance_limit_m} AND score > 0 ORDER BY distance ASC , score DESC LIMIT ${page_size} OFFSET ${record_offset}`,
@@ -111,6 +118,7 @@ export class SearchService {
       //Fill-up the Search Result
       const searchResult: SearchResult = {
         byFoods: foodDTOs,
+        foodTotalCount: foodTotalCount,
         byRestaurants: srestaurantDTOs,
       };
 
