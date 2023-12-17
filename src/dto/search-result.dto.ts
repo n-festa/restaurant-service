@@ -4,5 +4,6 @@ import { SrestaurantDTO } from './s-restaurant.dto';
 
 export class SearchResult {
   public byFoods: FoodDTO[] = [];
+  public foodTotalCount?: number;
   public byRestaurants: Array<RestaurantDTO | SrestaurantDTO> = [];
 }
