@@ -4,7 +4,7 @@ import { Restaurant } from 'src/entity/restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { DeliveryRestaurant, PriceRange, TextByLang } from 'src/type';
 import { Between, In, Repository } from 'typeorm';
-import { RestaurantDTO } from '../recommendation/dto/restaurant.dto';
+import { RestaurantDTO } from '../../dto/restaurant.dto';
 
 @Injectable()
 export class RestaurantService {

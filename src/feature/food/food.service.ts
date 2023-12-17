@@ -7,7 +7,7 @@ import { SKU } from 'src/entity/sku.entity';
 import { SkuDiscount } from 'src/entity/sku-discount.entity';
 import { PERCENTAGE } from 'src/constant/unit.constant';
 import { TRUE } from 'src/constant';
-import { FoodDTO } from '../recommendation/dto/food.dto';
+import { FoodDTO } from '../../dto/food.dto';
 
 @Injectable()
 export class FoodService {
