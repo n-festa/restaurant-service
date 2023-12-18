@@ -3,10 +3,14 @@ import { Injectable } from '@nestjs/common';
 import { AxiosRequestConfig } from 'axios';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { Coordinate } from 'src/type';
+import { FlagsmithService } from '../flagsmith/flagsmith.service';
 
 @Injectable()
 export class AhamoveService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private flagService: FlagsmithService,
+  ) {}
 
   async estimateTimeAndDistance(
     startingPoint: Coordinate,
@@ -57,8 +61,16 @@ export class AhamoveService {
         duration_s: result.data[0].duration, //minutes
       };
     } catch (error) {
-      console.log(error);
-      throw new Error(error.message);
+      if (this.flagService.isFeatureEnabled('fes-14-update-ahamove-service')) {
+        console.log(error);
+        return {
+          distance_km: null, //km
+          duration_s: null, //minutes
+        };
+      } else {
+        console.log(error);
+        throw new Error(error.message);
+      }
     }
   }
 }
