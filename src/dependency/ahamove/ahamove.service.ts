@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { AxiosRequestConfig } from 'axios';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { Coordinate } from 'src/type';
@@ -9,7 +9,7 @@ import { FlagsmithService } from '../flagsmith/flagsmith.service';
 export class AhamoveService {
   constructor(
     private readonly httpService: HttpService,
-    private flagService: FlagsmithService,
+    @Inject('FLAGSMITH_SERVICE') private flagService: FlagsmithService,
   ) {}
 
   async estimateTimeAndDistance(
