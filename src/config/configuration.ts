@@ -8,4 +8,5 @@ export default () => ({
     name: process.env.DB_NAME,
   },
   featureFlag: process.env.FEATURE_FLAG || '',
+  ahamoveToken: process.env.AHAMOVE_TOKEN,
 });
