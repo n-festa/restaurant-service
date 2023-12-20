@@ -1,8 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
-import { DeliveryRestaurant, PriceRange, TextByLang } from 'src/type';
+import {
+  EntityManager,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
+import {
+  DeliveryRestaurant,
+  PriceRange,
+  RatingStatistic,
+  Review,
+  TextByLang,
+} from 'src/type';
 import { SKU } from 'src/entity/sku.entity';
 import { SkuDiscount } from 'src/entity/sku-discount.entity';
 import { PERCENTAGE } from 'src/constant/unit.constant';
@@ -10,6 +21,11 @@ import { FALSE, TRUE } from 'src/constant';
 import { FoodDTO } from '../../dto/food.dto';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
+import { FoodRating } from 'src/entity/food-rating.entity';
+import { Media } from 'src/entity/media.entity';
+import { Packaging } from 'src/entity/packaging.entity';
+import { Recipe } from 'src/entity/recipe.entity';
+import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
 
 @Injectable()
 export class FoodService {
@@ -17,6 +33,7 @@ export class FoodService {
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectRepository(MenuItem) private menuItemRepo: Repository<MenuItem>,
     @InjectRepository(SKU) private skuRepo: Repository<SKU>,
+    @InjectEntityManager() private entityManager: EntityManager,
     @InjectRepository(SkuDiscount)
     private skuDiscountRepo: Repository<SkuDiscount>,
   ) {}
@@ -244,11 +261,37 @@ export class FoodService {
     };
   }
 
-  async getFoodDetailById(id: number) {
+  async getFoodDetailByMenuItemId(menuItemId: number) {
     if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
       let result = new GeneralResponse(200, '');
       //Get basic food data
-      const foods = await this.getFoodsWithListOfMenuItem([id], [], FALSE);
+      const foods = await this.getFoodsWithListOfMenuItem(
+        [menuItemId],
+        [],
+        FALSE,
+      );
+
+      //Get rating data
+      const reviews = await this.getReviewByMenuItemId(menuItemId);
+      const ratingStatistic =
+        await this.getRatingStatisticByMenuItemId(menuItemId);
+
+      //Get images
+      const medias = await this.getAllMediaByMenuItemId(menuItemId);
+
+      //Get packaging information
+      const packaging = await this.getPackagingByMenuItemId(menuItemId);
+
+      //Get recipe information
+      const recipe = await this.getRecipeByMenuItemId(menuItemId);
+
+      //Get portion customization
+      const portionCustomization =
+        await this.getPortionCustomizationByMenuItemId(menuItemId);
+
+      //Get taste customization
+      const tasteCustomization =
+        await this.getTasteCustomizationByMenuItemId(menuItemId);
 
       if (foods.length === 0) {
         result.statusCode = 404;
@@ -258,10 +301,145 @@ export class FoodService {
 
       result.statusCode = 200;
       result.message = 'Getting Food Detail Successfully';
-      result.data = foods;
+      result.data = tasteCustomization;
       return result;
+    } else {
+    }
+  }
 
-      //Get list of images
+  async getReviewByMenuItemId(menu_item_id: number): Promise<Review[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const reviews: Review[] = [];
+      const data = await this.entityManager
+        .createQueryBuilder(FoodRating, 'foodRating')
+        .leftJoin('foodRating.order_sku_obj', 'orderSKU')
+        .leftJoin('orderSKU.sku_obj', 'sku')
+        .leftJoin('sku.menu_item', 'menuItem')
+        .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+        .andWhere('foodRating.is_active = :active', { active: TRUE })
+        .select([
+          'foodRating.food_rating_id',
+          'foodRating.score',
+          'foodRating.remarks',
+        ])
+        .getMany();
+      for (const item of data) {
+        const review: Review = {
+          food_rating_id: item.food_rating_id,
+          score: item.score,
+          remarks: item.remarks,
+        };
+        reviews.push(review);
+      }
+
+      return reviews;
+    } else {
+    }
+  }
+
+  async getRatingStatisticByMenuItemId(
+    menu_item_id: number,
+  ): Promise<RatingStatistic> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const queryString = `SELECT count(*) as total_count, AVG(foodRating.score) as average_score, min(foodRating.score) as min, max(foodRating.score) as max FROM ((Food_Rating as foodRating left join Order_SKU as orderSKU ON foodRating.order_sku_id = orderSKU.order_sku_id) left join SKU as sku ON sku.sku_id = orderSKU.sku_id) left join Menu_Item as menuItem ON menuItem.menu_item_id = sku.menu_item_id where menuItem.menu_item_id = ${menu_item_id} AND foodRating.is_active = 1`;
+
+      const data = await this.entityManager.query(queryString);
+
+      const result: RatingStatistic = {
+        menu_item_id: menu_item_id,
+        total_count: Number(data[0].total_count),
+        average_score: Number(data[0].average_score) || null,
+        max_score: Number(data[0].max) || null,
+        min_score: Number(data[0].min) || null,
+      };
+      return result;
+    } else {
+    }
+  }
+
+  async getAllMediaByMenuItemId(menu_item_id: number): Promise<Media[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      // Get data from table Media
+      // - image profile
+      // - other iamge with menu_item_id
+      // - package image with packaging_id
+
+      //Get list of packaging_id
+      const packaging_ids = (
+        await this.entityManager
+          .createQueryBuilder(Packaging, 'packaging')
+          .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
+          .select(['packaging.packaging_id'])
+          .getMany()
+      ).map((item) => item.packaging_id);
+
+      //Select medias
+      const data = await this.entityManager
+        .createQueryBuilder(Media, 'media')
+        .leftJoin('media.menu_item_obj', 'menuItem')
+        .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+        .orWhere('media.menu_item_id = :menu_item_id', { menu_item_id })
+        .orWhere('media.packaging_id IN (:...packaging_ids)', { packaging_ids })
+        .getMany();
+      return data;
+    } else {
+    }
+  }
+
+  async getPackagingByMenuItemId(menu_item_id: number): Promise<Packaging[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(Packaging, 'packaging')
+        .leftJoinAndSelect('packaging.packaging_ext_obj', 'ext')
+        .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
+        .getMany();
+      return data;
+    } else {
+    }
+  }
+
+  async getRecipeByMenuItemId(menu_item_id: number): Promise<Recipe[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(Recipe, 'recipe')
+        .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+        .where('recipe.menu_item_id = :menu_item_id', { menu_item_id })
+        .getMany();
+      return data;
+    } else {
+    }
+  }
+
+  async getPortionCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<MenuItemVariant[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(MenuItemVariant, 'variant')
+        .leftJoinAndSelect('variant.menu_item_variant_ext_obj', 'ext')
+        .leftJoinAndSelect('variant.options', 'options')
+        .leftJoinAndSelect('options.unit_obj', 'unit')
+        .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
+        .andWhere("variant.type = 'portion'")
+        .getMany();
+      return data;
+    } else {
+    }
+  }
+
+  async getTasteCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<MenuItemVariant[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(MenuItemVariant, 'variant')
+        .leftJoinAndSelect('variant.options', 'options')
+        .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
+        .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
+        .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
+        .andWhere("variant.type = 'taste'")
+        .getMany();
+      return data;
     } else {
     }
   }

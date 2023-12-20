@@ -1,29 +1,26 @@
 import {
   Entity,
-  CreateDateColumn,
   PrimaryColumn,
   Column,
+  CreateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Restaurant } from './restaurant.entity';
+import { MenuItemVariantOpion } from './menu-item-variant-option.entity';
 
-@Entity('Restaurant_Ext')
-export class RestaurantExt {
+@Entity('Taste_Value_Ext')
+export class TasteValueExt {
   @PrimaryColumn()
-  public restaurant_id: number;
+  public value_id: string;
 
   @PrimaryColumn()
   public ISO_language_code: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: false, unique: false })
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public name: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
-  public specialty: string;
-
   @Column({ type: 'text', nullable: true, unique: false })
-  public introduction: string;
+  public description: string;
 
   @CreateDateColumn({
     type: 'datetime',
@@ -34,10 +31,14 @@ export class RestaurantExt {
   public created_at: Date;
 
   //RELATIONSHIPS
-  @ManyToOne(() => Restaurant, (restaurant) => restaurant.restaurant_ext)
+
+  @ManyToOne(
+    () => MenuItemVariantOpion,
+    (menuItemVariantOpion) => menuItemVariantOpion.taste_value_ext,
+  )
   @JoinColumn({
-    name: 'restaurant_id',
-    referencedColumnName: 'restaurant_id',
+    name: 'value_id',
+    referencedColumnName: 'taste_value',
   })
-  public restaurant: Restaurant;
+  public taste_value_obj: MenuItemVariantOpion;
 }

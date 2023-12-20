@@ -5,8 +5,10 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { MenuItem } from './menu-item.entity';
+import { OrderSKU } from './order-sku.entity';
 
 @Entity('SKU')
 export class SKU {
@@ -88,4 +90,7 @@ export class SKU {
     referencedColumnName: 'menu_item_id',
   })
   public menu_item: MenuItem;
+
+  @OneToMany(() => OrderSKU, (orderSKU) => orderSKU.sku_obj)
+  public order_sku_obj: OrderSKU[];
 }

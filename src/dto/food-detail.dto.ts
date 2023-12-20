@@ -1,4 +1,4 @@
-import { TextByLang } from 'src/type';
+import { Review, TextByLang } from 'src/type';
 
 export class FoodDetailDTO {
   images: string[];
@@ -40,11 +40,4 @@ class OptionValue {
 class BasicCustomization {
   basic_customization_id: string;
   description: TextByLang[];
-}
-
-class Review {
-  food_rating_id: string;
-  score: number;
-  remarks: string;
-  reviewer?: string;
 }
