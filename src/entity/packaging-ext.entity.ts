@@ -6,13 +6,12 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Unit } from './unit.entity';
+import { Packaging } from './packaging.entity';
 
-@Entity('Unit_Ext')
-export class UnitExt {
+@Entity('Packaging_Ext')
+export class PackagingExt {
   @PrimaryColumn()
-  public unit_id: number;
-
+  public packaging_id: number;
   @PrimaryColumn()
   public ISO_language_code: string;
 
@@ -27,11 +26,12 @@ export class UnitExt {
   })
   public created_at: Date;
 
-  //relationship
-  @ManyToOne(() => Unit, (unit) => unit.unit_ext)
+  //RELATIONSHIPS
+
+  @ManyToOne(() => Packaging, (packaging) => packaging.packaging_ext_obj)
   @JoinColumn({
-    name: 'unit_id',
-    referencedColumnName: 'unit_id',
+    name: 'packaging_id',
+    referencedColumnName: 'packaging_id',
   })
-  unit: Unit;
+  public packaging_obj: Packaging;
 }

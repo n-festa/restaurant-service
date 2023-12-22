@@ -1,22 +1,25 @@
 import {
   Entity,
-  CreateDateColumn,
   PrimaryColumn,
   Column,
+  CreateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Unit } from './unit.entity';
+import { MenuItemVariant } from './menu-item-variant.entity';
 
-@Entity('Unit_Ext')
-export class UnitExt {
+@Entity('Taste_Ext')
+export class TasteExt {
   @PrimaryColumn()
-  public unit_id: number;
+  public taste_id: string;
 
   @PrimaryColumn()
   public ISO_language_code: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
+  public name: string;
+
+  @Column({ type: 'text', nullable: true, unique: false })
   public description: string;
 
   @CreateDateColumn({
@@ -27,11 +30,11 @@ export class UnitExt {
   })
   public created_at: Date;
 
-  //relationship
-  @ManyToOne(() => Unit, (unit) => unit.unit_ext)
+  //RELATIONSHIPS
+  @ManyToOne(() => MenuItemVariant, (variant) => variant.taste_ext)
   @JoinColumn({
-    name: 'unit_id',
-    referencedColumnName: 'unit_id',
+    name: 'taste_id',
+    referencedColumnName: 'taste_id',
   })
-  unit: Unit;
+  public taste: MenuItemVariant;
 }

@@ -2,8 +2,10 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { MenuItem } from './menu-item.entity';
 
 @Entity('Media')
 export class Media {
@@ -44,4 +46,9 @@ export class Media {
     default: () => 'CURRENT_TIMESTAMP',
   })
   public created_at: Date;
+
+  //RELATIONSHIPS
+
+  @OneToMany(() => MenuItem, (menuItem) => menuItem.image_obj)
+  public menu_item_obj: MenuItem[];
 }
