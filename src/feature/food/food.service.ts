@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 import {
   DeliveryRestaurant,
+  Option,
+  OptionValue,
   PriceRange,
   RatingStatistic,
   Review,
@@ -307,10 +309,25 @@ export class FoodService {
       //Get taste customization
       const tasteCustomization =
         await this.getTasteCustomizationByMenuItemId(menuItemId);
+      const convertedTasteCustomization =
+        await this.convertTasteCustomization(tasteCustomization);
 
       //Get basic customization
       const basicCustomization =
         await this.getBasicCustomizationByMenuItemId(menuItemId);
+      const convertedBasicCustomization = [];
+      for (const basic of basicCustomization) {
+        const customizedItem = {
+          basic_customization_id: basic.basic_customization_id,
+          description: basic.extension.map((ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.description,
+            };
+          }),
+        };
+        convertedBasicCustomization.push(customizedItem);
+      }
 
       //Mapping data to the result
       const data = {
@@ -343,10 +360,10 @@ export class FoodService {
             text: ext.description,
           };
         }),
-        portion_customization: portionCustomization,
-        // taste_customization: Option[];
-        // other_customizaton: BasicCustomization[];
-        // reviews: Review[];
+        portion_customization: convertedPortionCustomization,
+        taste_customization: convertedTasteCustomization,
+        other_customizaton: convertedBasicCustomization,
+        reviews: reviews,
       };
 
       if (foods.length === 0) {
@@ -534,8 +551,78 @@ export class FoodService {
     }
   }
 
-  async convertPortionCustomization(porttionCustomization: MenuItemVariant[]) {
+  async convertPortionCustomization(
+    portionCustomization: MenuItemVariant[],
+  ): Promise<Option[]> {
     if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const options: Option[] = [];
+      for (const item of portionCustomization) {
+        const option: Option = {
+          option_id: item.menu_item_variant_id.toString(),
+          option_name: [],
+          option_values: [],
+        };
+        //Option Name
+        item.menu_item_variant_ext_obj.forEach((ext) => {
+          const optionNameExt: TextByLang = {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+          option.option_name.push(optionNameExt);
+        });
+
+        //Option Values
+        item.options.forEach((optionValue) => {
+          const value = {} as OptionValue;
+          value.value_id = optionValue.menu_item_variant_option_id.toString();
+          value.value_nubmer = optionValue.value;
+          value.value_unit = optionValue.unit_obj.symbol;
+          option.option_values.push(value);
+        });
+
+        options.push(option);
+      }
+      return options;
+    } else {
+    }
+  }
+
+  async convertTasteCustomization(
+    tasteCustomization: MenuItemVariant[],
+  ): Promise<Option[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const options: Option[] = [];
+      for (const item of tasteCustomization) {
+        const option: Option = {
+          option_id: item.menu_item_variant_id.toString(),
+          option_name: [],
+          option_values: [],
+        };
+        //Option Name
+        item.taste_ext.forEach((ext) => {
+          const optionNameExt: TextByLang = {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+          option.option_name.push(optionNameExt);
+        });
+
+        //Option Values
+        item.options.forEach((optionValue) => {
+          const value = {} as OptionValue;
+          value.value_id = optionValue.menu_item_variant_option_id.toString();
+          value.value_txt = optionValue.taste_value_ext.map((ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.name,
+            };
+          });
+          option.option_values.push(value);
+        });
+
+        options.push(option);
+      }
+      return options;
     } else {
     }
   }
