@@ -17,4 +17,12 @@ export class FoodController {
     } else {
     }
   }
+
+  @MessagePattern({ cmd: 'get_list_of_sku_by_id' })
+  async getListOfSkuById(id: number) {
+    if (this.flagService.isFeatureEnabled('fes-16-get-list-of-skus')) {
+      return await this.foodService.getListOfSkuById(id);
+    } else {
+    }
+  }
 }
