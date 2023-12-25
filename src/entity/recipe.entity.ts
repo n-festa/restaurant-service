@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Ingredient } from './ingredient.entity';
 import { MenuItem } from './menu-item.entity';
+import { Unit } from './unit.entity';
 
 @Entity('Recipe')
 export class Recipe {
@@ -47,4 +48,11 @@ export class Recipe {
     referencedColumnName: 'menu_item_id',
   })
   public menu_item: MenuItem;
+
+  @ManyToOne(() => Unit)
+  @JoinColumn({
+    name: 'unit',
+    referencedColumnName: 'unit_id',
+  })
+  public unit_obj: Unit;
 }

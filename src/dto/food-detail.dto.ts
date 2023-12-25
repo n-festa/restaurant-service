@@ -1,6 +1,7 @@
-import { Review, TextByLang } from 'src/type';
+import { Review, TextByLang, Option } from 'src/type';
 
 export class FoodDetailDTO {
+  menu_item_id: number;
   images: string[];
   name: TextByLang[];
   restaurant_name: TextByLang[];
@@ -9,7 +10,7 @@ export class FoodDetailDTO {
   units_sold: number;
   review_number: number;
   promotion: string;
-  packaging_info: string;
+  packaging_info: TextByLang[];
   cutoff_time: string;
   ingredients: Ingredient[];
   description: TextByLang[];
@@ -24,17 +25,6 @@ class Ingredient {
   item_name_eng: string;
   quantity: number;
   unit: string;
-}
-
-class Option {
-  option_id: string;
-  option_name: TextByLang[];
-  option_values: OptionValue[];
-}
-
-class OptionValue {
-  value_id: string;
-  value_name: TextByLang[];
 }
 
 class BasicCustomization {
