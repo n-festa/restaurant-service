@@ -366,6 +366,47 @@ export class FoodService {
         reviews: reviews,
       };
 
+      //Get basic customization
+      const basicCustomization =
+        await this.getBasicCustomizationByMenuItemId(menuItemId);
+
+      //Mapping data to the result
+      const data = {
+        menu_item_id: menuItemId,
+        images: medias.map((media) => media.url),
+        name: foods[0].menuItemExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_name: restaurantExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_id: foods[0].restaurant_id,
+        available_quantity: foods[0].quantity_available,
+        units_sold: foods[0].units_sold,
+        review_number: ratingStatistic.total_count,
+        promotion: foods[0].promotion,
+        packaging_info: await this.generatePackageSentenceByLang(packaging),
+        cutoff_time: foods[0].cutoff_time,
+        ingredients: recipe.map((item) => {
+          return {
+            item_name_vie: item.ingredient.vie_name,
+            item_name_eng: item.ingredient.eng_name,
+            quantity: item.quantity,
+            unit: item.unit_obj.symbol,
+          };
+        }),
+        description: foods[0].menuItemExt.map((ext) => {
+          return {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.description,
+          };
+        }),
+        portion_customization: portionCustomization,
+        // taste_customization: Option[];
+        // other_customizaton: BasicCustomization[];
+        // reviews: Review[];
+      };
+
       if (foods.length === 0) {
         result.statusCode = 404;
         result.message = 'Food not found';
