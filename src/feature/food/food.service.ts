@@ -496,8 +496,8 @@ export class FoodService {
       result.message = 'Getting List Of SKUs Successfully';
       result.data = data;
       return result;
-    } else {
     }
+    //CURRENT LOGIC
   }
   async getSkuPriceUnit(sku_id: number) {
     if (this.flagService.isFeatureEnabled('fes-16-get-list-of-skus')) {
@@ -513,8 +513,8 @@ export class FoodService {
         .where('sku.sku_id = :sku_id', { sku_id })
         .getOne();
       return unit.symbol;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getMenuItemPriceUnit(menu_item_id: number) {
@@ -530,7 +530,7 @@ export class FoodService {
         .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
         .getOne();
       return unit.symbol;
-    } else {
     }
+    //CURRENT LOGIC
   }
 }

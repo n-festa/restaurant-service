@@ -26,7 +26,7 @@ export class SearchController {
         data.distance_limit_m,
         data.base_distance_for_grouping_m,
       );
-    } else {
     }
+    //CURRENT LOGIC
   }
 }
