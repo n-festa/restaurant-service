@@ -56,19 +56,19 @@ export class FoodService {
         max: rawData[0].max,
       };
       return range;
-    } else {
-      const query =
-        'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
-        menuItemList.join(',') +
-        ')';
-      const rawData = await this.menuItemRepo.query(query);
-      console.log(rawData);
-      const range: PriceRange = {
-        min: rawData[0].min,
-        max: rawData[0].max,
-      };
-      return range;
     }
+    //CURRENT LOGIC
+    const query =
+      'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
+      menuItemList.join(',') +
+      ')';
+    const rawData = await this.menuItemRepo.query(query);
+    console.log(rawData);
+    const range: PriceRange = {
+      min: rawData[0].min,
+      max: rawData[0].max,
+    };
+    return range;
   }
 
   async getFoodsWithListOfRestaurants(restaurantIds: number[]) {
@@ -149,22 +149,22 @@ export class FoodService {
       }
 
       return foodList;
-    } else {
-      if (!menuItems || menuItems.length === 0) {
-        return [];
-      }
-      const foodList = await this.menuItemRepo
-        .createQueryBuilder('menuItem')
-        .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-        .leftJoinAndSelect('menuItem.image_obj', 'media')
-        .leftJoinAndSelect('menuItem.skus', 'sku')
-        .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-        .andWhere('menuItem.is_active = :active', { active: TRUE })
-        .andWhere('sku.is_standard = :standard', { standard: TRUE })
-        .andWhere('sku.is_active = :active', { active: TRUE })
-        .getMany();
-      return foodList;
     }
+    //CURRENT LOGIC
+    if (!menuItems || menuItems.length === 0) {
+      return [];
+    }
+    const foodList = await this.menuItemRepo
+      .createQueryBuilder('menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'media')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
+      .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+      .andWhere('menuItem.is_active = :active', { active: TRUE })
+      .andWhere('sku.is_standard = :standard', { standard: TRUE })
+      .andWhere('sku.is_active = :active', { active: TRUE })
+      .getMany();
+    return foodList;
   }
 
   async getAvailableSkuDiscountBySkuId(skuId: number): Promise<SkuDiscount> {
@@ -370,8 +370,8 @@ export class FoodService {
       result.message = 'Getting Food Detail Successfully';
       result.data = data;
       return result;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getReviewByMenuItemId(menu_item_id: number): Promise<Review[]> {
@@ -400,8 +400,8 @@ export class FoodService {
       }
 
       return reviews;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getRatingStatisticByMenuItemId(
@@ -420,8 +420,8 @@ export class FoodService {
         min_score: Number(data[0].min) || null,
       };
       return result;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getAllMediaByMenuItemId(menu_item_id: number): Promise<Media[]> {
@@ -449,8 +449,8 @@ export class FoodService {
         .orWhere('media.packaging_id IN (:...packaging_ids)', { packaging_ids })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getPackagingByMenuItemId(menu_item_id: number): Promise<Packaging[]> {
@@ -461,8 +461,8 @@ export class FoodService {
         .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getRecipeByMenuItemId(menu_item_id: number): Promise<Recipe[]> {
@@ -474,8 +474,8 @@ export class FoodService {
         .where('recipe.menu_item_id = :menu_item_id', { menu_item_id })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getPortionCustomizationByMenuItemId(
@@ -491,8 +491,8 @@ export class FoodService {
         .andWhere("variant.type = 'portion'")
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getTasteCustomizationByMenuItemId(
@@ -508,8 +508,8 @@ export class FoodService {
         .andWhere("variant.type = 'taste'")
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getBasicCustomizationByMenuItemId(
@@ -524,8 +524,8 @@ export class FoodService {
         })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async generatePackageSentenceByLang(packageInfo: Packaging[]) {
@@ -541,8 +541,8 @@ export class FoodService {
         });
       }
       return sentenceByLang;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async convertPortionCustomization(
@@ -577,8 +577,8 @@ export class FoodService {
         options.push(option);
       }
       return options;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async convertTasteCustomization(
@@ -617,7 +617,7 @@ export class FoodService {
         options.push(option);
       }
       return options;
-    } else {
     }
+    //CURRENT LOGIC
   }
 }
