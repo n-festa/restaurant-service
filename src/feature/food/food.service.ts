@@ -26,7 +26,8 @@ import { Media } from 'src/entity/media.entity';
 import { Packaging } from 'src/entity/packaging.entity';
 import { Recipe } from 'src/entity/recipe.entity';
 import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
-
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
+import { CommonService } from '../common/common.service';
 
 @Injectable()
 export class FoodService {
@@ -37,6 +38,7 @@ export class FoodService {
     @InjectEntityManager() private entityManager: EntityManager,
     @InjectRepository(SkuDiscount)
     private skuDiscountRepo: Repository<SkuDiscount>,
+    private readonly commonService: CommonService,
   ) {}
 
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
@@ -262,7 +264,9 @@ export class FoodService {
     };
   }
 
-  async getFoodDetailByMenuItemId(menuItemId: number) {
+  async getFoodDetailByMenuItemId(
+    menuItemId: number,
+  ): Promise<GeneralResponse> {
     if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
       let result = new GeneralResponse(200, '');
       //Get basic food data
@@ -270,6 +274,14 @@ export class FoodService {
         [menuItemId],
         [],
         FALSE,
+      );
+      if (foods.length === 0) {
+        result.statusCode = 404;
+        result.message = 'Food not found';
+        return result;
+      }
+      const restaurantExt = await this.commonService.getRestaurantExtension(
+        foods[0].restaurant_id,
       );
 
       //Get rating data
@@ -289,10 +301,53 @@ export class FoodService {
       //Get portion customization
       const portionCustomization =
         await this.getPortionCustomizationByMenuItemId(menuItemId);
+      const convertedPortionCustomization =
+        await this.convertPortionCustomization(portionCustomization);
 
       //Get taste customization
       const tasteCustomization =
         await this.getTasteCustomizationByMenuItemId(menuItemId);
+
+      //Get basic customization
+      const basicCustomization =
+        await this.getBasicCustomizationByMenuItemId(menuItemId);
+
+      //Mapping data to the result
+      const data = {
+        menu_item_id: menuItemId,
+        images: medias.map((media) => media.url),
+        name: foods[0].menuItemExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_name: restaurantExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_id: foods[0].restaurant_id,
+        available_quantity: foods[0].quantity_available,
+        units_sold: foods[0].units_sold,
+        review_number: ratingStatistic.total_count,
+        promotion: foods[0].promotion,
+        packaging_info: await this.generatePackageSentenceByLang(packaging),
+        cutoff_time: foods[0].cutoff_time,
+        ingredients: recipe.map((item) => {
+          return {
+            item_name_vie: item.ingredient.vie_name,
+            item_name_eng: item.ingredient.eng_name,
+            quantity: item.quantity,
+            unit: item.unit_obj.symbol,
+          };
+        }),
+        description: foods[0].menuItemExt.map((ext) => {
+          return {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.description,
+          };
+        }),
+        portion_customization: portionCustomization,
+        // taste_customization: Option[];
+        // other_customizaton: BasicCustomization[];
+        // reviews: Review[];
+      };
 
       if (foods.length === 0) {
         result.statusCode = 404;
@@ -302,7 +357,7 @@ export class FoodService {
 
       result.statusCode = 200;
       result.message = 'Getting Food Detail Successfully';
-      result.data = tasteCustomization;
+      result.data = data;
       return result;
     } else {
     }
@@ -404,6 +459,7 @@ export class FoodService {
       const data = await this.entityManager
         .createQueryBuilder(Recipe, 'recipe')
         .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+        .leftJoinAndSelect('recipe.unit_obj', 'unit')
         .where('recipe.menu_item_id = :menu_item_id', { menu_item_id })
         .getMany();
       return data;
@@ -441,6 +497,45 @@ export class FoodService {
         .andWhere("variant.type = 'taste'")
         .getMany();
       return data;
+    } else {
+    }
+  }
+
+  async getBasicCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<BasicCustomization[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(BasicCustomization, 'basicCustomization')
+        .leftJoinAndSelect('basicCustomization.extension', 'ext')
+        .where('basicCustomization.menu_item_id = :menu_item_id', {
+          menu_item_id,
+        })
+        .getMany();
+      return data;
+    } else {
+    }
+  }
+
+  async generatePackageSentenceByLang(packageInfo: Packaging[]) {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const sentenceByLang: TextByLang[] = [];
+      for (const item of packageInfo) {
+        item.packaging_ext_obj.forEach((element) => {
+          const sentence: TextByLang = {
+            ISO_language_code: element.ISO_language_code,
+            text: `${element.description} (+${item.price})`,
+          };
+          sentenceByLang.push(sentence);
+        });
+      }
+      return sentenceByLang;
+    } else {
+    }
+  }
+
+  async convertPortionCustomization(porttionCustomization: MenuItemVariant[]) {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
     } else {
     }
   }

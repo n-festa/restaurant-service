@@ -18,6 +18,8 @@ import { MenuItemVariantExt } from 'src/entity/menu-item-variant-ext.entity';
 import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
 import { TasteExt } from 'src/entity/taste-ext.entity';
 import { TasteValueExt } from 'src/entity/taste-value-ext.entity';
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
+import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { TasteValueExt } from 'src/entity/taste-value-ext.entity';
       MenuItemVariantOpion,
       TasteExt,
       TasteValueExt,
+      BasicCustomization,
+      NoAddingExt,
     ]),
   ],
   controllers: [FoodController],
