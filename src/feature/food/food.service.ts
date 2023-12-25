@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 import {
   DeliveryRestaurant,
+  Option,
+  OptionValue,
   PriceRange,
   RatingStatistic,
   Review,
@@ -307,6 +309,62 @@ export class FoodService {
       //Get taste customization
       const tasteCustomization =
         await this.getTasteCustomizationByMenuItemId(menuItemId);
+      const convertedTasteCustomization =
+        await this.convertTasteCustomization(tasteCustomization);
+
+      //Get basic customization
+      const basicCustomization =
+        await this.getBasicCustomizationByMenuItemId(menuItemId);
+      const convertedBasicCustomization = [];
+      for (const basic of basicCustomization) {
+        const customizedItem = {
+          basic_customization_id: basic.basic_customization_id,
+          description: basic.extension.map((ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.description,
+            };
+          }),
+        };
+        convertedBasicCustomization.push(customizedItem);
+      }
+
+      //Mapping data to the result
+      const data = {
+        menu_item_id: menuItemId,
+        images: medias.map((media) => media.url),
+        name: foods[0].menuItemExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_name: restaurantExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_id: foods[0].restaurant_id,
+        available_quantity: foods[0].quantity_available,
+        units_sold: foods[0].units_sold,
+        review_number: ratingStatistic.total_count,
+        promotion: foods[0].promotion,
+        packaging_info: await this.generatePackageSentenceByLang(packaging),
+        cutoff_time: foods[0].cutoff_time,
+        ingredients: recipe.map((item) => {
+          return {
+            item_name_vie: item.ingredient.vie_name,
+            item_name_eng: item.ingredient.eng_name,
+            quantity: item.quantity,
+            unit: item.unit_obj.symbol,
+          };
+        }),
+        description: foods[0].menuItemExt.map((ext) => {
+          return {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.description,
+          };
+        }),
+        portion_customization: convertedPortionCustomization,
+        taste_customization: convertedTasteCustomization,
+        other_customizaton: convertedBasicCustomization,
+        reviews: reviews,
+      };
 
       //Get basic customization
       const basicCustomization =
@@ -534,8 +592,78 @@ export class FoodService {
     }
   }
 
-  async convertPortionCustomization(porttionCustomization: MenuItemVariant[]) {
+  async convertPortionCustomization(
+    portionCustomization: MenuItemVariant[],
+  ): Promise<Option[]> {
     if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const options: Option[] = [];
+      for (const item of portionCustomization) {
+        const option: Option = {
+          option_id: item.menu_item_variant_id.toString(),
+          option_name: [],
+          option_values: [],
+        };
+        //Option Name
+        item.menu_item_variant_ext_obj.forEach((ext) => {
+          const optionNameExt: TextByLang = {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+          option.option_name.push(optionNameExt);
+        });
+
+        //Option Values
+        item.options.forEach((optionValue) => {
+          const value = {} as OptionValue;
+          value.value_id = optionValue.menu_item_variant_option_id.toString();
+          value.value_nubmer = optionValue.value;
+          value.value_unit = optionValue.unit_obj.symbol;
+          option.option_values.push(value);
+        });
+
+        options.push(option);
+      }
+      return options;
+    } else {
+    }
+  }
+
+  async convertTasteCustomization(
+    tasteCustomization: MenuItemVariant[],
+  ): Promise<Option[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const options: Option[] = [];
+      for (const item of tasteCustomization) {
+        const option: Option = {
+          option_id: item.menu_item_variant_id.toString(),
+          option_name: [],
+          option_values: [],
+        };
+        //Option Name
+        item.taste_ext.forEach((ext) => {
+          const optionNameExt: TextByLang = {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+          option.option_name.push(optionNameExt);
+        });
+
+        //Option Values
+        item.options.forEach((optionValue) => {
+          const value = {} as OptionValue;
+          value.value_id = optionValue.menu_item_variant_option_id.toString();
+          value.value_txt = optionValue.taste_value_ext.map((ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.name,
+            };
+          });
+          option.option_values.push(value);
+        });
+
+        options.push(option);
+      }
+      return options;
     } else {
     }
   }
