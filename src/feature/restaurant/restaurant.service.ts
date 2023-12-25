@@ -1,17 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Inject, Injectable } from '@nestjs/common';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { DeliveryRestaurant, PriceRange, TextByLang } from 'src/type';
-import { Between, In, Repository } from 'typeorm';
+import { Between, EntityManager, In, Repository } from 'typeorm';
 import { RestaurantDTO } from '../../dto/restaurant.dto';
+import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
+import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 
 @Injectable()
 export class RestaurantService {
   constructor(
+    @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectRepository(Restaurant)
     private restaurantRepo: Repository<Restaurant>,
     private readonly ahamoveService: AhamoveService,
+    @InjectEntityManager() private entityManager: EntityManager,
   ) {}
 
   async findAll(): Promise<Restaurant[]> {
@@ -167,5 +171,15 @@ export class RestaurantService {
     restaurantDTO.unit = restaurant.unit_obj.symbol;
 
     return restaurantDTO;
+  }
+
+  async getRestaurantExtension(id: number) {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      return await this.entityManager
+        .createQueryBuilder(RestaurantExt, 'resExt')
+        .where('resExt.restaurant_id = :id', { id })
+        .getMany();
+    } else {
+    }
   }
 }

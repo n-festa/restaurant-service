@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 import {
   DeliveryRestaurant,
+  Option,
+  OptionValue,
   PriceRange,
   RatingStatistic,
   Review,
@@ -29,6 +31,8 @@ import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
 import { SkuDTO } from 'src/dto/sku.dto';
 import { Unit } from 'src/entity/unit.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
+import { CommonService } from '../common/common.service';
 
 @Injectable()
 export class FoodService {
@@ -39,12 +43,13 @@ export class FoodService {
     @InjectEntityManager() private entityManager: EntityManager,
     @InjectRepository(SkuDiscount)
     private skuDiscountRepo: Repository<SkuDiscount>,
+    private readonly commonService: CommonService,
   ) {}
 
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
     if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
       //Get the before-discount price for only standard SKUs
-      let query =
+      const query =
         'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
         menuItemList.join(',') +
         ') and sku.is_standard = 1';
@@ -54,19 +59,19 @@ export class FoodService {
         max: rawData[0].max,
       };
       return range;
-    } else {
-      let query =
-        'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
-        menuItemList.join(',') +
-        ')';
-      const rawData = await this.menuItemRepo.query(query);
-      console.log(rawData);
-      const range: PriceRange = {
-        min: rawData[0].min,
-        max: rawData[0].max,
-      };
-      return range;
     }
+    //CURRENT LOGIC
+    const query =
+      'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
+      menuItemList.join(',') +
+      ')';
+    const rawData = await this.menuItemRepo.query(query);
+    console.log(rawData);
+    const range: PriceRange = {
+      min: rawData[0].min,
+      max: rawData[0].max,
+    };
+    return range;
   }
 
   async getFoodsWithListOfRestaurants(restaurantIds: number[]) {
@@ -147,22 +152,22 @@ export class FoodService {
       }
 
       return foodList;
-    } else {
-      if (!menuItems || menuItems.length === 0) {
-        return [];
-      }
-      const foodList = await this.menuItemRepo
-        .createQueryBuilder('menuItem')
-        .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-        .leftJoinAndSelect('menuItem.image_obj', 'media')
-        .leftJoinAndSelect('menuItem.skus', 'sku')
-        .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-        .andWhere('menuItem.is_active = :active', { active: TRUE })
-        .andWhere('sku.is_standard = :standard', { standard: TRUE })
-        .andWhere('sku.is_active = :active', { active: TRUE })
-        .getMany();
-      return foodList;
     }
+    //CURRENT LOGIC
+    if (!menuItems || menuItems.length === 0) {
+      return [];
+    }
+    const foodList = await this.menuItemRepo
+      .createQueryBuilder('menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'media')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
+      .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+      .andWhere('menuItem.is_active = :active', { active: TRUE })
+      .andWhere('sku.is_standard = :standard', { standard: TRUE })
+      .andWhere('sku.is_active = :active', { active: TRUE })
+      .getMany();
+    return foodList;
   }
 
   async getAvailableSkuDiscountBySkuId(skuId: number): Promise<SkuDiscount> {
@@ -264,7 +269,9 @@ export class FoodService {
     };
   }
 
-  async getFoodDetailByMenuItemId(menuItemId: number) {
+  async getFoodDetailByMenuItemId(
+    menuItemId: number,
+  ): Promise<GeneralResponse> {
     if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
       const result = new GeneralResponse(200, '');
       //Get basic food data
@@ -272,6 +279,14 @@ export class FoodService {
         [menuItemId],
         [],
         FALSE,
+      );
+      if (foods.length === 0) {
+        result.statusCode = 404;
+        result.message = 'Food not found';
+        return result;
+      }
+      const restaurantExt = await this.commonService.getRestaurantExtension(
+        foods[0].restaurant_id,
       );
 
       //Get rating data
@@ -291,23 +306,75 @@ export class FoodService {
       //Get portion customization
       const portionCustomization =
         await this.getPortionCustomizationByMenuItemId(menuItemId);
+      const convertedPortionCustomization =
+        await this.convertPortionCustomization(portionCustomization);
 
       //Get taste customization
       const tasteCustomization =
         await this.getTasteCustomizationByMenuItemId(menuItemId);
+      const convertedTasteCustomization =
+        await this.convertTasteCustomization(tasteCustomization);
 
-      if (foods.length === 0) {
-        result.statusCode = 404;
-        result.message = 'Food not found';
-        return result;
+      //Get basic customization
+      const basicCustomization =
+        await this.getBasicCustomizationByMenuItemId(menuItemId);
+      const convertedBasicCustomization = [];
+      for (const basic of basicCustomization) {
+        const customizedItem = {
+          basic_customization_id: basic.basic_customization_id,
+          description: basic.extension.map((ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.description,
+            };
+          }),
+        };
+        convertedBasicCustomization.push(customizedItem);
       }
+
+      //Mapping data to the result
+      const data = {
+        menu_item_id: menuItemId,
+        images: medias.map((media) => media.url),
+        name: foods[0].menuItemExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_name: restaurantExt.map((ext) => {
+          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
+        }),
+        restaurant_id: foods[0].restaurant_id,
+        available_quantity: foods[0].quantity_available,
+        units_sold: foods[0].units_sold,
+        review_number: ratingStatistic.total_count,
+        promotion: foods[0].promotion,
+        packaging_info: await this.generatePackageSentenceByLang(packaging),
+        cutoff_time: foods[0].cutoff_time,
+        ingredients: recipe.map((item) => {
+          return {
+            item_name_vie: item.ingredient.vie_name,
+            item_name_eng: item.ingredient.eng_name,
+            quantity: item.quantity,
+            unit: item.unit_obj.symbol,
+          };
+        }),
+        description: foods[0].menuItemExt.map((ext) => {
+          return {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.description,
+          };
+        }),
+        portion_customization: convertedPortionCustomization,
+        taste_customization: convertedTasteCustomization,
+        other_customizaton: convertedBasicCustomization,
+        reviews: reviews,
+      };
 
       result.statusCode = 200;
       result.message = 'Getting Food Detail Successfully';
-      result.data = tasteCustomization;
+      result.data = data;
       return result;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getReviewByMenuItemId(menu_item_id: number): Promise<Review[]> {
@@ -336,8 +403,8 @@ export class FoodService {
       }
 
       return reviews;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getRatingStatisticByMenuItemId(
@@ -356,8 +423,8 @@ export class FoodService {
         min_score: Number(data[0].min) || null,
       };
       return result;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getAllMediaByMenuItemId(menu_item_id: number): Promise<Media[]> {
@@ -385,8 +452,8 @@ export class FoodService {
         .orWhere('media.packaging_id IN (:...packaging_ids)', { packaging_ids })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getPackagingByMenuItemId(menu_item_id: number): Promise<Packaging[]> {
@@ -397,8 +464,8 @@ export class FoodService {
         .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getRecipeByMenuItemId(menu_item_id: number): Promise<Recipe[]> {
@@ -406,11 +473,12 @@ export class FoodService {
       const data = await this.entityManager
         .createQueryBuilder(Recipe, 'recipe')
         .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+        .leftJoinAndSelect('recipe.unit_obj', 'unit')
         .where('recipe.menu_item_id = :menu_item_id', { menu_item_id })
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getPortionCustomizationByMenuItemId(
@@ -426,8 +494,8 @@ export class FoodService {
         .andWhere("variant.type = 'portion'")
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
   }
 
   async getTasteCustomizationByMenuItemId(
@@ -443,8 +511,117 @@ export class FoodService {
         .andWhere("variant.type = 'taste'")
         .getMany();
       return data;
-    } else {
     }
+    //CURRENT LOGIC
+  }
+
+  async getBasicCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<BasicCustomization[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(BasicCustomization, 'basicCustomization')
+        .leftJoinAndSelect('basicCustomization.extension', 'ext')
+        .where('basicCustomization.menu_item_id = :menu_item_id', {
+          menu_item_id,
+        })
+        .getMany();
+      return data;
+    }
+    //CURRENT LOGIC
+  }
+
+  async generatePackageSentenceByLang(packageInfo: Packaging[]) {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const sentenceByLang: TextByLang[] = [];
+      for (const item of packageInfo) {
+        item.packaging_ext_obj.forEach((element) => {
+          const sentence: TextByLang = {
+            ISO_language_code: element.ISO_language_code,
+            text: `${element.description} (+${item.price})`,
+          };
+          sentenceByLang.push(sentence);
+        });
+      }
+      return sentenceByLang;
+    }
+    //CURRENT LOGIC
+  }
+
+  async convertPortionCustomization(
+    portionCustomization: MenuItemVariant[],
+  ): Promise<Option[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const options: Option[] = [];
+      for (const item of portionCustomization) {
+        const option: Option = {
+          option_id: item.menu_item_variant_id.toString(),
+          option_name: [],
+          option_values: [],
+        };
+        //Option Name
+        item.menu_item_variant_ext_obj.forEach((ext) => {
+          const optionNameExt: TextByLang = {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+          option.option_name.push(optionNameExt);
+        });
+
+        //Option Values
+        item.options.forEach((optionValue) => {
+          const value = {} as OptionValue;
+          value.value_id = optionValue.menu_item_variant_option_id.toString();
+          value.value_nubmer = optionValue.value;
+          value.value_unit = optionValue.unit_obj.symbol;
+          option.option_values.push(value);
+        });
+
+        options.push(option);
+      }
+      return options;
+    }
+    //CURRENT LOGIC
+  }
+
+  async convertTasteCustomization(
+    tasteCustomization: MenuItemVariant[],
+  ): Promise<Option[]> {
+    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
+      const options: Option[] = [];
+      for (const item of tasteCustomization) {
+        const option: Option = {
+          option_id: item.menu_item_variant_id.toString(),
+          option_name: [],
+          option_values: [],
+        };
+        //Option Name
+        item.taste_ext.forEach((ext) => {
+          const optionNameExt: TextByLang = {
+            ISO_language_code: ext.ISO_language_code,
+            text: ext.name,
+          };
+          option.option_name.push(optionNameExt);
+        });
+
+        //Option Values
+        item.options.forEach((optionValue) => {
+          const value = {} as OptionValue;
+          value.value_id = optionValue.menu_item_variant_option_id.toString();
+          value.value_txt = optionValue.taste_value_ext.map((ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.name,
+            };
+          });
+          option.option_values.push(value);
+        });
+
+        options.push(option);
+      }
+      return options;
+    }
+    //CURRENT LOGIC
   }
 
   async getListOfSkuById(id: number) {

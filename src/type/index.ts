@@ -38,3 +38,16 @@ export interface RatingStatistic {
   max_score: number;
   min_score: number;
 }
+
+export interface Option {
+  option_id: string;
+  option_name: TextByLang[];
+  option_values: OptionValue[];
+}
+
+export interface OptionValue {
+  value_id: string;
+  value_txt?: TextByLang[];
+  value_nubmer?: number;
+  value_unit?: string;
+}
