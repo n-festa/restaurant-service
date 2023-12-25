@@ -46,7 +46,7 @@ export class FoodService {
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
     if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
       //Get the before-discount price for only standard SKUs
-      let query =
+      const query =
         'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
         menuItemList.join(',') +
         ') and sku.is_standard = 1';
@@ -57,7 +57,7 @@ export class FoodService {
       };
       return range;
     } else {
-      let query =
+      const query =
         'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
         menuItemList.join(',') +
         ')';
@@ -270,7 +270,7 @@ export class FoodService {
     menuItemId: number,
   ): Promise<GeneralResponse> {
     if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
-      let result = new GeneralResponse(200, '');
+      const result = new GeneralResponse(200, '');
       //Get basic food data
       const foods = await this.getFoodsWithListOfMenuItem(
         [menuItemId],
@@ -365,53 +365,6 @@ export class FoodService {
         other_customizaton: convertedBasicCustomization,
         reviews: reviews,
       };
-
-      //Get basic customization
-      const basicCustomization =
-        await this.getBasicCustomizationByMenuItemId(menuItemId);
-
-      //Mapping data to the result
-      const data = {
-        menu_item_id: menuItemId,
-        images: medias.map((media) => media.url),
-        name: foods[0].menuItemExt.map((ext) => {
-          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
-        }),
-        restaurant_name: restaurantExt.map((ext) => {
-          return { ISO_language_code: ext.ISO_language_code, text: ext.name };
-        }),
-        restaurant_id: foods[0].restaurant_id,
-        available_quantity: foods[0].quantity_available,
-        units_sold: foods[0].units_sold,
-        review_number: ratingStatistic.total_count,
-        promotion: foods[0].promotion,
-        packaging_info: await this.generatePackageSentenceByLang(packaging),
-        cutoff_time: foods[0].cutoff_time,
-        ingredients: recipe.map((item) => {
-          return {
-            item_name_vie: item.ingredient.vie_name,
-            item_name_eng: item.ingredient.eng_name,
-            quantity: item.quantity,
-            unit: item.unit_obj.symbol,
-          };
-        }),
-        description: foods[0].menuItemExt.map((ext) => {
-          return {
-            ISO_language_code: ext.ISO_language_code,
-            text: ext.description,
-          };
-        }),
-        portion_customization: portionCustomization,
-        // taste_customization: Option[];
-        // other_customizaton: BasicCustomization[];
-        // reviews: Review[];
-      };
-
-      if (foods.length === 0) {
-        result.statusCode = 404;
-        result.message = 'Food not found';
-        return result;
-      }
 
       result.statusCode = 200;
       result.message = 'Getting Food Detail Successfully';
