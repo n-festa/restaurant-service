@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Unit } from './unit.entity';
+import { SKU } from './sku.entity';
 
 @Entity('SKU_Discount')
 export class SkuDiscount {
@@ -51,4 +52,11 @@ export class SkuDiscount {
     referencedColumnName: 'unit_id',
   })
   discount_unit_obj: Unit;
+
+  @ManyToOne(() => SKU, (sku) => sku.discount)
+  @JoinColumn({
+    name: 'sku_id',
+    referencedColumnName: 'sku_id',
+  })
+  public sku_obj: SKU;
 }

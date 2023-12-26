@@ -16,7 +16,6 @@ export class SearchService {
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly restaurantService: RestaurantService,
     private readonly foodService: FoodService,
-
   ) {}
 
   async searchFoodByName(
@@ -124,7 +123,7 @@ export class SearchService {
       };
 
       return searchResult;
-    } else {
     }
+    //CURRENT LOGIC
   }
 }
