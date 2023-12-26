@@ -21,6 +21,7 @@ import { TasteExt } from 'src/entity/taste-ext.entity';
 import { TasteValueExt } from 'src/entity/taste-value-ext.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
+import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 
 @Global()
 @Module({
@@ -44,6 +45,7 @@ import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
       TasteValueExt,
       BasicCustomization,
       NoAddingExt,
+      RestaurantExt,
     ]),
     FoodModule,
     RestaurantModule,

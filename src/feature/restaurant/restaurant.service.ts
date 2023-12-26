@@ -5,7 +5,6 @@ import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { DeliveryRestaurant, PriceRange, TextByLang } from 'src/type';
 import { Between, EntityManager, In, Repository } from 'typeorm';
 import { RestaurantDTO } from '../../dto/restaurant.dto';
-import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
 import { RestaurantDetailDTO } from 'src/dto/restaurant-detail.dto';
@@ -38,7 +37,7 @@ export class RestaurantService {
     const ONE_LONGITUDE_DEGREE_DISTANCE =
       Math.cos((lat * Math.PI) / 180) * (EARTH_CIRCUMFERENCE_AT_EQUATOR / 360); //meter
 
-    let search_area = {
+    const search_area = {
       latMin: lat - radius / ONE_LATITUDE_DEGREE_DISTANCE,
       latMax: lat + radius / ONE_LATITUDE_DEGREE_DISTANCE,
       longMin: long - radius / ONE_LONGITUDE_DEGREE_DISTANCE,
@@ -174,16 +173,6 @@ export class RestaurantService {
     restaurantDTO.unit = restaurant.unit_obj.symbol;
 
     return restaurantDTO;
-  }
-
-  async getRestaurantExtension(id: number) {
-    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
-      return await this.entityManager
-        .createQueryBuilder(RestaurantExt, 'resExt')
-        .where('resExt.restaurant_id = :id', { id })
-        .getMany();
-    } else {
-    }
   }
 
   async getRestaurantDetails(restaurant_id: number) {

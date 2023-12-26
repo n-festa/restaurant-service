@@ -28,6 +28,9 @@ import { Media } from 'src/entity/media.entity';
 import { Packaging } from 'src/entity/packaging.entity';
 import { Recipe } from 'src/entity/recipe.entity';
 import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
+import { SkuDTO } from 'src/dto/sku.dto';
+import { Unit } from 'src/entity/unit.entity';
+import { Restaurant } from 'src/entity/restaurant.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { CommonService } from '../common/common.service';
 
@@ -617,6 +620,93 @@ export class FoodService {
         options.push(option);
       }
       return options;
+    }
+    //CURRENT LOGIC
+  }
+
+  async getListOfSkuById(id: number) {
+    if (this.flagService.isFeatureEnabled('fes-16-get-list-of-skus')) {
+      const result = new GeneralResponse(200, '');
+
+      const data: SkuDTO[] = [];
+
+      const rawSKUs = await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .leftJoinAndSelect('sku.menu_item_variants', 'variant')
+        .leftJoinAndSelect('variant.attribute', 'attribute')
+        .where('sku.menu_item_id = :id', { id })
+        .andWhere('sku.is_active = :active', { active: TRUE })
+        .getMany();
+
+      if (rawSKUs.length === 0) {
+        result.statusCode = 404;
+        result.message = 'SKUs not found';
+        return result;
+      }
+
+      const priceUnit = await this.getMenuItemPriceUnit(id);
+
+      for (const rawSKU of rawSKUs) {
+        const sku: SkuDTO = {
+          price: rawSKU.price,
+          price_after_discount: await this.getAvailableDiscountPrice(rawSKU),
+          unit: priceUnit,
+          is_standard: Boolean(rawSKU.is_standard),
+          calorie_kcal: rawSKU.calorie_kcal,
+          carb_g: rawSKU.carbohydrate_g,
+          protein_g: rawSKU.protein_g,
+          fat_g: rawSKU.fat_g,
+          portion_customization: rawSKU.menu_item_variants
+            .filter((i) => i.attribute.type == 'portion')
+            .map((e) => {
+              return {
+                option_id: e.variant.toString(),
+                value_id: e.option.toString(),
+              };
+            }),
+        };
+
+        data.push(sku);
+      }
+
+      result.statusCode = 200;
+      result.message = 'Getting List Of SKUs Successfully';
+      result.data = data;
+      return result;
+    }
+    //CURRENT LOGIC
+  }
+  async getSkuPriceUnit(sku_id: number) {
+    if (this.flagService.isFeatureEnabled('fes-16-get-list-of-skus')) {
+      const unit = await this.entityManager
+        .createQueryBuilder(Unit, 'unit')
+        .leftJoin(Restaurant, 'restaurant', 'restaurant.unit = unit.unit_id')
+        .leftJoin(
+          MenuItem,
+          'menuItem',
+          'menuItem.restaurant_id = restaurant.restaurant_id',
+        )
+        .leftJoin(SKU, 'sku', 'sku.menu_item_id = menuItem.menu_item_id')
+        .where('sku.sku_id = :sku_id', { sku_id })
+        .getOne();
+      return unit.symbol;
+    }
+    //CURRENT LOGIC
+  }
+
+  async getMenuItemPriceUnit(menu_item_id: number) {
+    if (this.flagService.isFeatureEnabled('fes-16-get-list-of-skus')) {
+      const unit = await this.entityManager
+        .createQueryBuilder(Unit, 'unit')
+        .leftJoin(Restaurant, 'restaurant', 'restaurant.unit = unit.unit_id')
+        .leftJoin(
+          MenuItem,
+          'menuItem',
+          'menuItem.restaurant_id = restaurant.restaurant_id',
+        )
+        .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+        .getOne();
+      return unit.symbol;
     }
     //CURRENT LOGIC
   }
