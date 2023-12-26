@@ -51,3 +51,18 @@ export interface OptionValue {
   value_nubmer?: number;
   value_unit?: string;
 }
+
+export interface MediaItem {
+  type: string;
+  url: string;
+}
+
+export interface StandardAddress {
+  address_line: string;
+  ward: string;
+  district: string;
+  city: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}

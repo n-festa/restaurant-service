@@ -7,6 +7,9 @@ import { Between, EntityManager, In, Repository } from 'typeorm';
 import { RestaurantDTO } from '../../dto/restaurant.dto';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
+import { GeneralResponse } from 'src/dto/general-response.dto';
+import { RestaurantDetailDTO } from 'src/dto/restaurant-detail.dto';
+import { Media } from 'src/entity/media.entity';
 
 @Injectable()
 export class RestaurantService {
@@ -180,6 +183,124 @@ export class RestaurantService {
         .where('resExt.restaurant_id = :id', { id })
         .getMany();
     } else {
+    }
+  }
+
+  async getRestaurantDetails(restaurant_id: number) {
+    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
+      const result = new GeneralResponse(200, '');
+
+      const restaurant = await this.entityManager
+        .createQueryBuilder(Restaurant, 'restaurant')
+        .leftJoinAndSelect('restaurant.restaurant_ext', 'extension')
+        .leftJoinAndSelect('restaurant.logo', 'logo')
+        .leftJoinAndSelect('restaurant.unit_obj', 'unit')
+        .leftJoinAndSelect('restaurant.address', 'address')
+        .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+        .andWhere('restaurant.is_active = 1')
+        .getOne();
+
+      //Get medias
+      const medias = await this.getAllMediaByRestaurantId(restaurant_id);
+
+      //Convert Restaurant Extension to TextByLang format
+      const restaurant_ext = await this.convertRestaurantExtToTextByLang(
+        restaurant.restaurant_ext,
+      );
+
+      //Mapping data with output
+      const data: RestaurantDetailDTO = {
+        restaurant_id: restaurant.restaurant_id,
+        medias: medias.map((media) => {
+          return {
+            type: media.type,
+            url: media.url,
+          };
+        }),
+        address: {
+          address_line: restaurant.address.address_line,
+          city: restaurant.address.city,
+          district: restaurant.address.district,
+          ward: restaurant.address.ward,
+          country: restaurant.address.country,
+          latitude: restaurant.address.latitude,
+          longitude: restaurant.address.longitude,
+        },
+        logo_img: restaurant.logo.url,
+        rating: restaurant.rating,
+        top_food: restaurant.top_food,
+        promotion: restaurant.promotion,
+        reviews: [],
+        name: restaurant_ext.name,
+        specialty: restaurant_ext.specialty,
+        introduction: restaurant_ext.introduction,
+        review_total_count: restaurant.review_total_count,
+        distance_km: null,
+        delivery_time_s: null,
+        cutoff_time: [],
+        having_vegeterian_food: null,
+        max_price: null,
+        min_price: null,
+        unit: restaurant.unit_obj.symbol,
+        menu: [],
+      };
+
+      result.statusCode = 200;
+      result.message = 'Getting Restaurant Details Successfully';
+      result.data = data;
+      return result;
+    }
+    //CURRENT LOGIC
+  }
+
+  async convertRestaurantExtToTextByLang(
+    restaurant_ext: RestaurantExt[],
+  ): Promise<any> {
+    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
+      const result = {
+        name: [],
+        specialty: [],
+        introduction: [],
+      };
+      for (const ext of restaurant_ext) {
+        //name
+        const nameByLang: TextByLang = {
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        };
+        result.name.push(nameByLang);
+
+        //specialty
+        const specialtyByLang: TextByLang = {
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.specialty,
+        };
+        result.specialty.push(specialtyByLang);
+
+        //introduction
+        const introductionByLang: TextByLang = {
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.introduction,
+        };
+        result.introduction.push(introductionByLang);
+      }
+      return result;
+    }
+  }
+
+  async getAllMediaByRestaurantId(restaurant_id: number): Promise<Media[]> {
+    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
+      const data = await this.entityManager
+        .createQueryBuilder(Media, 'media')
+        .leftJoin(
+          Restaurant,
+          'restaurant',
+          'restaurant.intro_video = media.media_id',
+        )
+        .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+        .orWhere('media.restaurant_id = :restaurant_id', { restaurant_id })
+        .getMany();
+      return data;
     }
   }
 }
