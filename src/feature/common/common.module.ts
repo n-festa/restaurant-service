@@ -1,7 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 import { CommonService } from './common.service';
-import { FoodModule } from '../food/food.module';
-import { RestaurantModule } from '../restaurant/restaurant.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { MenuItemExt } from 'src/entity/menu-item-ext.entity';
@@ -47,8 +45,6 @@ import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
       NoAddingExt,
       RestaurantExt,
     ]),
-    FoodModule,
-    RestaurantModule,
   ],
   exports: [CommonService],
   providers: [CommonService],

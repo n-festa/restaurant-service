@@ -170,105 +170,6 @@ export class FoodService {
     return foodList;
   }
 
-  async getAvailableSkuDiscountBySkuId(skuId: number): Promise<SkuDiscount> {
-    const now = new Date();
-    const skuDiscount = await this.skuDiscountRepo.findOne({
-      where: {
-        sku_id: skuId,
-        is_active: TRUE,
-        valid_from: LessThanOrEqual(now),
-        valid_until: MoreThanOrEqual(now),
-      },
-      order: {
-        valid_from: 'DESC',
-      },
-    });
-    return skuDiscount;
-  }
-  async getAvailableDiscountPrice(sku: SKU) {
-    let discountPrice = sku.price;
-    const skuDiscount = await this.getAvailableSkuDiscountBySkuId(sku.sku_id);
-    if (!skuDiscount) {
-      return discountPrice;
-    }
-
-    switch (skuDiscount.discount_unit_obj.symbol) {
-      case PERCENTAGE:
-        discountPrice = sku.price * (1 - skuDiscount.discount_value / 100);
-        break;
-
-      default: //VND, USD
-        discountPrice = sku.price - skuDiscount.discount_value;
-        break;
-    }
-
-    return discountPrice;
-  }
-
-  async convertIntoFoodDTO(
-    menuItem: MenuItem,
-    correspondingRestaurant: DeliveryRestaurant,
-  ): Promise<FoodDTO> {
-    //Defind Logic of Top Label later, currently just present the vegeterian sign
-    let topLabel = '';
-    if (Boolean(menuItem.is_vegetarian)) {
-      topLabel = 'CHAY';
-    }
-
-    const foodNameByLang: TextByLang[] = menuItem.menuItemExt.map((ext) => {
-      return {
-        ISO_language_code: ext.ISO_language_code,
-        text: ext.short_name,
-      };
-    });
-
-    const mainCookingMethodByLang: TextByLang[] = menuItem.menuItemExt.map(
-      (ext) => {
-        return {
-          ISO_language_code: ext.ISO_language_code,
-          text: ext.main_cooking_method,
-        };
-      },
-    );
-
-    const restaurantNameByLang: TextByLang[] =
-      correspondingRestaurant.restaurant_ext.map((ext) => {
-        return {
-          ISO_language_code: ext.ISO_language_code,
-          text: ext.name,
-        };
-      });
-
-    return {
-      id: menuItem.menu_item_id,
-      image: menuItem.image_obj.url,
-      top_label: topLabel,
-      bottom_label: null,
-      name: foodNameByLang,
-      restaurant_name: restaurantNameByLang,
-      restaurant_id: menuItem.restaurant_id,
-      calorie_kcal: menuItem.skus[0].calorie_kcal,
-      rating: menuItem.rating,
-      distance_km: correspondingRestaurant.distance_km,
-      delivery_time_s: correspondingRestaurant.delivery_time_s,
-      main_cooking_method: mainCookingMethodByLang,
-      ingredient_brief_vie: menuItem.ingredient_brief_vie,
-      ingredient_brief_eng: menuItem.ingredient_brief_eng,
-      price: menuItem.skus[0].price,
-      price_after_discount: await this.getAvailableDiscountPrice(
-        menuItem.skus[0],
-      ),
-      promotion: menuItem.promotion,
-      cutoff_time: menuItem.cutoff_time,
-      preparing_time_s: menuItem.preparing_time_s,
-      cooking_time_s: menuItem.cooking_time_s,
-      quantity_available: menuItem.quantity_available,
-      is_vegetarian: Boolean(menuItem.is_vegetarian),
-      cooking_schedule: menuItem.cooking_schedule,
-      units_sold: menuItem.units_sold,
-    };
-  }
-
   async getFoodDetailByMenuItemId(
     menuItemId: number,
   ): Promise<GeneralResponse> {
@@ -649,7 +550,8 @@ export class FoodService {
       for (const rawSKU of rawSKUs) {
         const sku: SkuDTO = {
           price: rawSKU.price,
-          price_after_discount: await this.getAvailableDiscountPrice(rawSKU),
+          price_after_discount:
+            await this.commonService.getAvailableDiscountPrice(rawSKU),
           unit: priceUnit,
           is_standard: Boolean(rawSKU.is_standard),
           calorie_kcal: rawSKU.calorie_kcal,
