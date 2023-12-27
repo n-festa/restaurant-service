@@ -5,6 +5,7 @@ import { PriceRange, TextByLang } from 'src/type';
 import { FoodService } from '../food/food.service';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { FoodDTO } from '../../dto/food.dto';
+import { CommonService } from '../common/common.service';
 
 @Injectable()
 export class RecommendationService {
@@ -12,6 +13,7 @@ export class RecommendationService {
     private readonly restaurantService: RestaurantService,
     private readonly foodService: FoodService,
     private readonly ahamoveService: AhamoveService,
+    private readonly commonService: CommonService,
   ) {}
 
   async getGeneralFoodRecomendation(lat: number, long: number): Promise<any> {
@@ -33,7 +35,7 @@ export class RecommendationService {
         (res) => res.restaurant_id === food.restaurant_id,
       );
 
-      const foodDTO = await this.foodService.convertIntoFoodDTO(
+      const foodDTO = await this.commonService.convertIntoFoodDTO(
         food,
         restaurant,
       );

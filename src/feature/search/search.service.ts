@@ -8,6 +8,7 @@ import { SrestaurantDTO } from 'src/dto/s-restaurant.dto';
 import { SearchResult } from 'src/dto/search-result.dto';
 import { FoodDTO } from 'src/dto/food.dto';
 import { PriceRange } from 'src/type';
+import { CommonService } from '../common/common.service';
 
 @Injectable()
 export class SearchService {
@@ -16,6 +17,7 @@ export class SearchService {
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly restaurantService: RestaurantService,
     private readonly foodService: FoodService,
+    private readonly commonService: CommonService,
   ) {}
 
   async searchFoodByName(
@@ -74,7 +76,7 @@ export class SearchService {
         const deliveryRestaurant = deliveryRestaurants.find(
           (res) => food.restaurant_id == res.restaurant_id,
         );
-        const foodDTO = await this.foodService.convertIntoFoodDTO(
+        const foodDTO = await this.commonService.convertIntoFoodDTO(
           food,
           deliveryRestaurant,
         );

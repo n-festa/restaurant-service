@@ -87,6 +87,9 @@ export class Restaurant {
   })
   public rating: number;
 
+  @Column({ type: 'int', nullable: true, unique: false })
+  public review_total_count: number;
+
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public top_food: string;
 
