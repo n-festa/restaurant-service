@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RestaurantService } from '../restaurant/restaurant.service';
 import { RestaurantDTO } from '../../dto/restaurant.dto';
-import { PriceRange, TextByLang } from 'src/type';
+import { PriceRange } from 'src/type';
 import { FoodService } from '../food/food.service';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { FoodDTO } from '../../dto/food.dto';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
+import { CommonService } from '../common/common.service';
 
 @Injectable()
 export class RecommendationService {
@@ -15,6 +16,7 @@ export class RecommendationService {
     private readonly foodService: FoodService,
     private readonly ahamoveService: AhamoveService,
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
+    private readonly commonService: CommonService,
   ) {}
 
   async getGeneralFoodRecomendation(lat: number, long: number): Promise<any> {
@@ -42,7 +44,7 @@ export class RecommendationService {
           (res) => res.restaurant_id === food.restaurant_id,
         );
 
-        const foodDTO = await this.foodService.convertIntoFoodDTO(
+        const foodDTO = await this.commonService.convertIntoFoodDTO(
           food,
           restaurant,
         );
@@ -76,7 +78,7 @@ export class RecommendationService {
         (res) => res.restaurant_id === food.restaurant_id,
       );
 
-      const foodDTO = await this.foodService.convertIntoFoodDTO(
+      const foodDTO = await this.commonService.convertIntoFoodDTO(
         food,
         restaurant,
       );

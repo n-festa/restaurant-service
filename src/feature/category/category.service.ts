@@ -12,6 +12,7 @@ import { RestaurantService } from '../restaurant/restaurant.service';
 import { PriceRange } from 'src/type';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
+import { CommonService } from '../common/common.service';
 
 @Injectable()
 export class CategoryService {
@@ -23,6 +24,7 @@ export class CategoryService {
     private readonly sysCatMenuItemRepo: Repository<SysCategoryMenuItem>,
     private readonly foodService: FoodService,
     private readonly restaurantService: RestaurantService,
+    private readonly commonService: CommonService,
   ) {}
 
   async getCategories(): Promise<any> {
@@ -137,7 +139,7 @@ export class CategoryService {
         const restaurant = restaurants.find(
           (res) => res.restaurant_id === food.restaurant_id,
         );
-        const foodDTO = await this.foodService.convertIntoFoodDTO(
+        const foodDTO = await this.commonService.convertIntoFoodDTO(
           food,
           restaurant,
         );
@@ -202,7 +204,7 @@ export class CategoryService {
       const restaurant = restaurants.find(
         (res) => res.restaurant_id === food.restaurant_id,
       );
-      const foodDTO = await this.foodService.convertIntoFoodDTO(
+      const foodDTO = await this.commonService.convertIntoFoodDTO(
         food,
         restaurant,
       );
