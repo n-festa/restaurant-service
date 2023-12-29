@@ -8,6 +8,7 @@ import { SrestaurantDTO } from 'src/dto/s-restaurant.dto';
 import { SearchResult } from 'src/dto/search-result.dto';
 import { FoodDTO } from 'src/dto/food.dto';
 import { PriceRange } from 'src/type';
+import { GeneralResponse } from 'src/dto/general-response.dto';
 import { CommonService } from '../common/common.service';
 
 @Injectable()
@@ -30,8 +31,15 @@ export class SearchService {
     distance_offset_m: number,
     distance_limit_m: number,
     base_distance_for_grouping_m: number,
-  ): Promise<SearchResult> {
-    if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
+  ): Promise<any> {
+    if (
+      this.flagService.isFeatureEnabled('fes-12-search-food-by-name') ||
+      this.flagService.isFeatureEnabled(
+        'fes-19-refactor-all-the-end-point-with-general-response',
+      )
+    ) {
+      const response = new GeneralResponse(200, '');
+
       //Get the total number of search result
       const foodTotalCount = +(
         await this.entityManager.query(
@@ -124,7 +132,11 @@ export class SearchService {
         byRestaurants: srestaurantDTOs,
       };
 
-      return searchResult;
+      //Build response
+      response.statusCode = 200;
+      response.message = 'Search Food By Name successfully';
+      response.data = searchResult;
+      return response;
     }
     //CURRENT LOGIC
   }
