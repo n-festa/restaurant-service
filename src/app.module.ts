@@ -39,7 +39,7 @@ import { CommonModule } from './feature/common/common.module';
     RecommendationModule,
     CategoryModule,
     FlagsmithModule,
-    SearchModule, //fes-12-search-food-by-name
+    SearchModule,
     CommonModule,
   ],
   controllers: [AppController],

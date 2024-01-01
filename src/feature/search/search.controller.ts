@@ -14,19 +14,18 @@ export class SearchController {
 
   @MessagePattern({ cmd: 'search_food_by_name' })
   async searchFoodByName(data: SearchFoodByNameRequest): Promise<SearchResult> {
-    if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
-      return await this.searchService.searchFoodByName(
-        data.keyword,
-        data.ISO_language_code,
-        data.lat,
-        data.long,
-        data.record_offset,
-        data.page_size,
-        data.distance_offset_m,
-        data.distance_limit_m,
-        data.base_distance_for_grouping_m,
-      );
-    }
+    return await this.searchService.searchFoodByName(
+      data.keyword,
+      data.ISO_language_code,
+      data.lat,
+      data.long,
+      data.record_offset,
+      data.page_size,
+      data.distance_offset_m,
+      data.distance_limit_m,
+      data.base_distance_for_grouping_m,
+    );
+
     //CURRENT LOGIC
   }
 }
