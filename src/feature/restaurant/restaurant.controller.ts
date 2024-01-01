@@ -12,9 +12,6 @@ export class RestaurantController {
 
   @MessagePattern({ cmd: 'get_restaurant_details' })
   async getRestaurantDetails(restaurant_id: number) {
-    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
-      return await this.restaurantService.getRestaurantDetails(restaurant_id);
-    }
-    //CURRENT LOGIC
+    return await this.restaurantService.getRestaurantDetails(restaurant_id);
   }
 }
