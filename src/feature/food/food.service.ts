@@ -548,6 +548,7 @@ export class FoodService {
 
     for (const rawSKU of rawSKUs) {
       const sku: SkuDTO = {
+        sku_id: rawSKU.sku_id,
         price: rawSKU.price,
         price_after_discount:
           await this.commonService.getAvailableDiscountPrice(rawSKU),

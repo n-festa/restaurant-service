@@ -1,4 +1,5 @@
 export class SkuDTO {
+  sku_id: number;
   price: number;
   price_after_discount: number;
   unit: string;
