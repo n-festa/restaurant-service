@@ -47,26 +47,12 @@ export class FoodService {
   ) {}
 
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
-    if (this.flagService.isFeatureEnabled('fes-12-search-food-by-name')) {
-      //Get the before-discount price for only standard SKUs
-      const query =
-        'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
-        menuItemList.join(',') +
-        ') and sku.is_standard = 1';
-      const rawData = await this.menuItemRepo.query(query);
-      const range: PriceRange = {
-        min: rawData[0].min,
-        max: rawData[0].max,
-      };
-      return range;
-    }
-    //CURRENT LOGIC
+    //Get the before-discount price for only standard SKUs
     const query =
       'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
       menuItemList.join(',') +
-      ')';
+      ') and sku.is_standard = 1';
     const rawData = await this.menuItemRepo.query(query);
-    console.log(rawData);
     const range: PriceRange = {
       min: rawData[0].min,
       max: rawData[0].max,
@@ -93,80 +79,60 @@ export class FoodService {
     langs: string[] = [],
     withSKU: number = TRUE,
   ) {
-    if (
-      this.flagService.isFeatureEnabled('fes-12-search-food-by-name') ||
-      this.flagService.isFeatureEnabled('fes-15-get-food-detail')
-    ) {
-      if (!menuItems || menuItems.length === 0) {
-        return [];
-      }
-      let foodList: MenuItem[];
-      if (withSKU == TRUE) {
-        if (langs.length === 0) {
-          foodList = await this.menuItemRepo
-            .createQueryBuilder('menuItem')
-            .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-            .leftJoinAndSelect('menuItem.image_obj', 'media')
-            .leftJoinAndSelect('menuItem.skus', 'sku')
-            .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-            .andWhere('menuItem.is_active = :active', { active: TRUE })
-            .andWhere('sku.is_standard = :standard', {
-              standard: TRUE,
-            })
-            .andWhere('sku.is_active = :active', { active: TRUE })
-            .getMany();
-        } else if (langs.length > 0) {
-          foodList = await this.menuItemRepo
-            .createQueryBuilder('menuItem')
-            .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-            .leftJoinAndSelect('menuItem.image_obj', 'media')
-            .leftJoinAndSelect('menuItem.skus', 'sku')
-            .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-            .andWhere('menuItem.is_active = :active', { active: TRUE })
-            .andWhere('sku.is_standard = :standard', {
-              standard: TRUE,
-            })
-            .andWhere('sku.is_active = :active', { active: TRUE })
-            .andWhere('menuItemExt.ISO_language_code IN (:...langs)', { langs })
-            .getMany();
-        }
-      } else if (withSKU == FALSE) {
-        if (langs.length === 0) {
-          foodList = await this.menuItemRepo
-            .createQueryBuilder('menuItem')
-            .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-            .leftJoinAndSelect('menuItem.image_obj', 'media')
-            .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-            .andWhere('menuItem.is_active = :active', { active: TRUE })
-            .getMany();
-        } else if (langs.length > 0) {
-          foodList = await this.menuItemRepo
-            .createQueryBuilder('menuItem')
-            .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-            .leftJoinAndSelect('menuItem.image_obj', 'media')
-            .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-            .andWhere('menuItem.is_active = :active', { active: TRUE })
-            .andWhere('menuItemExt.ISO_language_code IN (:...langs)', { langs })
-            .getMany();
-        }
-      }
-
-      return foodList;
-    }
-    //CURRENT LOGIC
     if (!menuItems || menuItems.length === 0) {
       return [];
     }
-    const foodList = await this.menuItemRepo
-      .createQueryBuilder('menuItem')
-      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-      .leftJoinAndSelect('menuItem.image_obj', 'media')
-      .leftJoinAndSelect('menuItem.skus', 'sku')
-      .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
-      .andWhere('menuItem.is_active = :active', { active: TRUE })
-      .andWhere('sku.is_standard = :standard', { standard: TRUE })
-      .andWhere('sku.is_active = :active', { active: TRUE })
-      .getMany();
+    let foodList: MenuItem[];
+    if (withSKU == TRUE) {
+      if (langs.length === 0) {
+        foodList = await this.menuItemRepo
+          .createQueryBuilder('menuItem')
+          .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+          .leftJoinAndSelect('menuItem.image_obj', 'media')
+          .leftJoinAndSelect('menuItem.skus', 'sku')
+          .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+          .andWhere('menuItem.is_active = :active', { active: TRUE })
+          .andWhere('sku.is_standard = :standard', {
+            standard: TRUE,
+          })
+          .andWhere('sku.is_active = :active', { active: TRUE })
+          .getMany();
+      } else if (langs.length > 0) {
+        foodList = await this.menuItemRepo
+          .createQueryBuilder('menuItem')
+          .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+          .leftJoinAndSelect('menuItem.image_obj', 'media')
+          .leftJoinAndSelect('menuItem.skus', 'sku')
+          .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+          .andWhere('menuItem.is_active = :active', { active: TRUE })
+          .andWhere('sku.is_standard = :standard', {
+            standard: TRUE,
+          })
+          .andWhere('sku.is_active = :active', { active: TRUE })
+          .andWhere('menuItemExt.ISO_language_code IN (:...langs)', { langs })
+          .getMany();
+      }
+    } else if (withSKU == FALSE) {
+      if (langs.length === 0) {
+        foodList = await this.menuItemRepo
+          .createQueryBuilder('menuItem')
+          .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+          .leftJoinAndSelect('menuItem.image_obj', 'media')
+          .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+          .andWhere('menuItem.is_active = :active', { active: TRUE })
+          .getMany();
+      } else if (langs.length > 0) {
+        foodList = await this.menuItemRepo
+          .createQueryBuilder('menuItem')
+          .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+          .leftJoinAndSelect('menuItem.image_obj', 'media')
+          .where('menuItem.menu_item_id IN (:...menuItems)', { menuItems })
+          .andWhere('menuItem.is_active = :active', { active: TRUE })
+          .andWhere('menuItemExt.ISO_language_code IN (:...langs)', { langs })
+          .getMany();
+      }
+    }
+
     return foodList;
   }
 
