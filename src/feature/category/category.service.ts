@@ -28,51 +28,13 @@ export class CategoryService {
   ) {}
 
   async getCategories(): Promise<any> {
-    if (
-      this.flagService.isFeatureEnabled(
-        'fes-19-refactor-all-the-end-point-with-general-response',
-      )
-    ) {
-      const response = new GeneralResponse(200, '');
-      const categoriesDTO: SysCategoryDTO[] = [];
-      const categories = await this.sysCategoryRepo.find({
-        where: {
-          is_active: TRUE,
-        },
-      });
-      for (const category of categories) {
-        const categoryDTO = new SysCategoryDTO();
-        categoryDTO.sys_category_id = category.sys_category_id;
-        categoryDTO.type = category.type;
-        categoryDTO.image_url = category.image_obj.url;
-        category.extension.forEach((ext) => {
-          categoryDTO.name.push({
-            ISO_language_code: ext.ISO_language_code,
-            text: ext.name,
-          });
-          categoryDTO.description.push({
-            ISO_language_code: ext.ISO_language_code,
-            text: ext.description,
-          });
-        });
-        categoriesDTO.push(categoryDTO);
-      }
-
-      //Build the response
-      response.statusCode = 200;
-      response.message = 'Get all categories successfully';
-      response.data = categoriesDTO;
-
-      return response;
-    }
-    //CURRENT LOGIC
+    const response = new GeneralResponse(200, '');
     const categoriesDTO: SysCategoryDTO[] = [];
     const categories = await this.sysCategoryRepo.find({
       where: {
         is_active: TRUE,
       },
     });
-
     for (const category of categories) {
       const categoryDTO = new SysCategoryDTO();
       categoryDTO.sys_category_id = category.sys_category_id;
@@ -88,87 +50,21 @@ export class CategoryService {
           text: ext.description,
         });
       });
-
       categoriesDTO.push(categoryDTO);
     }
 
-    return categoriesDTO;
+    //Build the response
+    response.statusCode = 200;
+    response.message = 'Get all categories successfully';
+    response.data = categoriesDTO;
+
+    return response;
   }
 
   async searchFoodAndRestaurantByCategory(
     data: SearchByCategory,
   ): Promise<any> {
-    if (
-      this.flagService.isFeatureEnabled(
-        'fes-19-refactor-all-the-end-point-with-general-response',
-      )
-    ) {
-      const response = new GeneralResponse(200, '');
-      const { category_id, lat, long } = data;
-      const searchResult = new SearchResult();
-
-      //Get list of menu_item_id
-      const menuItemIds = (
-        await this.sysCatMenuItemRepo.find({
-          select: {
-            menu_item_id: true,
-          },
-          where: {
-            sys_category_id: category_id,
-          },
-        })
-      ).map((item) => item.menu_item_id);
-
-      //Check if there is no menu_item -> return []
-      if (!menuItemIds || menuItemIds.length === 0) {
-        return searchResult;
-      }
-
-      const foodList =
-        await this.foodService.getFoodsWithListOfMenuItem(menuItemIds);
-
-      const restaurants =
-        await this.restaurantService.getDeliveryRestaurantByListOfId(
-          foodList.map((food) => food.restaurant_id),
-          lat,
-          long,
-        );
-
-      //Fill up Food data
-      for (const food of foodList) {
-        const restaurant = restaurants.find(
-          (res) => res.restaurant_id === food.restaurant_id,
-        );
-        const foodDTO = await this.commonService.convertIntoFoodDTO(
-          food,
-          restaurant,
-        );
-        searchResult.byFoods.push(foodDTO);
-      }
-
-      //Fill up Restaurant data
-      for (const restaurant of restaurants) {
-        const menuItems = await restaurant.menu_items;
-        const priceRange: PriceRange =
-          await this.foodService.getPriceRangeByMenuItem(
-            menuItems.map((item) => item.menu_item_id),
-          );
-        const restaurantDTO =
-          await this.restaurantService.convertIntoRestaurantDTO(
-            restaurant,
-            priceRange,
-          );
-        searchResult.byRestaurants.push(restaurantDTO);
-      }
-
-      //Build the response
-      response.statusCode = 200;
-      response.message = 'Search food and restaurant by category successfully';
-      response.data = searchResult;
-
-      return response;
-    }
-    //CURRENT LOGIC
+    const response = new GeneralResponse(200, '');
     const { category_id, lat, long } = data;
     const searchResult = new SearchResult();
 
@@ -226,6 +122,11 @@ export class CategoryService {
       searchResult.byRestaurants.push(restaurantDTO);
     }
 
-    return searchResult;
+    //Build the response
+    response.statusCode = 200;
+    response.message = 'Search food and restaurant by category successfully';
+    response.data = searchResult;
+
+    return response;
   }
 }

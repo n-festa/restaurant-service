@@ -20,46 +20,7 @@ export class RecommendationService {
   ) {}
 
   async getGeneralFoodRecomendation(lat: number, long: number): Promise<any> {
-    if (
-      this.flagService.isFeatureEnabled(
-        'fes-19-refactor-all-the-end-point-with-general-response',
-      )
-    ) {
-      const response = new GeneralResponse(200, '');
-      const foodDTOs: FoodDTO[] = [];
-      const restaurants = await this.restaurantService.getRestaurantByRadius(
-        lat,
-        long,
-        5000, //meter
-      );
-      const restauranIds = restaurants.map(
-        (restaurant) => restaurant.restaurant_id,
-      );
-
-      const foods =
-        await this.foodService.getFoodsWithListOfRestaurants(restauranIds);
-
-      for (const food of foods) {
-        const restaurant = restaurants.find(
-          (res) => res.restaurant_id === food.restaurant_id,
-        );
-
-        const foodDTO = await this.commonService.convertIntoFoodDTO(
-          food,
-          restaurant,
-        );
-
-        foodDTOs.push(foodDTO);
-      }
-
-      // Build response
-      response.statusCode = 200;
-      response.message = 'Get food recommendation successfully';
-      response.data = foodDTOs;
-
-      return response;
-    }
-
+    const response = new GeneralResponse(200, '');
     const foodDTOs: FoodDTO[] = [];
     const restaurants = await this.restaurantService.getRestaurantByRadius(
       lat,
@@ -86,7 +47,12 @@ export class RecommendationService {
       foodDTOs.push(foodDTO);
     }
 
-    return foodDTOs;
+    // Build response
+    response.statusCode = 200;
+    response.message = 'Get food recommendation successfully';
+    response.data = foodDTOs;
+
+    return response;
   }
 
   async getGeneralRestaurantRecomendation(
@@ -94,43 +60,8 @@ export class RecommendationService {
     long,
     lang: string = 'vie',
   ): Promise<any> {
-    if (
-      this.flagService.isFeatureEnabled(
-        'fes-19-refactor-all-the-end-point-with-general-response',
-      )
-    ) {
-      const response = new GeneralResponse(200, '');
+    const response = new GeneralResponse(200, '');
 
-      const restaurantList: RestaurantDTO[] = [];
-      const restaurants = await this.restaurantService.getRestaurantByRadius(
-        lat,
-        long,
-        5000,
-      );
-
-      for (const restaurant of restaurants) {
-        const menuItems = await restaurant.menu_items;
-        const priceRange: PriceRange =
-          await this.foodService.getPriceRangeByMenuItem(
-            menuItems.map((item) => item.menu_item_id),
-          );
-        const restaurantDTO =
-          await this.restaurantService.convertIntoRestaurantDTO(
-            restaurant,
-            priceRange,
-          );
-
-        restaurantList.push(restaurantDTO);
-      }
-
-      //Build response
-      response.statusCode = 200;
-      response.message = 'Get restaurant recommendation successfully';
-      response.data = restaurantList;
-      return response;
-    }
-
-    // CURRENT LOGIC
     const restaurantList: RestaurantDTO[] = [];
     const restaurants = await this.restaurantService.getRestaurantByRadius(
       lat,
@@ -153,6 +84,10 @@ export class RecommendationService {
       restaurantList.push(restaurantDTO);
     }
 
-    return restaurantList;
+    //Build response
+    response.statusCode = 200;
+    response.message = 'Get restaurant recommendation successfully';
+    response.data = restaurantList;
+    return response;
   }
 }
