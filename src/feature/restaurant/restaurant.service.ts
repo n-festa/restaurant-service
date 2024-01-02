@@ -181,157 +181,150 @@ export class RestaurantService {
   }
 
   async getRestaurantDetails(restaurant_id: number) {
-    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
-      const result = new GeneralResponse(200, '');
+    const result = new GeneralResponse(200, '');
 
-      const restaurant = await this.entityManager
-        .createQueryBuilder(Restaurant, 'restaurant')
-        .leftJoinAndSelect('restaurant.restaurant_ext', 'extension')
-        .leftJoinAndSelect('restaurant.logo', 'logo')
-        .leftJoinAndSelect('restaurant.unit_obj', 'unit')
-        .leftJoinAndSelect('restaurant.address', 'address')
-        .leftJoinAndSelect('restaurant.menu_items', 'menuItem')
-        .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
-        .leftJoinAndSelect('menuItem.image_obj', 'image')
-        .leftJoinAndSelect('menuItem.skus', 'sku')
-        .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
-        .andWhere('restaurant.is_active = 1')
-        .andWhere('sku.is_standard = :standard', {
-          standard: TRUE,
-        })
-        .andWhere('sku.is_active = :active', { active: TRUE })
-        .getOne();
+    const restaurant = await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.restaurant_ext', 'extension')
+      .leftJoinAndSelect('restaurant.logo', 'logo')
+      .leftJoinAndSelect('restaurant.unit_obj', 'unit')
+      .leftJoinAndSelect('restaurant.address', 'address')
+      .leftJoinAndSelect('restaurant.menu_items', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'image')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .andWhere('restaurant.is_active = 1')
+      .andWhere('sku.is_standard = :standard', {
+        standard: TRUE,
+      })
+      .andWhere('sku.is_active = :active', { active: TRUE })
+      .getOne();
 
-      if (!restaurant) {
-        result.statusCode = 404;
-        result.message = 'Restaurant not found';
-        return result;
-      }
-
-      //Get medias
-      const medias = await this.getAllMediaByRestaurantId(restaurant_id);
-
-      //Convert Restaurant Extension to TextByLang format
-      const restaurant_ext = await this.convertRestaurantExtToTextByLang(
-        restaurant.restaurant_ext,
-      );
-
-      //Get reviews
-      const reviews = await this.commonService.getReviewsByRestaurantId(
-        restaurant_id,
-        5,
-        'DESC',
-      );
-
-      //Get menu
-      const menuItems = await restaurant.menu_items;
-      const convertedMenuItems: FoodDTO[] = [];
-      let having_vegeterian_food: boolean = false;
-      const cutoff_time = [];
-      for (const menuItem of menuItems) {
-        //Check if having vegeterian food
-        if (menuItem.is_vegetarian === 1) {
-          having_vegeterian_food = true;
-        }
-
-        //push cutoff time
-        cutoff_time.push(menuItem.cutoff_time);
-
-        //Convert to FoodDTO
-        const foodDTO = await this.commonService.convertIntoFoodDTO(menuItem);
-        convertedMenuItems.push(foodDTO);
-      }
-      cutoff_time.sort();
-
-      //Mapping data with output
-      const data: RestaurantDetailDTO = {
-        restaurant_id: restaurant.restaurant_id,
-        medias: medias.map((media) => {
-          return {
-            type: media.type,
-            url: media.url,
-          };
-        }),
-        address: {
-          address_line: restaurant.address.address_line,
-          city: restaurant.address.city,
-          district: restaurant.address.district,
-          ward: restaurant.address.ward,
-          country: restaurant.address.country,
-          latitude: restaurant.address.latitude,
-          longitude: restaurant.address.longitude,
-        },
-        logo_img: restaurant.logo.url,
-        rating: restaurant.rating,
-        top_food: restaurant.top_food,
-        promotion: restaurant.promotion,
-        reviews: reviews,
-        name: restaurant_ext.name,
-        specialty: restaurant_ext.specialty,
-        introduction: restaurant_ext.introduction,
-        review_total_count: restaurant.review_total_count,
-        cutoff_time: cutoff_time,
-        having_vegeterian_food: having_vegeterian_food,
-        unit: restaurant.unit_obj.symbol,
-        menu: convertedMenuItems,
-      };
-
-      result.statusCode = 200;
-      result.message = 'Getting Restaurant Details Successfully';
-      result.data = data;
+    if (!restaurant) {
+      result.statusCode = 404;
+      result.message = 'Restaurant not found';
       return result;
     }
-    //CURRENT LOGIC
+
+    //Get medias
+    const medias = await this.getAllMediaByRestaurantId(restaurant_id);
+
+    //Convert Restaurant Extension to TextByLang format
+    const restaurant_ext = await this.convertRestaurantExtToTextByLang(
+      restaurant.restaurant_ext,
+    );
+
+    //Get reviews
+    const reviews = await this.commonService.getReviewsByRestaurantId(
+      restaurant_id,
+      5,
+      'DESC',
+    );
+
+    //Get menu
+    const menuItems = await restaurant.menu_items;
+    const convertedMenuItems: FoodDTO[] = [];
+    let having_vegeterian_food: boolean = false;
+    const cutoff_time = [];
+    for (const menuItem of menuItems) {
+      //Check if having vegeterian food
+      if (menuItem.is_vegetarian === 1) {
+        having_vegeterian_food = true;
+      }
+
+      //push cutoff time
+      cutoff_time.push(menuItem.cutoff_time);
+
+      //Convert to FoodDTO
+      const foodDTO = await this.commonService.convertIntoFoodDTO(menuItem);
+      convertedMenuItems.push(foodDTO);
+    }
+    cutoff_time.sort();
+
+    //Mapping data with output
+    const data: RestaurantDetailDTO = {
+      restaurant_id: restaurant.restaurant_id,
+      medias: medias.map((media) => {
+        return {
+          type: media.type,
+          url: media.url,
+        };
+      }),
+      address: {
+        address_line: restaurant.address.address_line,
+        city: restaurant.address.city,
+        district: restaurant.address.district,
+        ward: restaurant.address.ward,
+        country: restaurant.address.country,
+        latitude: restaurant.address.latitude,
+        longitude: restaurant.address.longitude,
+      },
+      logo_img: restaurant.logo.url,
+      rating: restaurant.rating,
+      top_food: restaurant.top_food,
+      promotion: restaurant.promotion,
+      reviews: reviews,
+      name: restaurant_ext.name,
+      specialty: restaurant_ext.specialty,
+      introduction: restaurant_ext.introduction,
+      review_total_count: restaurant.review_total_count,
+      cutoff_time: cutoff_time,
+      having_vegeterian_food: having_vegeterian_food,
+      unit: restaurant.unit_obj.symbol,
+      menu: convertedMenuItems,
+    };
+
+    result.statusCode = 200;
+    result.message = 'Getting Restaurant Details Successfully';
+    result.data = data;
+    return result;
   }
 
   async convertRestaurantExtToTextByLang(
     restaurant_ext: RestaurantExt[],
   ): Promise<any> {
-    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
-      const result = {
-        name: [],
-        specialty: [],
-        introduction: [],
+    const result = {
+      name: [],
+      specialty: [],
+      introduction: [],
+    };
+    for (const ext of restaurant_ext) {
+      //name
+      const nameByLang: TextByLang = {
+        ISO_language_code: ext.ISO_language_code,
+        text: ext.name,
       };
-      for (const ext of restaurant_ext) {
-        //name
-        const nameByLang: TextByLang = {
-          ISO_language_code: ext.ISO_language_code,
-          text: ext.name,
-        };
-        result.name.push(nameByLang);
+      result.name.push(nameByLang);
 
-        //specialty
-        const specialtyByLang: TextByLang = {
-          ISO_language_code: ext.ISO_language_code,
-          text: ext.specialty,
-        };
-        result.specialty.push(specialtyByLang);
+      //specialty
+      const specialtyByLang: TextByLang = {
+        ISO_language_code: ext.ISO_language_code,
+        text: ext.specialty,
+      };
+      result.specialty.push(specialtyByLang);
 
-        //introduction
-        const introductionByLang: TextByLang = {
-          ISO_language_code: ext.ISO_language_code,
-          text: ext.introduction,
-        };
-        result.introduction.push(introductionByLang);
-      }
-      return result;
+      //introduction
+      const introductionByLang: TextByLang = {
+        ISO_language_code: ext.ISO_language_code,
+        text: ext.introduction,
+      };
+      result.introduction.push(introductionByLang);
     }
+    return result;
   }
 
   async getAllMediaByRestaurantId(restaurant_id: number): Promise<Media[]> {
-    if (this.flagService.isFeatureEnabled('fes-18-get-restaurant-detail')) {
-      const data = await this.entityManager
-        .createQueryBuilder(Media, 'media')
-        .leftJoin(
-          Restaurant,
-          'restaurant',
-          'restaurant.intro_video = media.media_id',
-        )
-        .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
-        .orWhere('media.restaurant_id = :restaurant_id', { restaurant_id })
-        .getMany();
-      return data;
-    }
+    const data = await this.entityManager
+      .createQueryBuilder(Media, 'media')
+      .leftJoin(
+        Restaurant,
+        'restaurant',
+        'restaurant.intro_video = media.media_id',
+      )
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .orWhere('media.restaurant_id = :restaurant_id', { restaurant_id })
+      .getMany();
+    return data;
   }
 }
