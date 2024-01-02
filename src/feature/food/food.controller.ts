@@ -12,10 +12,7 @@ export class FoodController {
 
   @MessagePattern({ cmd: 'get_food_detail_by_id' })
   async getFoodDetailById(id: number) {
-    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
-      return await this.foodService.getFoodDetailByMenuItemId(id);
-    }
-    //CURRENT LOGIC
+    return await this.foodService.getFoodDetailByMenuItemId(id);
   }
 
   @MessagePattern({ cmd: 'get_list_of_sku_by_id' })

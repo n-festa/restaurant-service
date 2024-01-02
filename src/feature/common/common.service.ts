@@ -20,13 +20,10 @@ export class CommonService {
   ) {}
 
   async getRestaurantExtension(id: number): Promise<RestaurantExt[]> {
-    if (this.flagService.isFeatureEnabled('fes-15-get-food-detail')) {
-      return await this.entityManager
-        .createQueryBuilder(RestaurantExt, 'resExt')
-        .where('resExt.restaurant_id = :id', { id })
-        .getMany();
-    } else {
-    }
+    return await this.entityManager
+      .createQueryBuilder(RestaurantExt, 'resExt')
+      .where('resExt.restaurant_id = :id', { id })
+      .getMany();
   }
 
   async getReviewsByRestaurantId(
