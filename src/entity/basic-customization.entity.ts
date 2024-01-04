@@ -1,21 +1,17 @@
-import {
-  Entity,
-  CreateDateColumn,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-} from 'typeorm';
+import { Entity, CreateDateColumn, OneToMany, PrimaryColumn } from 'typeorm';
 import { NoAddingExt } from './no-adding-ext.entity';
 
 @Entity('Basic_Customization')
 export class BasicCustomization {
-  @PrimaryGeneratedColumn()
-  public basic_customization_id: number;
-
-  @Column({ type: 'int', nullable: false, unique: false })
+  @PrimaryColumn({ type: 'int', nullable: false, unique: false })
   public menu_item_id: number;
 
-  @Column({ type: 'varchar', length: 45, nullable: true, unique: false })
+  @PrimaryColumn({
+    type: 'varchar',
+    length: 45,
+    nullable: false,
+    unique: false,
+  })
   public no_adding_id: string;
 
   @CreateDateColumn({

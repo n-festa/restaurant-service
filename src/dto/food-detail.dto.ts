@@ -28,6 +28,6 @@ class Ingredient {
 }
 
 class BasicCustomization {
-  basic_customization_id: string;
+  no_adding_id: string;
   description: TextByLang[];
 }
