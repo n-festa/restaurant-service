@@ -8,12 +8,14 @@ import {
   Repository,
 } from 'typeorm';
 import {
+  DayShift,
   DeliveryRestaurant,
   Option,
   OptionValue,
   PriceRange,
   RatingStatistic,
   Review,
+  Schedule,
   TextByLang,
 } from 'src/type';
 import { SKU } from 'src/entity/sku.entity';
@@ -35,6 +37,9 @@ import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
+import { MainSideDish } from 'src/entity/main-side-dish.entity';
+import { from } from 'rxjs';
+import { Day } from 'src/enum';
 
 @Injectable()
 export class FoodService {
@@ -543,10 +548,97 @@ export class FoodService {
     if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
       const res = new GetSideDishResonse(200, '');
 
+      const { menu_item_id, timestamp } = inputData;
+
+      //Get the list of menu_item_id (side dishes) from table 'Main_Side_Dish'
+      const sideDishes = (
+        await this.entityManager
+          .createQueryBuilder(MainSideDish, 'mainSideDish')
+          .where('mainSideDish.main_dish_id = :main_dish_id', {
+            main_dish_id: menu_item_id,
+          })
+          .select('mainSideDish.side_dish_id')
+          .getMany()
+      ).map((item) => item.side_dish_id);
+
+      // Check if there is no sidedish for this main dish
+      if (sideDishes.length === 0) {
+        res.statusCode = 404;
+        res.message = 'No side dishes found';
+        return res;
+      }
+
+      //Get main dish schedule
+      const mainDishSchedule = JSON.parse(
+        (
+          await this.entityManager
+            .createQueryBuilder(MenuItem, 'menuItem')
+            .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+            .getOne()
+        )?.cooking_schedule || null,
+      );
+
+      //get the earlies available dayshift of main dish
+      const earliestDayShift = this.getEarliesAvailabeDayShift(
+        timestamp,
+        mainDishSchedule,
+      );
+
+      res.statusCode = 200;
       // res.message = 'Get side dishes successfully';
-      res.message = inputData.menu_item_id + ' - ' + inputData.timestamp;
+      res.message = earliestDayShift;
       res.data = [];
       return res;
+    }
+  }
+
+  getEarliesAvailabeDayShift(
+    timestamp: number,
+    calendar: Schedule[],
+  ): DayShift {
+    if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
+      const now = new Date(timestamp);
+      const currentTimeString = `${now
+        .getHours()
+        .toString()
+        .padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now
+        .getSeconds()
+        .toString()
+        .padStart(2, '0')}`;
+      const currentDayShift: DayShift = {
+        dayId: (now.getDay() + 1).toString(),
+        dayName: '',
+        from: '   ',
+        to: '',
+      };
+      switch (currentDayShift.dayId) {
+        case '1':
+          currentDayShift.dayName = Day.Sunday;
+          break;
+        case '2':
+          currentDayShift.dayName = Day.Monday;
+          break;
+        case '3':
+          currentDayShift.dayName = Day.Tuesday;
+          break;
+        case '4':
+          currentDayShift.dayName = Day.Wednesday;
+          break;
+        case '5':
+          currentDayShift.dayName = Day.Thursday;
+          break;
+        case '6':
+          currentDayShift.dayName = Day.Friday;
+          break;
+        case '7':
+          currentDayShift.dayName = Day.Saturday;
+          break;
+
+        default:
+          break;
+      }
+
+      return currentDayShift;
     }
   }
 }
