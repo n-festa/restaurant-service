@@ -187,7 +187,7 @@ export class FoodService {
     const convertedBasicCustomization = [];
     for (const basic of basicCustomization) {
       const customizedItem = {
-        basic_customization_id: basic.basic_customization_id,
+        no_adding_id: basic.no_adding_id,
         description: basic.extension.map((ext) => {
           return {
             ISO_language_code: ext.ISO_language_code,
