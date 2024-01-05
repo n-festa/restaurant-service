@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Get, Inject, Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import {
@@ -33,6 +33,8 @@ import { Unit } from 'src/entity/unit.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { CommonService } from '../common/common.service';
+import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
+import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 
 @Injectable()
 export class FoodService {
@@ -533,5 +535,18 @@ export class FoodService {
       .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
       .getOne();
     return unit.symbol;
+  }
+
+  async getSideDishByMenuItemId(
+    inputData: GetSideDishRequest,
+  ): Promise<GetSideDishResonse> {
+    if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
+      const res = new GetSideDishResonse(200, '');
+
+      // res.message = 'Get side dishes successfully';
+      res.message = inputData.menu_item_id + ' - ' + inputData.timestamp;
+      res.data = [];
+      return res;
+    }
   }
 }
