@@ -84,3 +84,8 @@ interface ScheduleItem {
   to: string;
   isAvailable: boolean;
 }
+
+export interface OptionSelection {
+  option_id: string;
+  value_id: string;
+}

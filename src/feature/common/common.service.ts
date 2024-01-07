@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DeliveryRestaurant, Review, TextByLang } from 'src/type';
+import {
+  DeliveryRestaurant,
+  OptionSelection,
+  Review,
+  TextByLang,
+} from 'src/type';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { InjectEntityManager } from '@nestjs/typeorm';
@@ -11,6 +16,10 @@ import { SKU } from 'src/entity/sku.entity';
 import { PERCENTAGE } from 'src/constant/unit.constant';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { FoodDTO } from 'src/dto/food.dto';
+import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
+import { TasteExt } from 'src/entity/taste-ext.entity';
+import { resourceUsage } from 'process';
+import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
 
 @Injectable()
 export class CommonService {
@@ -159,5 +168,86 @@ export class CommonService {
       cooking_schedule: menuItem.cooking_schedule,
       units_sold: menuItem.units_sold,
     };
+  }
+
+  async interpretAdvanceTaseCustomization(
+    obj_list: OptionSelection[],
+    lang: string = 'vie',
+  ): Promise<string> {
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      let result = '';
+
+      //if object is empty => return ''
+      if (obj_list.length == 0) {
+        result = '';
+        return result;
+      }
+
+      const menuItemVariantIds = obj_list.map((i) => i.option_id);
+      const menuItemVariants = await this.entityManager
+        .createQueryBuilder(MenuItemVariant, 'menuItemVariant')
+        .leftJoinAndSelect('menuItemVariant.taste_ext', 'taseExt')
+        .where(
+          'menuItemVariant.menu_item_variant_id IN (:...menuItemVariantIds)',
+          { menuItemVariantIds },
+        )
+        .andWhere('menuItemVariant.type = :type', { type: 'taste' })
+        .andWhere('taseExt.ISO_language_code = :lang', { lang })
+        .getMany();
+
+      const menuItemVariantOptionIds = obj_list.map((i) => i.value_id);
+      const menuItemVariantOptions = await this.entityManager
+        .createQueryBuilder(MenuItemVariantOpion, 'option')
+        .leftJoinAndSelect('option.taste_value_ext', 'ext')
+        .where(
+          'option.menu_item_variant_option_id IN (:...menuItemVariantOptionIds)',
+          { menuItemVariantOptionIds },
+        )
+        .andWhere('option.taste_value <> :tasteVal', { tasteVal: 'original' }) //dont generate note for original options
+        .andWhere('ext.ISO_language_code = :lang', { lang })
+        .getMany();
+
+      const strArr = [];
+      for (const option of obj_list) {
+        let str = '';
+        const menuItemVariant = menuItemVariants.find(
+          (i) => i.menu_item_variant_id.toString() == option.option_id,
+        );
+        //check if the option_id has been filtered out
+        if (!menuItemVariant) {
+          continue;
+        }
+        const menuItemVariantOption = menuItemVariantOptions.find(
+          (i) => i.menu_item_variant_option_id.toString() == option.value_id,
+        );
+        // check if the value_id has been filtered out
+        if (!menuItemVariantOption) {
+          continue;
+        }
+        //check if the option_id and value_id is consistent - belong to the same menu_item_variant_id
+        if (
+          menuItemVariantOption.menu_item_variant_id !=
+          menuItemVariant.menu_item_variant_id
+        ) {
+          console.log(
+            'menuItemVariantOption ',
+            menuItemVariantOption.menu_item_variant_option_id,
+            ' does not belong to menuItemVariant ',
+            menuItemVariant.menu_item_variant_id,
+          );
+          continue;
+        }
+        str =
+          menuItemVariantOption.taste_value_ext[0].name +
+          ' ' +
+          menuItemVariant.taste_ext[0].name;
+
+        strArr.push(str);
+      }
+      console.log('strArr', strArr);
+      result = strArr.join(' - ');
+
+      return result;
+    }
   }
 }
