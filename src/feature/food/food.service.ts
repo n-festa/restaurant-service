@@ -1,28 +1,19 @@
-import { Get, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
-import {
-  EntityManager,
-  LessThanOrEqual,
-  MoreThanOrEqual,
-  Repository,
-} from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import {
   DayShift,
-  DeliveryRestaurant,
   Option,
   OptionValue,
   PriceRange,
   RatingStatistic,
   Review,
-  Schedule,
   TextByLang,
 } from 'src/type';
 import { SKU } from 'src/entity/sku.entity';
 import { SkuDiscount } from 'src/entity/sku-discount.entity';
-import { PERCENTAGE } from 'src/constant/unit.constant';
 import { FALSE, TRUE } from 'src/constant';
-import { FoodDTO } from '../../dto/food.dto';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
 import { FoodRating } from 'src/entity/food-rating.entity';
@@ -38,8 +29,8 @@ import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
-import { from } from 'rxjs';
-import { Day } from 'src/enum';
+import { Day, Shift } from 'src/enum';
+import { FoodDTO } from 'src/dto/food.dto';
 
 @Injectable()
 export class FoodService {
@@ -551,7 +542,7 @@ export class FoodService {
       const { menu_item_id, timestamp } = inputData;
 
       //Get the list of menu_item_id (side dishes) from table 'Main_Side_Dish'
-      const sideDishes = (
+      const sideDishesIds = (
         await this.entityManager
           .createQueryBuilder(MainSideDish, 'mainSideDish')
           .where('mainSideDish.main_dish_id = :main_dish_id', {
@@ -562,7 +553,7 @@ export class FoodService {
       ).map((item) => item.side_dish_id);
 
       // Check if there is no sidedish for this main dish
-      if (sideDishes.length === 0) {
+      if (sideDishesIds.length === 0) {
         res.statusCode = 404;
         res.message = 'No side dishes found';
         return res;
@@ -584,17 +575,41 @@ export class FoodService {
         mainDishSchedule,
       );
 
+      //Get data for the side dishes
+      const sideDishes = await this.getFoodsWithListOfMenuItem(sideDishesIds);
+
+      //Filter availabe side dishes
+      const availableSideDishes = sideDishes.filter((sideDish) => {
+        const sideDishSchedule: DayShift[] = JSON.parse(
+          sideDish.cooking_schedule,
+        );
+        const correspondingDayShift = sideDishSchedule.find(
+          (dayShift) =>
+            dayShift.dayId == earliestDayShift.dayId &&
+            dayShift.from == earliestDayShift.from &&
+            dayShift.to == earliestDayShift.to,
+        );
+        return correspondingDayShift.isAvailable == true;
+      });
+
+      //Convert to DTO
+      const sideDishesDTOs: FoodDTO[] = [];
+      for (const availableSideDish of availableSideDishes) {
+        const sidesideDishesDTO: FoodDTO =
+          await this.commonService.convertIntoFoodDTO(availableSideDish);
+        sideDishesDTOs.push(sidesideDishesDTO);
+      }
+
       res.statusCode = 200;
-      // res.message = 'Get side dishes successfully';
-      res.message = earliestDayShift;
-      res.data = [];
+      res.message = 'Get side dishes successfully';
+      res.data = sideDishesDTOs;
       return res;
     }
   }
 
   getEarliesAvailabeDayShift(
     timestamp: number,
-    calendar: Schedule[],
+    schedule: DayShift[],
   ): DayShift {
     if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
       const now = new Date(timestamp);
@@ -605,6 +620,7 @@ export class FoodService {
         .getSeconds()
         .toString()
         .padStart(2, '0')}`;
+      console.log(currentTimeString);
       const currentDayShift: DayShift = {
         dayId: (now.getDay() + 1).toString(),
         dayName: '',
@@ -637,8 +653,56 @@ export class FoodService {
         default:
           break;
       }
+      if (
+        currentTimeString >= Shift.MorningFrom &&
+        currentTimeString <= Shift.MorningTo
+      ) {
+        currentDayShift.from = Shift.MorningFrom;
+        currentDayShift.to = Shift.MorningTo;
+      } else if (
+        currentTimeString >= Shift.AfternoonFrom &&
+        currentTimeString <= Shift.AfternoonTo
+      ) {
+        currentDayShift.from = Shift.AfternoonFrom;
+        currentDayShift.to = Shift.AfternoonTo;
+      } else if (
+        currentTimeString >= Shift.NightFrom ||
+        currentTimeString <= Shift.NightTo
+      ) {
+        currentDayShift.from = Shift.NightFrom;
+        currentDayShift.to = Shift.NightTo;
+      }
 
-      return currentDayShift;
+      //Get earliest available day shift
+      const earliestAvailabeDayShift: DayShift = {
+        dayId: null,
+        dayName: null,
+        from: null,
+        to: null,
+        isAvailable: null,
+      };
+      const currentIndex = schedule.findIndex(
+        (item) =>
+          item.dayId == currentDayShift.dayId &&
+          item.from == currentDayShift.from &&
+          item.to == currentDayShift.to,
+      );
+      for (
+        let index = currentIndex;
+        index < schedule.length + currentIndex;
+        index++
+      ) {
+        const i = index % schedule.length;
+        if (schedule[i].isAvailable) {
+          earliestAvailabeDayShift.dayId = schedule[i].dayId;
+          earliestAvailabeDayShift.dayName = schedule[i].dayName;
+          earliestAvailabeDayShift.from = schedule[i].from;
+          earliestAvailabeDayShift.to = schedule[i].to;
+          earliestAvailabeDayShift.isAvailable = schedule[i].isAvailable;
+          break;
+        }
+      }
+      return earliestAvailabeDayShift;
     }
   }
 }
