@@ -66,3 +66,21 @@ export interface StandardAddress {
   latitude: number;
   longitude: number;
 }
+
+export interface DayShift {
+  dayId: string;
+  dayName: string;
+  from: string;
+  to: string;
+}
+
+export interface Schedule {
+  dayId: string;
+  dayName: string;
+  schedule: ScheduleItem[];
+}
+interface ScheduleItem {
+  from: string;
+  to: string;
+  isAvailable: boolean;
+}
