@@ -175,13 +175,13 @@ export class FoodService {
 
     //Get taste customization
     const tasteCustomization =
-      await this.getTasteCustomizationByMenuItemId(menuItemId);
+      await this.commonService.getTasteCustomizationByMenuItemId(menuItemId);
     const convertedTasteCustomization =
       await this.convertTasteCustomization(tasteCustomization);
 
     //Get basic customization
     const basicCustomization =
-      await this.getBasicCustomizationByMenuItemId(menuItemId);
+      await this.commonService.getBasicCustomizationByMenuItemId(menuItemId);
     const convertedBasicCustomization = [];
     for (const basic of basicCustomization) {
       const customizedItem = {
@@ -342,32 +342,32 @@ export class FoodService {
     return data;
   }
 
-  async getTasteCustomizationByMenuItemId(
-    menu_item_id: number,
-  ): Promise<MenuItemVariant[]> {
-    const data = await this.entityManager
-      .createQueryBuilder(MenuItemVariant, 'variant')
-      .leftJoinAndSelect('variant.options', 'options')
-      .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
-      .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
-      .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
-      .andWhere("variant.type = 'taste'")
-      .getMany();
-    return data;
-  }
+  // async getTasteCustomizationByMenuItemId(
+  //   menu_item_id: number,
+  // ): Promise<MenuItemVariant[]> {
+  //   const data = await this.entityManager
+  //     .createQueryBuilder(MenuItemVariant, 'variant')
+  //     .leftJoinAndSelect('variant.options', 'options')
+  //     .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
+  //     .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
+  //     .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
+  //     .andWhere("variant.type = 'taste'")
+  //     .getMany();
+  //   return data;
+  // }
 
-  async getBasicCustomizationByMenuItemId(
-    menu_item_id: number,
-  ): Promise<BasicCustomization[]> {
-    const data = await this.entityManager
-      .createQueryBuilder(BasicCustomization, 'basicCustomization')
-      .leftJoinAndSelect('basicCustomization.extension', 'ext')
-      .where('basicCustomization.menu_item_id = :menu_item_id', {
-        menu_item_id,
-      })
-      .getMany();
-    return data;
-  }
+  // async getBasicCustomizationByMenuItemId(
+  //   menu_item_id: number,
+  // ): Promise<BasicCustomization[]> {
+  //   const data = await this.entityManager
+  //     .createQueryBuilder(BasicCustomization, 'basicCustomization')
+  //     .leftJoinAndSelect('basicCustomization.extension', 'ext')
+  //     .where('basicCustomization.menu_item_id = :menu_item_id', {
+  //       menu_item_id,
+  //     })
+  //     .getMany();
+  //   return data;
+  // }
 
   async generatePackageSentenceByLang(packageInfo: Packaging[]) {
     const sentenceByLang: TextByLang[] = [];

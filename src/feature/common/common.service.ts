@@ -21,6 +21,7 @@ import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
 import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { SkuMenuItemVariant } from 'src/entity/sku-menu-item-variant.entity';
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
 
 @Injectable()
 export class CommonService {
@@ -326,5 +327,31 @@ export class CommonService {
 
       return result;
     }
+  }
+
+  async getBasicCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<BasicCustomization[]> {
+    const data = await this.entityManager
+      .createQueryBuilder(BasicCustomization, 'basicCustomization')
+      .leftJoinAndSelect('basicCustomization.extension', 'ext')
+      .where('basicCustomization.menu_item_id = :menu_item_id', {
+        menu_item_id,
+      })
+      .getMany();
+    return data;
+  }
+  async getTasteCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<MenuItemVariant[]> {
+    const data = await this.entityManager
+      .createQueryBuilder(MenuItemVariant, 'variant')
+      .leftJoinAndSelect('variant.options', 'options')
+      .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
+      .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
+      .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere("variant.type = 'taste'")
+      .getMany();
+    return data;
   }
 }
