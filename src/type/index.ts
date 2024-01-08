@@ -79,3 +79,7 @@ export interface OptionSelection {
   option_id: string;
   value_id: string;
 }
+
+export interface BasicTasteSelection {
+  no_adding_id: string;
+}

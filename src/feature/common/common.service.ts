@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  BasicTasteSelection,
   DeliveryRestaurant,
   OptionSelection,
   Review,
@@ -20,6 +21,8 @@ import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
 import { TasteExt } from 'src/entity/taste-ext.entity';
 import { resourceUsage } from 'process';
 import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
+import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 
 @Injectable()
 export class CommonService {
@@ -246,6 +249,42 @@ export class CommonService {
       }
       console.log('strArr', strArr);
       result = strArr.join(' - ');
+
+      return result;
+    }
+  }
+
+  async interpretBasicTaseCustomization(
+    obj_list: BasicTasteSelection[],
+    lang: string = 'vie',
+  ): Promise<string> {
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      let result: string = '';
+
+      //if object is empty => return ''
+      if (obj_list.length == 0) {
+        result = '';
+        return result;
+      }
+
+      //get unique no_adding_id from obj_list
+      const uniqueNoAddingIds = obj_list
+        .map((i) => i.no_adding_id)
+        .filter((value, index, self) => {
+          return self.indexOf(value) === index;
+        });
+
+      result = (
+        await this.entityManager
+          .createQueryBuilder(NoAddingExt, 'ext')
+          .where('ext.no_adding_id IN (:...uniqueNoAddingIds)', {
+            uniqueNoAddingIds,
+          })
+          .andWhere('ext.ISO_language_code = :lang', { lang })
+          .getMany()
+      )
+        .map((i) => i.description)
+        .join(' - ');
 
       return result;
     }

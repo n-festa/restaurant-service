@@ -42,11 +42,12 @@ export class CartService {
       console.log('advanced_taste_customization', advanced_taste_customization);
 
       //Interpret Basic  Taste Customization
-      // const basic_taste_customization =
-      //   await this.commonService.interpretBasicTaseCustomization(
-      //     basic_taste_customization_obj,
-      //     lang,
-      //   );
+      const basic_taste_customization =
+        await this.commonService.interpretBasicTaseCustomization(
+          basic_taste_customization_obj,
+          lang,
+        );
+      console.log('basic_taste_customization', basic_taste_customization);
 
       //If cart is empty, create a new cart
       // if (cart.length === 0) {
