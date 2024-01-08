@@ -83,3 +83,9 @@ export interface OptionSelection {
 export interface BasicTasteSelection {
   no_adding_id: string;
 }
+
+export interface ValidationResult {
+  isValid: boolean;
+  message: string;
+  data?: any;
+}

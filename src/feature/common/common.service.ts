@@ -5,6 +5,7 @@ import {
   OptionSelection,
   Review,
   TextByLang,
+  ValidationResult,
 } from 'src/type';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
@@ -353,5 +354,51 @@ export class CommonService {
       .andWhere("variant.type = 'taste'")
       .getMany();
     return data;
+  }
+
+  async validateAdvacedTasteCustomizationObjWithMenuItem(
+    obj_list: OptionSelection[],
+    menu_item_id: number,
+  ): Promise<ValidationResult> {
+    // Check if the advanced_taste_customization_obj is all available to this menu item
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      const result: ValidationResult = {
+        isValid: true,
+        message: null,
+        data: null,
+      };
+
+      const avaibleAdvanceTasteCustomizationList =
+        await await this.entityManager
+          .createQueryBuilder(MenuItemVariant, 'variant')
+          .leftJoinAndSelect('variant.options', 'options')
+          .where('variant.menu_item_id = :menu_item_id', {
+            menu_item_id,
+          })
+          .andWhere("variant.type = 'taste'")
+          .getMany();
+      for (const obj of obj_list) {
+        //find the attribute
+        const attribute = avaibleAdvanceTasteCustomizationList.find(
+          (i) => i.menu_item_variant_id.toString() == obj.option_id,
+        );
+        if (!attribute) {
+          result.isValid = false;
+          result.message = `Advanced Taste Customization: option_id ${obj.option_id} cannot be found`;
+          break;
+        }
+        //check the value
+        const value = attribute.options.find(
+          (i) => i.menu_item_variant_option_id.toString() == obj.value_id,
+        );
+        if (!value) {
+          result.isValid = false;
+          result.message = `Advanced Taste Customization: value_id ${obj.value_id} is not availabe for option_id ${obj.option_id}`;
+          break;
+        }
+      }
+
+      return result;
+    }
   }
 }

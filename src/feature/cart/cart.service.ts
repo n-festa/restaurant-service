@@ -42,6 +42,19 @@ export class CartService {
           return res;
         }
 
+        // Check if the advanced_taste_customization_obj is all available to this SKU
+        const advancedTasteCustomizationValidation =
+          await this.commonService.validateAdvacedTasteCustomizationObjWithMenuItem(
+            advanced_taste_customization_obj,
+            sku.menu_item_id,
+          );
+        if (!advancedTasteCustomizationValidation.isValid) {
+          res.statusCode = 400;
+          res.message = advancedTasteCustomizationValidation.message;
+          res.data = advancedTasteCustomizationValidation.data;
+          return res;
+        }
+
         //Get the current cart
         const cart = await this.entityManager
           .createQueryBuilder(CartItem, 'cart')
