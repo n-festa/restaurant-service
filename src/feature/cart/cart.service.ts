@@ -24,6 +24,7 @@ export class CartService {
         qty_ordered,
         advanced_taste_customization_obj,
         basic_taste_customization_obj,
+        notes,
         lang: lang = 'vie', // default vie if there is no specific language
       } = inputData;
 
@@ -49,30 +50,35 @@ export class CartService {
         );
       console.log('basic_taste_customization', basic_taste_customization);
 
+      //Interpret Portion Customization
+      const portion_customization =
+        await this.commonService.interpretPortionCustomization(sku_id, lang);
+      console.log('portion_customization', portion_customization);
+
       //If cart is empty, create a new cart
-      // if (cart.length === 0) {
-      //   const item = await this.entityManager
-      //     .createQueryBuilder()
-      //     .insert()
-      //     .into(CartItem)
-      //     .values({
-      //       customer_id: customer_id,
-      //       sku_id: sku_id,
-      //       qty_ordered: qty_ordered,
-      //       advanced_taste_customization: '',
-      //       basic_taste_customization: '',
-      //       portion_customization: '',
-      //       advanced_taste_customization_obj: JSON.stringify(
-      //         advanced_taste_customization_obj,
-      //       ),
-      //       basic_taste_customization_obj: JSON.stringify(
-      //         basic_taste_customization_obj,
-      //       ),
-      //       notes: notes,
-      //       restaurant_id: null,
-      //     })
-      //     .execute();
-      // }
+      if (cart.length === 0) {
+        const item = await this.entityManager
+          .createQueryBuilder()
+          .insert()
+          .into(CartItem)
+          .values({
+            customer_id: customer_id,
+            sku_id: sku_id,
+            qty_ordered: qty_ordered,
+            advanced_taste_customization: advanced_taste_customization,
+            basic_taste_customization: basic_taste_customization,
+            portion_customization: portion_customization,
+            advanced_taste_customization_obj: JSON.stringify(
+              advanced_taste_customization_obj,
+            ),
+            basic_taste_customization_obj: JSON.stringify(
+              basic_taste_customization_obj,
+            ),
+            notes: notes,
+            restaurant_id: null,
+          })
+          .execute();
+      }
 
       //success
       res.statusCode = 200;

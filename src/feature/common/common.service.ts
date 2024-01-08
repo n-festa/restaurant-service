@@ -18,11 +18,9 @@ import { PERCENTAGE } from 'src/constant/unit.constant';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { FoodDTO } from 'src/dto/food.dto';
 import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
-import { TasteExt } from 'src/entity/taste-ext.entity';
-import { resourceUsage } from 'process';
 import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
-import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
+import { SkuMenuItemVariant } from 'src/entity/sku-menu-item-variant.entity';
 
 @Injectable()
 export class CommonService {
@@ -284,6 +282,46 @@ export class CommonService {
           .getMany()
       )
         .map((i) => i.description)
+        .join(' - ');
+
+      return result;
+    }
+  }
+
+  async interpretPortionCustomization(
+    sku_id: number,
+    lang: string = 'vie',
+  ): Promise<string> {
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      let result: string = '';
+
+      const variants = await this.entityManager
+        .createQueryBuilder(SkuMenuItemVariant, 'variant')
+        .leftJoinAndSelect('variant.attribute', 'attribute')
+        .leftJoinAndSelect(
+          'attribute.menu_item_variant_ext_obj',
+          'attributeExt',
+        )
+        .leftJoinAndSelect('variant.value', 'value')
+        .leftJoinAndSelect('value.unit_obj', 'unit')
+        .where('variant.sku_id = :sku_id', { sku_id })
+        .andWhere('attributeExt.ISO_language_code = :lang', { lang })
+        .getMany();
+
+      if (variants.length == 0) {
+        result = '';
+        return result;
+      }
+
+      result = variants
+        .map((i) => {
+          return (
+            i.attribute.menu_item_variant_ext_obj[0].name +
+            ' ' +
+            i.value.value +
+            i.value.unit_obj.symbol
+          );
+        })
         .join(' - ');
 
       return result;

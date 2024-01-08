@@ -20,6 +20,7 @@ import { TasteValueExt } from 'src/entity/taste-value-ext.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
+import { SkuMenuItemVariant } from 'src/entity/sku-menu-item-variant.entity';
 
 @Global()
 @Module({
@@ -44,6 +45,7 @@ import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
       BasicCustomization,
       NoAddingExt,
       RestaurantExt,
+      SkuMenuItemVariant,
     ]),
   ],
   exports: [CommonService],
