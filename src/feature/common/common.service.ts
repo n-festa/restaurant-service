@@ -247,7 +247,6 @@ export class CommonService {
 
         strArr.push(str);
       }
-      console.log('strArr', strArr);
       result = strArr.join(' - ');
 
       return result;
@@ -368,15 +367,14 @@ export class CommonService {
         data: null,
       };
 
-      const avaibleAdvanceTasteCustomizationList =
-        await await this.entityManager
-          .createQueryBuilder(MenuItemVariant, 'variant')
-          .leftJoinAndSelect('variant.options', 'options')
-          .where('variant.menu_item_id = :menu_item_id', {
-            menu_item_id,
-          })
-          .andWhere("variant.type = 'taste'")
-          .getMany();
+      const avaibleAdvanceTasteCustomizationList = await this.entityManager
+        .createQueryBuilder(MenuItemVariant, 'variant')
+        .leftJoinAndSelect('variant.options', 'options')
+        .where('variant.menu_item_id = :menu_item_id', {
+          menu_item_id,
+        })
+        .andWhere("variant.type = 'taste'")
+        .getMany();
       for (const obj of obj_list) {
         //find the attribute
         const attribute = avaibleAdvanceTasteCustomizationList.find(
@@ -394,6 +392,40 @@ export class CommonService {
         if (!value) {
           result.isValid = false;
           result.message = `Advanced Taste Customization: value_id ${obj.value_id} is not availabe for option_id ${obj.option_id}`;
+          break;
+        }
+      }
+
+      return result;
+    }
+  }
+
+  async validateBasicTasteCustomizationObjWithMenuItem(
+    obj_list: BasicTasteSelection[],
+    menu_item_id: number,
+  ): Promise<ValidationResult> {
+    // Check if the advanced_taste_customization_obj is all available to this menu item
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      const result: ValidationResult = {
+        isValid: true,
+        message: null,
+        data: null,
+      };
+
+      const avaibleBasicTasteCustomizationList = await this.entityManager
+        .createQueryBuilder(BasicCustomization, 'basicCustomization')
+        .where('basicCustomization.menu_item_id = :menu_item_id', {
+          menu_item_id,
+        })
+        .getMany();
+      for (const obj of obj_list) {
+        //find the attribute
+        const noAddingId = avaibleBasicTasteCustomizationList.find(
+          (i) => i.no_adding_id == obj.no_adding_id,
+        );
+        if (!noAddingId) {
+          result.isValid = false;
+          result.message = `Basic Taste Customization: no_adding_id ${obj.no_adding_id} cannot be found`;
           break;
         }
       }
