@@ -24,7 +24,7 @@ export class CartService {
         qty_ordered,
         advanced_taste_customization_obj,
         basic_taste_customization_obj,
-        notes,
+        lang: lang = 'vie', // default vie if there is no specific language
       } = inputData;
 
       //Get the current cart
@@ -37,8 +37,16 @@ export class CartService {
       const advanced_taste_customization =
         await this.commonService.interpretAdvanceTaseCustomization(
           advanced_taste_customization_obj,
+          lang,
         );
       console.log('advanced_taste_customization', advanced_taste_customization);
+
+      //Interpret Basic  Taste Customization
+      // const basic_taste_customization =
+      //   await this.commonService.interpretBasicTaseCustomization(
+      //     basic_taste_customization_obj,
+      //     lang,
+      //   );
 
       //If cart is empty, create a new cart
       // if (cart.length === 0) {

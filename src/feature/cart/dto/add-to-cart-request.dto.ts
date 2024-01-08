@@ -5,6 +5,7 @@ export class AddToCartRequest {
   advanced_taste_customization_obj: OptionSelection[];
   basic_taste_customization_obj: OptionSelection[];
   notes: string;
+  lang?: string;
 }
 
 interface OptionSelection {
