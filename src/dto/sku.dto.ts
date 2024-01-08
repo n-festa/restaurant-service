@@ -1,3 +1,5 @@
+import { OptionSelection } from 'src/type';
+
 export class SkuDTO {
   sku_id: number;
   price: number;
@@ -10,9 +12,4 @@ export class SkuDTO {
   fat_g: number;
   portion_customization: OptionSelection[];
   // taste_customization: OptionSelection[];
-}
-
-interface OptionSelection {
-  option_id: string;
-  value_id: string;
 }

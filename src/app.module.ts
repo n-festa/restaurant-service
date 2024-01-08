@@ -11,6 +11,7 @@ import configuration from './config/configuration';
 import { FlagsmithModule } from './dependency/flagsmith/flagsmith.module';
 import { SearchModule } from './feature/search/search.module';
 import { CommonModule } from './feature/common/common.module';
+import { CartModule } from './feature/cart/cart.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { CommonModule } from './feature/common/common.module';
     FlagsmithModule,
     SearchModule,
     CommonModule,
+    CartModule,
   ],
   controllers: [AppController],
   providers: [AppService],
