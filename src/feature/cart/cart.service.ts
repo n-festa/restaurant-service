@@ -122,22 +122,24 @@ export class CartService {
     notes: string,
     restaurant_id: number,
   ): Promise<void> {
-    await this.entityManager
-      .createQueryBuilder()
-      .insert()
-      .into(CartItem)
-      .values({
-        customer_id: customer_id,
-        sku_id: sku_id,
-        qty_ordered: qty_ordered,
-        advanced_taste_customization: advanced_taste_customization,
-        basic_taste_customization: basic_taste_customization,
-        portion_customization: portion_customization,
-        advanced_taste_customization_obj: advanced_taste_customization_obj,
-        basic_taste_customization_obj: basic_taste_customization_obj,
-        notes: notes,
-        restaurant_id: restaurant_id,
-      })
-      .execute();
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      await this.entityManager
+        .createQueryBuilder()
+        .insert()
+        .into(CartItem)
+        .values({
+          customer_id: customer_id,
+          sku_id: sku_id,
+          qty_ordered: qty_ordered,
+          advanced_taste_customization: advanced_taste_customization,
+          basic_taste_customization: basic_taste_customization,
+          portion_customization: portion_customization,
+          advanced_taste_customization_obj: advanced_taste_customization_obj,
+          basic_taste_customization_obj: basic_taste_customization_obj,
+          notes: notes,
+          restaurant_id: restaurant_id,
+        })
+        .execute();
+    }
   }
 }
