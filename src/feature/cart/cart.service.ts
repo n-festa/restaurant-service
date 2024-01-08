@@ -80,28 +80,22 @@ export class CartService {
 
       //If cart is empty, create a new cart
       if (cart.length === 0) {
-        await this.entityManager
-          .createQueryBuilder()
-          .insert()
-          .into(CartItem)
-          .values({
-            customer_id: customer_id,
-            sku_id: sku_id,
-            qty_ordered: qty_ordered,
-            advanced_taste_customization: advanced_taste_customization,
-            basic_taste_customization: basic_taste_customization,
-            portion_customization: portion_customization,
-            advanced_taste_customization_obj: JSON.stringify(
-              advanced_taste_customization_obj,
-            ),
-            basic_taste_customization_obj: JSON.stringify(
-              basic_taste_customization_obj,
-            ),
-            notes: notes,
-            restaurant_id: sku.menu_item.restaurant_id,
-          })
-          .execute();
+        await this.insertCart(
+          customer_id,
+          sku_id,
+          qty_ordered,
+          advanced_taste_customization,
+          basic_taste_customization,
+          portion_customization,
+          JSON.stringify(advanced_taste_customization_obj),
+          JSON.stringify(basic_taste_customization_obj),
+          notes,
+          sku.menu_item.restaurant_id,
+        );
+        return await this.getCart(customer_id);
       }
+
+      // Check if the sku_id’s restaurant is the same as the current cart’s items
 
       return await this.getCart(customer_id);
     }
@@ -114,5 +108,36 @@ export class CartService {
         .where('cart.customer_id = :customer_id', { customer_id })
         .getMany();
     }
+  }
+
+  async insertCart(
+    customer_id: number,
+    sku_id: number,
+    qty_ordered: number,
+    advanced_taste_customization: string,
+    basic_taste_customization: string,
+    portion_customization: string,
+    advanced_taste_customization_obj: string,
+    basic_taste_customization_obj: string,
+    notes: string,
+    restaurant_id: number,
+  ): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .insert()
+      .into(CartItem)
+      .values({
+        customer_id: customer_id,
+        sku_id: sku_id,
+        qty_ordered: qty_ordered,
+        advanced_taste_customization: advanced_taste_customization,
+        basic_taste_customization: basic_taste_customization,
+        portion_customization: portion_customization,
+        advanced_taste_customization_obj: advanced_taste_customization_obj,
+        basic_taste_customization_obj: basic_taste_customization_obj,
+        notes: notes,
+        restaurant_id: restaurant_id,
+      })
+      .execute();
   }
 }
