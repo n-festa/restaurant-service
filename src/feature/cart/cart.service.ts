@@ -112,45 +112,28 @@ export class CartService {
         );
       }
 
-      //Get the item which having the same sku_id
-      const similarCartItem = currentCart.find((i) => i.sku_id == sku_id);
-      if (!similarCartItem) {
-        //There is no item which having the same sku_id in the cart
-        await this.insertCart(
-          customer_id,
-          sku_id,
-          qty_ordered,
-          advanced_taste_customization,
-          basic_taste_customization,
-          portion_customization,
-          advanced_taste_customization_obj_txt,
-          basic_taste_customization_obj_txt,
-          notes,
-          sku.menu_item.restaurant_id,
-        );
-        return await this.getCart(customer_id);
-      }
-
-      //check if the similar item has the same advanced_taste_customization_obj
-      //and basic_taste_customization_obj
-      const isSameCustomization =
-        advanced_taste_customization_obj_txt ==
-          similarCartItem.advanced_taste_customization_obj &&
-        basic_taste_customization_obj_txt ==
-          similarCartItem.basic_taste_customization_obj;
-      if (isSameCustomization) {
+      // Check if the adding item does exist
+      const existingItem = currentCart.find(
+        (i) =>
+          i.sku_id == sku_id &&
+          i.advanced_taste_customization_obj ==
+            advanced_taste_customization_obj_txt &&
+          i.basic_taste_customization_obj == basic_taste_customization_obj_txt,
+      );
+      if (existingItem) {
+        //The item does exist => increase the quantity
         await this.updateCart(
-          similarCartItem.item_id,
-          similarCartItem.customer_id,
-          similarCartItem.sku_id,
-          similarCartItem.qty_ordered + qty_ordered,
-          similarCartItem.advanced_taste_customization,
-          similarCartItem.basic_taste_customization,
-          similarCartItem.portion_customization,
-          similarCartItem.advanced_taste_customization_obj,
-          similarCartItem.basic_taste_customization_obj,
-          similarCartItem.notes,
-          similarCartItem.restaurant_id,
+          existingItem.item_id,
+          existingItem.customer_id,
+          existingItem.sku_id,
+          existingItem.qty_ordered + qty_ordered,
+          existingItem.advanced_taste_customization,
+          existingItem.basic_taste_customization,
+          existingItem.portion_customization,
+          existingItem.advanced_taste_customization_obj,
+          existingItem.basic_taste_customization_obj,
+          existingItem.notes,
+          existingItem.restaurant_id,
         );
         return await this.getCart(customer_id);
       }
