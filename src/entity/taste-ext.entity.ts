@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { MenuItemVariant } from './menu-item-variant.entity';
+import { MenuItemAttribute } from './menu-item-attribute.entity';
 
 @Entity('Taste_Ext')
 export class TasteExt {
@@ -31,10 +31,10 @@ export class TasteExt {
   public created_at: Date;
 
   //RELATIONSHIPS
-  @ManyToOne(() => MenuItemVariant, (variant) => variant.taste_ext)
+  @ManyToOne(() => MenuItemAttribute, (attribute) => attribute.taste_ext)
   @JoinColumn({
     name: 'taste_id',
     referencedColumnName: 'taste_id',
   })
-  public taste: MenuItemVariant;
+  public taste: MenuItemAttribute;
 }

@@ -7,7 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { SKU } from './sku.entity';
-import { MenuItemVariant } from './menu-item-variant.entity';
+import { MenuItemAttribute } from './menu-item-attribute.entity';
 import { MenuItemVariantOpion } from './menu-item-variant-option.entity';
 
 @Entity('SKU_Menu_Item_Variant')
@@ -38,12 +38,12 @@ export class SkuMenuItemVariant {
   })
   public sku_obj: SKU;
 
-  @ManyToOne(() => MenuItemVariant)
+  @ManyToOne(() => MenuItemAttribute)
   @JoinColumn({
     name: 'variant',
-    referencedColumnName: 'menu_item_variant_id',
+    referencedColumnName: 'attribute_id',
   })
-  public attribute: MenuItemVariant;
+  public attribute: MenuItemAttribute;
 
   @ManyToOne(() => MenuItemVariantOpion)
   @JoinColumn({

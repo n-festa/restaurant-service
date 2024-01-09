@@ -20,7 +20,7 @@ import { FoodRating } from 'src/entity/food-rating.entity';
 import { Media } from 'src/entity/media.entity';
 import { Packaging } from 'src/entity/packaging.entity';
 import { Recipe } from 'src/entity/recipe.entity';
-import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
+import { MenuItemAttribute } from 'src/entity/menu-item-attribute.entity';
 import { SkuDTO } from 'src/dto/sku.dto';
 import { Unit } from 'src/entity/unit.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
@@ -330,44 +330,17 @@ export class FoodService {
 
   async getPortionCustomizationByMenuItemId(
     menu_item_id: number,
-  ): Promise<MenuItemVariant[]> {
+  ): Promise<MenuItemAttribute[]> {
     const data = await this.entityManager
-      .createQueryBuilder(MenuItemVariant, 'variant')
-      .leftJoinAndSelect('variant.menu_item_variant_ext_obj', 'ext')
-      .leftJoinAndSelect('variant.options', 'options')
+      .createQueryBuilder(MenuItemAttribute, 'attribute')
+      .leftJoinAndSelect('attribute.menu_item_attribute_ext_obj', 'ext')
+      .leftJoinAndSelect('attribute.options', 'options')
       .leftJoinAndSelect('options.unit_obj', 'unit')
-      .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
-      .andWhere("variant.type = 'portion'")
+      .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere("attribute.type_id = 'portion'")
       .getMany();
     return data;
   }
-
-  // async getTasteCustomizationByMenuItemId(
-  //   menu_item_id: number,
-  // ): Promise<MenuItemVariant[]> {
-  //   const data = await this.entityManager
-  //     .createQueryBuilder(MenuItemVariant, 'variant')
-  //     .leftJoinAndSelect('variant.options', 'options')
-  //     .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
-  //     .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
-  //     .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
-  //     .andWhere("variant.type = 'taste'")
-  //     .getMany();
-  //   return data;
-  // }
-
-  // async getBasicCustomizationByMenuItemId(
-  //   menu_item_id: number,
-  // ): Promise<BasicCustomization[]> {
-  //   const data = await this.entityManager
-  //     .createQueryBuilder(BasicCustomization, 'basicCustomization')
-  //     .leftJoinAndSelect('basicCustomization.extension', 'ext')
-  //     .where('basicCustomization.menu_item_id = :menu_item_id', {
-  //       menu_item_id,
-  //     })
-  //     .getMany();
-  //   return data;
-  // }
 
   async generatePackageSentenceByLang(packageInfo: Packaging[]) {
     const sentenceByLang: TextByLang[] = [];
@@ -384,17 +357,17 @@ export class FoodService {
   }
 
   async convertPortionCustomization(
-    portionCustomization: MenuItemVariant[],
+    portionCustomization: MenuItemAttribute[],
   ): Promise<Option[]> {
     const options: Option[] = [];
     for (const item of portionCustomization) {
       const option: Option = {
-        option_id: item.menu_item_variant_id.toString(),
+        option_id: item.attribute_id.toString(),
         option_name: [],
         option_values: [],
       };
       //Option Name
-      item.menu_item_variant_ext_obj.forEach((ext) => {
+      item.menu_item_attribute_ext_obj.forEach((ext) => {
         const optionNameExt: TextByLang = {
           ISO_language_code: ext.ISO_language_code,
           text: ext.name,
@@ -417,12 +390,12 @@ export class FoodService {
   }
 
   async convertTasteCustomization(
-    tasteCustomization: MenuItemVariant[],
+    tasteCustomization: MenuItemAttribute[],
   ): Promise<Option[]> {
     const options: Option[] = [];
     for (const item of tasteCustomization) {
       const option: Option = {
-        option_id: item.menu_item_variant_id.toString(),
+        option_id: item.attribute_id.toString(),
         option_name: [],
         option_values: [],
       };
@@ -487,7 +460,7 @@ export class FoodService {
         protein_g: rawSKU.protein_g,
         fat_g: rawSKU.fat_g,
         portion_customization: rawSKU.menu_item_variants
-          .filter((i) => i.attribute.type == 'portion')
+          .filter((i) => i.attribute.type_id == 'portion')
           .map((e) => {
             return {
               option_id: e.variant.toString(),

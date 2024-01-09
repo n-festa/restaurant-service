@@ -18,7 +18,7 @@ import { SKU } from 'src/entity/sku.entity';
 import { PERCENTAGE } from 'src/constant/unit.constant';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { FoodDTO } from 'src/dto/food.dto';
-import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
+import { MenuItemAttribute } from 'src/entity/menu-item-attribute.entity';
 import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { SkuMenuItemVariant } from 'src/entity/sku-menu-item-variant.entity';
@@ -188,13 +188,12 @@ export class CommonService {
 
       const menuItemVariantIds = obj_list.map((i) => i.option_id);
       const menuItemVariants = await this.entityManager
-        .createQueryBuilder(MenuItemVariant, 'menuItemVariant')
-        .leftJoinAndSelect('menuItemVariant.taste_ext', 'taseExt')
-        .where(
-          'menuItemVariant.menu_item_variant_id IN (:...menuItemVariantIds)',
-          { menuItemVariantIds },
-        )
-        .andWhere('menuItemVariant.type = :type', { type: 'taste' })
+        .createQueryBuilder(MenuItemAttribute, 'menuItemAttribute')
+        .leftJoinAndSelect('menuItemAttribute.taste_ext', 'taseExt')
+        .where('menuItemAttribute.attribute_id IN (:...menuItemVariantIds)', {
+          menuItemVariantIds,
+        })
+        .andWhere('menuItemAttribute.type_id = :type', { type: 'taste' })
         .andWhere('taseExt.ISO_language_code = :lang', { lang })
         .getMany();
 
@@ -214,7 +213,7 @@ export class CommonService {
       for (const option of obj_list) {
         let str = '';
         const menuItemVariant = menuItemVariants.find(
-          (i) => i.menu_item_variant_id.toString() == option.option_id,
+          (i) => i.attribute_id.toString() == option.option_id,
         );
         //check if the option_id has been filtered out
         if (!menuItemVariant) {
@@ -227,16 +226,16 @@ export class CommonService {
         if (!menuItemVariantOption) {
           continue;
         }
-        //check if the option_id and value_id is consistent - belong to the same menu_item_variant_id
+        //check if the option_id and value_id is consistent - belong to the same attribute_id
         if (
           menuItemVariantOption.menu_item_variant_id !=
-          menuItemVariant.menu_item_variant_id
+          menuItemVariant.attribute_id
         ) {
           console.log(
             'menuItemVariantOption ',
             menuItemVariantOption.menu_item_variant_option_id,
             ' does not belong to menuItemVariant ',
-            menuItemVariant.menu_item_variant_id,
+            menuItemVariant.attribute_id,
           );
           continue;
         }
@@ -300,7 +299,7 @@ export class CommonService {
         .createQueryBuilder(SkuMenuItemVariant, 'variant')
         .leftJoinAndSelect('variant.attribute', 'attribute')
         .leftJoinAndSelect(
-          'attribute.menu_item_variant_ext_obj',
+          'attribute.menu_item_attribute_ext_obj',
           'attributeExt',
         )
         .leftJoinAndSelect('variant.value', 'value')
@@ -317,7 +316,7 @@ export class CommonService {
       result = variants
         .map((i) => {
           return (
-            i.attribute.menu_item_variant_ext_obj[0].name +
+            i.attribute.menu_item_attribute_ext_obj[0].name +
             ' ' +
             i.value.value +
             i.value.unit_obj.symbol
@@ -343,14 +342,14 @@ export class CommonService {
   }
   async getTasteCustomizationByMenuItemId(
     menu_item_id: number,
-  ): Promise<MenuItemVariant[]> {
+  ): Promise<MenuItemAttribute[]> {
     const data = await this.entityManager
-      .createQueryBuilder(MenuItemVariant, 'variant')
-      .leftJoinAndSelect('variant.options', 'options')
-      .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
+      .createQueryBuilder(MenuItemAttribute, 'attribute')
+      .leftJoinAndSelect('attribte.options', 'options')
+      .leftJoinAndSelect('attribute.taste_ext', 'tasteExt')
       .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
-      .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
-      .andWhere("variant.type = 'taste'")
+      .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere("attribute.type_id = 'taste'")
       .getMany();
     return data;
   }
@@ -368,17 +367,17 @@ export class CommonService {
       };
 
       const avaibleAdvanceTasteCustomizationList = await this.entityManager
-        .createQueryBuilder(MenuItemVariant, 'variant')
-        .leftJoinAndSelect('variant.options', 'options')
-        .where('variant.menu_item_id = :menu_item_id', {
+        .createQueryBuilder(MenuItemAttribute, 'attribute')
+        .leftJoinAndSelect('attribute.options', 'options')
+        .where('attribute.menu_item_id = :menu_item_id', {
           menu_item_id,
         })
-        .andWhere("variant.type = 'taste'")
+        .andWhere("attribute.type_id = 'taste'")
         .getMany();
       for (const obj of obj_list) {
         //find the attribute
         const attribute = avaibleAdvanceTasteCustomizationList.find(
-          (i) => i.menu_item_variant_id.toString() == obj.option_id,
+          (i) => i.attribute_id.toString() == obj.option_id,
         );
         if (!attribute) {
           result.isValid = false;

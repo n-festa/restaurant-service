@@ -7,7 +7,7 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
-import { MenuItemVariant } from './menu-item-variant.entity';
+import { MenuItemAttribute } from './menu-item-attribute.entity';
 import { Unit } from './unit.entity';
 import { TasteValueExt } from './taste-value-ext.entity';
 
@@ -42,14 +42,14 @@ export class MenuItemVariantOpion {
   //RELATIONSHIP
 
   @ManyToOne(
-    () => MenuItemVariant,
-    (menuItemVariant) => menuItemVariant.options,
+    () => MenuItemAttribute,
+    (menuItemAttribute) => menuItemAttribute.options,
   )
   @JoinColumn({
     name: 'menu_item_variant_id',
     referencedColumnName: 'menu_item_variant_id',
   })
-  public menu_item_variant_obj: MenuItemVariant;
+  public menu_item_variant_obj: MenuItemAttribute;
 
   @ManyToOne(() => Unit)
   @JoinColumn({
