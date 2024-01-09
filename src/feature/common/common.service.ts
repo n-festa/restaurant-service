@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  BasicTasteSelection,
   DeliveryRestaurant,
   OptionSelection,
   Review,
   TextByLang,
+  ValidationResult,
 } from 'src/type';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
@@ -17,9 +19,10 @@ import { PERCENTAGE } from 'src/constant/unit.constant';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { FoodDTO } from 'src/dto/food.dto';
 import { MenuItemVariant } from 'src/entity/menu-item-variant.entity';
-import { TasteExt } from 'src/entity/taste-ext.entity';
-import { resourceUsage } from 'process';
 import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
+import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
+import { SkuMenuItemVariant } from 'src/entity/sku-menu-item-variant.entity';
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
 
 @Injectable()
 export class CommonService {
@@ -244,8 +247,188 @@ export class CommonService {
 
         strArr.push(str);
       }
-      console.log('strArr', strArr);
       result = strArr.join(' - ');
+
+      return result;
+    }
+  }
+
+  async interpretBasicTaseCustomization(
+    obj_list: BasicTasteSelection[],
+    lang: string = 'vie',
+  ): Promise<string> {
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      let result: string = '';
+
+      //if object is empty => return ''
+      if (obj_list.length == 0) {
+        result = '';
+        return result;
+      }
+
+      //get unique no_adding_id from obj_list
+      const uniqueNoAddingIds = obj_list
+        .map((i) => i.no_adding_id)
+        .filter((value, index, self) => {
+          return self.indexOf(value) === index;
+        });
+
+      result = (
+        await this.entityManager
+          .createQueryBuilder(NoAddingExt, 'ext')
+          .where('ext.no_adding_id IN (:...uniqueNoAddingIds)', {
+            uniqueNoAddingIds,
+          })
+          .andWhere('ext.ISO_language_code = :lang', { lang })
+          .getMany()
+      )
+        .map((i) => i.description)
+        .join(' - ');
+
+      return result;
+    }
+  }
+
+  async interpretPortionCustomization(
+    sku_id: number,
+    lang: string = 'vie',
+  ): Promise<string> {
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      let result: string = '';
+
+      const variants = await this.entityManager
+        .createQueryBuilder(SkuMenuItemVariant, 'variant')
+        .leftJoinAndSelect('variant.attribute', 'attribute')
+        .leftJoinAndSelect(
+          'attribute.menu_item_variant_ext_obj',
+          'attributeExt',
+        )
+        .leftJoinAndSelect('variant.value', 'value')
+        .leftJoinAndSelect('value.unit_obj', 'unit')
+        .where('variant.sku_id = :sku_id', { sku_id })
+        .andWhere('attributeExt.ISO_language_code = :lang', { lang })
+        .getMany();
+
+      if (variants.length == 0) {
+        result = '';
+        return result;
+      }
+
+      result = variants
+        .map((i) => {
+          return (
+            i.attribute.menu_item_variant_ext_obj[0].name +
+            ' ' +
+            i.value.value +
+            i.value.unit_obj.symbol
+          );
+        })
+        .join(' - ');
+
+      return result;
+    }
+  }
+
+  async getBasicCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<BasicCustomization[]> {
+    const data = await this.entityManager
+      .createQueryBuilder(BasicCustomization, 'basicCustomization')
+      .leftJoinAndSelect('basicCustomization.extension', 'ext')
+      .where('basicCustomization.menu_item_id = :menu_item_id', {
+        menu_item_id,
+      })
+      .getMany();
+    return data;
+  }
+  async getTasteCustomizationByMenuItemId(
+    menu_item_id: number,
+  ): Promise<MenuItemVariant[]> {
+    const data = await this.entityManager
+      .createQueryBuilder(MenuItemVariant, 'variant')
+      .leftJoinAndSelect('variant.options', 'options')
+      .leftJoinAndSelect('variant.taste_ext', 'tasteExt')
+      .leftJoinAndSelect('options.taste_value_ext', 'tasteValueExt')
+      .where('variant.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere("variant.type = 'taste'")
+      .getMany();
+    return data;
+  }
+
+  async validateAdvacedTasteCustomizationObjWithMenuItem(
+    obj_list: OptionSelection[],
+    menu_item_id: number,
+  ): Promise<ValidationResult> {
+    // Check if the advanced_taste_customization_obj is all available to this menu item
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      const result: ValidationResult = {
+        isValid: true,
+        message: null,
+        data: null,
+      };
+
+      const avaibleAdvanceTasteCustomizationList = await this.entityManager
+        .createQueryBuilder(MenuItemVariant, 'variant')
+        .leftJoinAndSelect('variant.options', 'options')
+        .where('variant.menu_item_id = :menu_item_id', {
+          menu_item_id,
+        })
+        .andWhere("variant.type = 'taste'")
+        .getMany();
+      for (const obj of obj_list) {
+        //find the attribute
+        const attribute = avaibleAdvanceTasteCustomizationList.find(
+          (i) => i.menu_item_variant_id.toString() == obj.option_id,
+        );
+        if (!attribute) {
+          result.isValid = false;
+          result.message = `Advanced Taste Customization: option_id ${obj.option_id} cannot be found`;
+          break;
+        }
+        //check the value
+        const value = attribute.options.find(
+          (i) => i.menu_item_variant_option_id.toString() == obj.value_id,
+        );
+        if (!value) {
+          result.isValid = false;
+          result.message = `Advanced Taste Customization: value_id ${obj.value_id} is not availabe for option_id ${obj.option_id}`;
+          break;
+        }
+      }
+
+      return result;
+    }
+  }
+
+  async validateBasicTasteCustomizationObjWithMenuItem(
+    obj_list: BasicTasteSelection[],
+    menu_item_id: number,
+  ): Promise<ValidationResult> {
+    // Check if the advanced_taste_customization_obj is all available to this menu item
+    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
+      const result: ValidationResult = {
+        isValid: true,
+        message: null,
+        data: null,
+      };
+
+      const avaibleBasicTasteCustomizationList = await this.entityManager
+        .createQueryBuilder(BasicCustomization, 'basicCustomization')
+        .where('basicCustomization.menu_item_id = :menu_item_id', {
+          menu_item_id,
+        })
+        .getMany();
+      for (const obj of obj_list) {
+        //find the attribute
+        const noAddingId = avaibleBasicTasteCustomizationList.find(
+          (i) => i.no_adding_id == obj.no_adding_id,
+        );
+        if (!noAddingId) {
+          result.isValid = false;
+          result.message = `Basic Taste Customization: no_adding_id ${obj.no_adding_id} cannot be found`;
+          break;
+        }
+      }
 
       return result;
     }

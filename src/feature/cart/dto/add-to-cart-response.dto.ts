@@ -5,7 +5,6 @@ export class AddToCartResponse extends GeneralResponse {
 }
 
 interface AddToCartResponseData {
-  restaurant_id: number;
   customer_id: number;
   cart_info: CartItem[];
 }
@@ -18,14 +17,9 @@ interface CartItem {
   advanced_taste_customization: string;
   basic_taste_customization: string;
   portion_customization: string;
-  advanced_taste_customization_obj: OptionSelection[];
-  basic_taste_customization_obj: OptionSelection[];
+  advanced_taste_customization_obj: string;
+  basic_taste_customization_obj: string;
   notes: string;
   restaurant_id: number;
   created_at: Date;
-}
-
-interface OptionSelection {
-  option_id: string;
-  value_id: string;
 }
