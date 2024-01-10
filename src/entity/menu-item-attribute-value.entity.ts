@@ -11,13 +11,13 @@ import { MenuItemAttribute } from './menu-item-attribute.entity';
 import { Unit } from './unit.entity';
 import { TasteValueExt } from './taste-value-ext.entity';
 
-@Entity('Menu_Item_Variant_Option')
-export class MenuItemVariantOpion {
+@Entity('Menu_Item_Attribute_Value')
+export class MenuItemAttributeValue {
   @PrimaryGeneratedColumn()
-  public menu_item_variant_option_id: number;
+  public value_id: number;
 
   @Column({ type: 'int', nullable: false, unique: false })
-  public menu_item_variant_id: number;
+  public attribute_id: number;
 
   @Column({ type: 'int', nullable: true, unique: false })
   public value: number;
@@ -43,13 +43,13 @@ export class MenuItemVariantOpion {
 
   @ManyToOne(
     () => MenuItemAttribute,
-    (menuItemAttribute) => menuItemAttribute.options,
+    (menuItemAttribute) => menuItemAttribute.values,
   )
   @JoinColumn({
-    name: 'menu_item_variant_id',
-    referencedColumnName: 'menu_item_variant_id',
+    name: 'attribute_id',
+    referencedColumnName: 'attribute_id',
   })
-  public menu_item_variant_obj: MenuItemAttribute;
+  public attribute_obj: MenuItemAttribute;
 
   @ManyToOne(() => Unit)
   @JoinColumn({

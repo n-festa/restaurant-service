@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { MenuItem } from './menu-item.entity';
 import { OrderSKU } from './order-sku.entity';
-import { SkuMenuItemVariant } from './sku-menu-item-variant.entity';
+import { SkuDetail } from './sku-detail.entity';
 import { SkuDiscount } from './sku-discount.entity';
 
 @Entity('SKU')
@@ -96,8 +96,8 @@ export class SKU {
   @OneToMany(() => OrderSKU, (orderSKU) => orderSKU.sku_obj)
   public order_sku_obj: OrderSKU[];
 
-  @OneToMany(() => SkuMenuItemVariant, (variant) => variant.sku_obj)
-  public menu_item_variants: SkuMenuItemVariant[];
+  @OneToMany(() => SkuDetail, (detail) => detail.sku_obj)
+  public detail: SkuDetail[];
 
   @OneToMany(() => SkuDiscount, (discount) => discount.sku_obj)
   public discount: SkuDiscount[];

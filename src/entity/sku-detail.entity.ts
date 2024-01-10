@@ -8,18 +8,18 @@ import {
 } from 'typeorm';
 import { SKU } from './sku.entity';
 import { MenuItemAttribute } from './menu-item-attribute.entity';
-import { MenuItemVariantOpion } from './menu-item-variant-option.entity';
+import { MenuItemAttributeValue } from './menu-item-attribute-value.entity';
 
-@Entity('SKU_Menu_Item_Variant')
-export class SkuMenuItemVariant {
+@Entity('SKU_Detail')
+export class SkuDetail {
   @PrimaryColumn()
   public sku_id: number;
 
   @PrimaryColumn()
-  public variant: number;
+  public attribute_id: number;
 
   @Column({ type: 'int', nullable: false, unique: false })
-  public option: number;
+  public value_id: number;
 
   @CreateDateColumn({
     type: 'datetime',
@@ -31,7 +31,7 @@ export class SkuMenuItemVariant {
 
   //RELATIONSHIPS
 
-  @ManyToOne(() => SKU, (sku) => sku.menu_item_variants)
+  @ManyToOne(() => SKU, (sku) => sku.detail)
   @JoinColumn({
     name: 'sku_id',
     referencedColumnName: 'sku_id',
@@ -40,15 +40,15 @@ export class SkuMenuItemVariant {
 
   @ManyToOne(() => MenuItemAttribute)
   @JoinColumn({
-    name: 'variant',
+    name: 'attribute_id',
     referencedColumnName: 'attribute_id',
   })
-  public attribute: MenuItemAttribute;
+  public attribute_obj: MenuItemAttribute;
 
-  @ManyToOne(() => MenuItemVariantOpion)
+  @ManyToOne(() => MenuItemAttributeValue)
   @JoinColumn({
-    name: 'option',
-    referencedColumnName: 'menu_item_variant_option_id',
+    name: 'value_id',
+    referencedColumnName: 'value_id',
   })
-  public value: MenuItemVariantOpion;
+  public value_obj: MenuItemAttributeValue;
 }

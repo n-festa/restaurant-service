@@ -6,7 +6,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { MenuItemAttributeExt } from './menu-item-attribute-ext.entity';
-import { MenuItemVariantOpion } from './menu-item-variant-option.entity';
+import { MenuItemAttributeValue } from './menu-item-attribute-value.entity';
 import { TasteExt } from './taste-ext.entity';
 
 @Entity('Menu_Item_Attribute')
@@ -35,11 +35,8 @@ export class MenuItemAttribute {
   @OneToMany(() => MenuItemAttributeExt, (ext) => ext.menu_item_attribute_obj)
   public menu_item_attribute_ext_obj: MenuItemAttributeExt[];
 
-  @OneToMany(
-    () => MenuItemVariantOpion,
-    (option) => option.menu_item_variant_obj,
-  )
-  public options: MenuItemVariantOpion[];
+  @OneToMany(() => MenuItemAttributeValue, (value) => value.attribute_obj)
+  public values: MenuItemAttributeValue[];
 
   @OneToMany(() => TasteExt, (tasteExt) => tasteExt.taste)
   public taste_ext: TasteExt[];

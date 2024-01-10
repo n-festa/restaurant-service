@@ -24,7 +24,6 @@ import { MenuItemAttribute } from 'src/entity/menu-item-attribute.entity';
 import { SkuDTO } from 'src/dto/sku.dto';
 import { Unit } from 'src/entity/unit.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
-import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
@@ -334,7 +333,7 @@ export class FoodService {
     const data = await this.entityManager
       .createQueryBuilder(MenuItemAttribute, 'attribute')
       .leftJoinAndSelect('attribute.menu_item_attribute_ext_obj', 'ext')
-      .leftJoinAndSelect('attribute.options', 'options')
+      .leftJoinAndSelect('attribute.values', 'values')
       .leftJoinAndSelect('options.unit_obj', 'unit')
       .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })
       .andWhere("attribute.type_id = 'portion'")
@@ -376,9 +375,9 @@ export class FoodService {
       });
 
       //Option Values
-      item.options.forEach((optionValue) => {
+      item.values.forEach((optionValue) => {
         const value = {} as OptionValue;
-        value.value_id = optionValue.menu_item_variant_option_id.toString();
+        value.value_id = optionValue.value_id.toString();
         value.value_nubmer = optionValue.value;
         value.value_unit = optionValue.unit_obj.symbol;
         option.option_values.push(value);
@@ -409,9 +408,9 @@ export class FoodService {
       });
 
       //Option Values
-      item.options.forEach((optionValue) => {
+      item.values.forEach((optionValue) => {
         const value = {} as OptionValue;
-        value.value_id = optionValue.menu_item_variant_option_id.toString();
+        value.value_id = optionValue.value_id.toString();
         value.value_txt = optionValue.taste_value_ext.map((ext) => {
           return {
             ISO_language_code: ext.ISO_language_code,
@@ -433,8 +432,8 @@ export class FoodService {
 
     const rawSKUs = await this.entityManager
       .createQueryBuilder(SKU, 'sku')
-      .leftJoinAndSelect('sku.menu_item_variants', 'variant')
-      .leftJoinAndSelect('variant.attribute', 'attribute')
+      .leftJoinAndSelect('sku.detail', 'skuDetail')
+      .leftJoinAndSelect('skuDetail.attribute_obj', 'attribute')
       .where('sku.menu_item_id = :id', { id })
       .andWhere('sku.is_active = :active', { active: TRUE })
       .getMany();
@@ -459,12 +458,12 @@ export class FoodService {
         carb_g: rawSKU.carbohydrate_g,
         protein_g: rawSKU.protein_g,
         fat_g: rawSKU.fat_g,
-        portion_customization: rawSKU.menu_item_variants
-          .filter((i) => i.attribute.type_id == 'portion')
+        portion_customization: rawSKU.detail
+          .filter((i) => i.attribute_obj.type_id == 'portion')
           .map((e) => {
             return {
-              option_id: e.variant.toString(),
-              value_id: e.option.toString(),
+              option_id: e.attribute_id.toString(),
+              value_id: e.value_id.toString(),
             };
           }),
       };

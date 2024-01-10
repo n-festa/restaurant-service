@@ -15,10 +15,10 @@ import { Packaging } from 'src/entity/packaging.entity';
 import { PackagingExt } from 'src/entity/packaging-ext.entity';
 import { MenuItemAttribute } from 'src/entity/menu-item-attribute.entity';
 import { MenuItemAttributeExt } from 'src/entity/menu-item-attribute-ext.entity';
-import { MenuItemVariantOpion } from 'src/entity/menu-item-variant-option.entity';
+import { MenuItemAttributeValue } from 'src/entity/menu-item-attribute-value.entity';
 import { TasteExt } from 'src/entity/taste-ext.entity';
 import { TasteValueExt } from 'src/entity/taste-value-ext.entity';
-import { SkuMenuItemVariant } from 'src/entity/sku-menu-item-variant.entity';
+import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
@@ -39,10 +39,10 @@ import { MainSideDish } from 'src/entity/main-side-dish.entity';
       PackagingExt,
       MenuItemAttribute,
       MenuItemAttributeExt,
-      MenuItemVariantOpion,
+      MenuItemAttributeValue,
       TasteExt,
       TasteValueExt,
-      SkuMenuItemVariant,
+      SkuDetail,
       BasicCustomization,
       NoAddingExt,
       MainSideDish,
