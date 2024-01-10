@@ -6,12 +6,12 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { MenuItemVariant } from './menu-item-variant.entity';
+import { MenuItemAttribute } from './menu-item-attribute.entity';
 
-@Entity('Menu_Item_Variant_Ext')
-export class MenuItemVariantExt {
+@Entity('Menu_Item_Attribute_Ext')
+export class MenuItemAttributeExt {
   @PrimaryColumn()
-  public menu_item_variant_id: number;
+  public attribute_id: number;
 
   @PrimaryColumn()
   public ISO_language_code: string;
@@ -30,12 +30,12 @@ export class MenuItemVariantExt {
   //RELATIONSHIPS
 
   @ManyToOne(
-    () => MenuItemVariant,
-    (menu_item_variant) => menu_item_variant.menu_item_variant_ext_obj,
+    () => MenuItemAttribute,
+    (attribute) => attribute.menu_item_attribute_ext_obj,
   )
   @JoinColumn({
-    name: 'menu_item_variant_id',
-    referencedColumnName: 'menu_item_variant_id',
+    name: 'attribute_id',
+    referencedColumnName: 'attribute_id',
   })
-  public menu_item_variant_obj: MenuItemVariant;
+  public menu_item_attribute_obj: MenuItemAttribute;
 }

@@ -116,6 +116,13 @@ export class RestaurantService {
     });
     const deliveryRestaurants: DeliveryRestaurant[] = [];
     for (const restaurant of restaurants) {
+      //remove the restaurant which having no menu item
+      const menuItems = await restaurant.menu_items;
+      console.log('menuItems', menuItems);
+      if (menuItems.length <= 0) {
+        continue;
+      }
+
       const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
         {
           lat: lat,
