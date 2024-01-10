@@ -240,7 +240,51 @@ export class CartService {
     lang: string,
   ): Promise<CartItem[]> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      const mentionedCartItems = await this.getCartByItemId(
+        updated_cart_items.map((i) => i.item_id),
+        customer_id,
+      );
+
+      if (mentionedCartItems.length < updated_cart_items.length) {
+        throw new HttpException(
+          'There are some of updated items which do not belong to the customer',
+          400,
+        );
+      }
+
+      //build new cart
+      const fullUpdatedItems: CartItem[] = [];
+      for (const mentionedCartItem of mentionedCartItems) {
+        const updatedCartItem = updated_cart_items.find(
+          (i) => i.item_id === mentionedCartItem.item_id,
+        );
+
+        if (updatedCartItem.sku_id != mentionedCartItem.sku_id) {
+          const isAllowedSku =
+            await this.commonService.checkIfSkuHasSameMenuItem([
+              updatedCartItem.sku_id,
+              mentionedCartItem.sku_id,
+            ]);
+
+          if (!isAllowedSku) {
+            throw new HttpException(
+              `Updated sku_id ${updatedCartItem.sku_id} does not have the same Menu Item as the current mentioning sku_id`,
+              400,
+            );
+          }
+        }
+      }
+
       return await this.getCart(customer_id);
+    }
+  }
+  async getCartByItemId(item_ids: number[], customer_id) {
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      return await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .where('cart.customer_id = :customer_id', { customer_id })
+        .andWhere('cart.item_id IN (:...item_ids)', { item_ids })
+        .getMany();
     }
   }
 }
