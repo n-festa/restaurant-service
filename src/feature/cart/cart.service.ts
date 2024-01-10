@@ -229,4 +229,10 @@ export class CartService {
         .execute();
     }
   }
+
+  async updateCartFromEndPoint(): Promise<CartItem[]> {
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      return [];
+    }
+  }
 }
