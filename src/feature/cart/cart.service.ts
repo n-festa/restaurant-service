@@ -5,7 +5,11 @@ import { EntityManager } from 'typeorm';
 import { CartItem } from 'src/entity/cart-item.entity';
 import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
-import { BasicTasteSelection, OptionSelection } from 'src/type';
+import {
+  BasicTasteSelection,
+  OptionSelection,
+  UpdatedCartItem,
+} from 'src/type';
 
 @Injectable()
 export class CartService {
@@ -230,9 +234,13 @@ export class CartService {
     }
   }
 
-  async updateCartFromEndPoint(): Promise<CartItem[]> {
+  async updateCartFromEndPoint(
+    customer_id: number,
+    updated_cart_items: UpdatedCartItem[],
+    lang: string,
+  ): Promise<CartItem[]> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      return [];
+      return await this.getCart(customer_id);
     }
   }
 }

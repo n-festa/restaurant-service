@@ -61,12 +61,17 @@ export class CartController {
   async updateCart(data: UpdateCartRequest): Promise<UpdateCartResponse> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
       const { customer_id, updated_items, lang = 'vie' } = data;
-      console.log(lang);
       const res = new UpdateCartResponse(200, '');
-
       try {
+        if (updated_items.length <= 0) {
+          throw new HttpException('Updated Items cannot be empty', 400);
+        }
         const cartItems: CartItem[] =
-          await this.cartService.updateCartFromEndPoint();
+          await this.cartService.updateCartFromEndPoint(
+            customer_id,
+            updated_items,
+            lang,
+          );
         res.statusCode = 200;
         res.message = 'Update cart successfully';
         res.data = {
