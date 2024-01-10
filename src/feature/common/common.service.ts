@@ -343,7 +343,7 @@ export class CommonService {
   ): Promise<MenuItemAttribute[]> {
     const data = await this.entityManager
       .createQueryBuilder(MenuItemAttribute, 'attribute')
-      .leftJoinAndSelect('attribte.values', 'values')
+      .leftJoinAndSelect('attribute.values', 'values')
       .leftJoinAndSelect('attribute.taste_ext', 'tasteExt')
       .leftJoinAndSelect('values.taste_value_ext', 'tasteValueExt')
       .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })

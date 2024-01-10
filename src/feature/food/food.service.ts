@@ -49,6 +49,7 @@ export class FoodService {
       'SELECT min(sku.price) as min, max(sku.price) as max FROM SKU as sku where sku.menu_item_id IN (' +
       menuItemList.join(',') +
       ') and sku.is_standard = 1';
+
     const rawData = await this.menuItemRepo.query(query);
     const range: PriceRange = {
       min: rawData[0].min,
@@ -334,7 +335,7 @@ export class FoodService {
       .createQueryBuilder(MenuItemAttribute, 'attribute')
       .leftJoinAndSelect('attribute.menu_item_attribute_ext_obj', 'ext')
       .leftJoinAndSelect('attribute.values', 'values')
-      .leftJoinAndSelect('options.unit_obj', 'unit')
+      .leftJoinAndSelect('values.unit_obj', 'unit')
       .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })
       .andWhere("attribute.type_id = 'portion'")
       .getMany();

@@ -71,6 +71,11 @@ export class RecommendationService {
 
     for (const restaurant of restaurants) {
       const menuItems = await restaurant.menu_items;
+
+      //remove the restaurant which having no menu item
+      if (menuItems.length <= 0) {
+        continue;
+      }
       const priceRange: PriceRange =
         await this.foodService.getPriceRangeByMenuItem(
           menuItems.map((item) => item.menu_item_id),
