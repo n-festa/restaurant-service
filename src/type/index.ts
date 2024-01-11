@@ -89,3 +89,12 @@ export interface ValidationResult {
   message: string;
   data?: any;
 }
+
+export interface UpdatedCartItem {
+  item_id: number;
+  sku_id: number;
+  qty_ordered: number;
+  advanced_taste_customization_obj: OptionSelection[];
+  basic_taste_customization_obj: BasicTasteSelection[];
+  notes: string;
+}
