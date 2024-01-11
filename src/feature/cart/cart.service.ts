@@ -422,12 +422,29 @@ export class CartService {
   }
 
   async massUpdateCartItem(cart_items: CartItem[]): Promise<void> {
+    //Only do the mass updating if the udated sku has the same as the sku of the current item
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
       await this.entityManager.transaction(
         async (transactionalEntityManager) => {
           // execute queries using transactionalEntityManager
           for (const cart_item of cart_items) {
-            console.log('massUpdateCartItem is running');
+            //Check if the SKUs are different
+            const sku_id = (
+              await transactionalEntityManager
+                .createQueryBuilder(CartItem, 'cart')
+                .where('cart.item_id = :item_id', {
+                  item_id: cart_item.item_id,
+                })
+                .select('cart.sku_id')
+                .getOne()
+            ).sku_id;
+
+            if (sku_id != cart_item.sku_id) {
+              throw new HttpException(
+                'Only do the mass updating if the udated sku has the same as the sku of the current item',
+                400,
+              );
+            }
             await transactionalEntityManager
               .createQueryBuilder()
               .update(CartItem)
