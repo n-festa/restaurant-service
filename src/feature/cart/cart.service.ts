@@ -240,11 +240,11 @@ export class CartService {
     lang: string,
   ): Promise<CartItem[]> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      // Get the corresponding cart items in DB
       const mentionedCartItems = await this.getCartByItemId(
         updated_cart_items.map((i) => i.item_id),
         customer_id,
       );
-
       if (mentionedCartItems.length < updated_cart_items.length) {
         throw new HttpException(
           'There are some of updated items which do not belong to the customer',
@@ -252,14 +252,51 @@ export class CartService {
         );
       }
 
-      //build new cart
-      const fullUpdatedItems: CartItem[] = [];
+      //BUILD UPDATE DATA
+      const fullSelectedUpdatedItems: CartItem[] = [];
       for (const mentionedCartItem of mentionedCartItems) {
         const updatedCartItem = updated_cart_items.find(
           (i) => i.item_id === mentionedCartItem.item_id,
         );
 
+        const advanced_taste_customization_obj_txt = JSON.stringify(
+          updatedCartItem.advanced_taste_customization_obj,
+        );
+        const basic_taste_customization_obj_txt = JSON.stringify(
+          updatedCartItem.basic_taste_customization_obj,
+        );
+
+        //Check if the SKU does exist
+        const sku = await this.entityManager
+          .createQueryBuilder(SKU, 'sku')
+          .leftJoinAndSelect('sku.menu_item', 'menuItem')
+          .where('sku.sku_id = :sku_id', { sku_id: updatedCartItem.sku_id })
+          .getOne();
+        if (!sku) {
+          throw new HttpException('SKU does not exist', 404);
+        }
+
+        //Remove the unchange cart item
+        if (
+          updatedCartItem.sku_id == mentionedCartItem.sku_id &&
+          updatedCartItem.qty_ordered == mentionedCartItem.qty_ordered &&
+          advanced_taste_customization_obj_txt ==
+            mentionedCartItem.advanced_taste_customization_obj &&
+          basic_taste_customization_obj_txt ==
+            mentionedCartItem.basic_taste_customization_obj &&
+          updatedCartItem.notes == mentionedCartItem.notes
+        ) {
+          continue;
+        }
+
+        let advanced_taste_customization: string = '';
+        let basic_taste_customization: string = '';
+        let portion_customization: string = '';
+
         if (updatedCartItem.sku_id != mentionedCartItem.sku_id) {
+          // --- DIFFERENT SKU ---
+
+          //Check if a new SKU belongs to the current Menu Item of the current Cart Item
           const isAllowedSku =
             await this.commonService.checkIfSkuHasSameMenuItem([
               updatedCartItem.sku_id,
@@ -272,8 +309,104 @@ export class CartService {
               400,
             );
           }
+
+          //Interpret Portion Customization
+          portion_customization =
+            await this.commonService.interpretPortionCustomization(
+              updatedCartItem.sku_id,
+              lang,
+            );
+        } else if (updatedCartItem.sku_id == mentionedCartItem.sku_id) {
+          //---- SAME SKU ----
+          portion_customization = mentionedCartItem.portion_customization;
         }
+
+        //---- COMPARE ADVANCE TASTE CUSTOMIZATION ----
+        if (
+          advanced_taste_customization_obj_txt !=
+          mentionedCartItem.advanced_taste_customization_obj
+        ) {
+          // --- Different advanced taste customiztion ---
+          // Check if the advanced_taste_customization_obj is all available to this SKU
+          const advancedTasteCustomizationValidation =
+            await this.commonService.validateAdvacedTasteCustomizationObjWithMenuItem(
+              updatedCartItem.advanced_taste_customization_obj,
+              sku.menu_item_id,
+            );
+          if (!advancedTasteCustomizationValidation.isValid) {
+            throw new HttpException(
+              advancedTasteCustomizationValidation.message,
+              400,
+            );
+          }
+          //Interpret Advance Taste Customization
+          advanced_taste_customization =
+            await this.commonService.interpretAdvanceTaseCustomization(
+              updatedCartItem.advanced_taste_customization_obj,
+              lang,
+            );
+        } else if (
+          advanced_taste_customization_obj_txt ==
+          mentionedCartItem.advanced_taste_customization_obj
+        ) {
+          // --- Same advanced taste customization
+          advanced_taste_customization =
+            mentionedCartItem.advanced_taste_customization;
+        }
+
+        //---- COMPARE BASIC TASTE CUSTOMIZATION ----
+        if (
+          basic_taste_customization_obj_txt !=
+          mentionedCartItem.basic_taste_customization_obj
+        ) {
+          // --- Different basic taste customization ---
+          // Check if the basic_taste_customization_obj is all available to this SKU
+          const basicTasteCustomizationValidation =
+            await this.commonService.validateBasicTasteCustomizationObjWithMenuItem(
+              updatedCartItem.basic_taste_customization_obj,
+              sku.menu_item_id,
+            );
+          if (!basicTasteCustomizationValidation.isValid) {
+            throw new HttpException(
+              basicTasteCustomizationValidation.message,
+              400,
+            );
+          }
+          //Interpret Basic  Taste Customization
+          basic_taste_customization =
+            await this.commonService.interpretBasicTaseCustomization(
+              updatedCartItem.basic_taste_customization_obj,
+              lang,
+            );
+        } else if (
+          basic_taste_customization_obj_txt ==
+          mentionedCartItem.basic_taste_customization_obj
+        ) {
+          // --- Same basic taste customization ---
+          basic_taste_customization =
+            mentionedCartItem.basic_taste_customization;
+        }
+
+        //Mapping data
+        const fullSelectedUpdatedItem: CartItem = {
+          item_id: updatedCartItem.item_id,
+          customer_id: customer_id,
+          sku_id: updatedCartItem.sku_id,
+          qty_ordered: updatedCartItem.qty_ordered,
+          advanced_taste_customization: advanced_taste_customization,
+          basic_taste_customization: basic_taste_customization,
+          portion_customization: portion_customization,
+          advanced_taste_customization_obj:
+            advanced_taste_customization_obj_txt,
+          basic_taste_customization_obj: basic_taste_customization_obj_txt,
+          notes: updatedCartItem.notes,
+          restaurant_id: mentionedCartItem.restaurant_id,
+          created_at: mentionedCartItem.created_at,
+        };
+        fullSelectedUpdatedItems.push(fullSelectedUpdatedItem);
       }
+
+      await this.massUpdateCartItem(fullSelectedUpdatedItems);
 
       return await this.getCart(customer_id);
     }
@@ -285,6 +418,40 @@ export class CartService {
         .where('cart.customer_id = :customer_id', { customer_id })
         .andWhere('cart.item_id IN (:...item_ids)', { item_ids })
         .getMany();
+    }
+  }
+
+  async massUpdateCartItem(cart_items: CartItem[]): Promise<void> {
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      await this.entityManager.transaction(
+        async (transactionalEntityManager) => {
+          // execute queries using transactionalEntityManager
+          for (const cart_item of cart_items) {
+            console.log('massUpdateCartItem is running');
+            await transactionalEntityManager
+              .createQueryBuilder()
+              .update(CartItem)
+              .set({
+                customer_id: cart_item.customer_id,
+                sku_id: cart_item.sku_id,
+                qty_ordered: cart_item.qty_ordered,
+                advanced_taste_customization:
+                  cart_item.advanced_taste_customization,
+                basic_taste_customization: cart_item.basic_taste_customization,
+                portion_customization: cart_item.portion_customization,
+                advanced_taste_customization_obj:
+                  cart_item.advanced_taste_customization_obj,
+                basic_taste_customization_obj:
+                  cart_item.basic_taste_customization_obj,
+                notes: cart_item.notes,
+                restaurant_id: cart_item.restaurant_id,
+                created_at: cart_item.created_at,
+              })
+              .where('item_id = :item_id', { item_id: cart_item.item_id })
+              .execute();
+          }
+        },
+      );
     }
   }
 }
