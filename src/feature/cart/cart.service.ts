@@ -122,7 +122,9 @@ export class CartService {
           i.sku_id == sku_id &&
           i.advanced_taste_customization_obj ==
             advanced_taste_customization_obj_txt &&
-          i.basic_taste_customization_obj == basic_taste_customization_obj_txt,
+          i.basic_taste_customization_obj ==
+            basic_taste_customization_obj_txt &&
+          i.notes == notes,
       );
       if (existingItem) {
         //The item does exist => increase the quantity
