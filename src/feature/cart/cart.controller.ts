@@ -8,6 +8,8 @@ import { UpdateCartAdvancedRequest } from './dto/update-cart-advanced-request.dt
 import { UpdateCartAdvancedResponse } from './dto/update-cart-advanced-response.dto';
 import { GetCartDetailResponse } from './dto/get-cart-detail-response.dto';
 import { CartItem } from 'src/entity/cart-item.entity';
+import { UpdateCartBasicRequest } from './dto/update-cart-basic-request.dto';
+import { UpdateCartBasicResponse } from './dto/update-cart-basic-response.dto';
 
 @Controller()
 export class CartController {
@@ -116,6 +118,41 @@ export class CartController {
             basic_taste_customization_obj,
             notes,
             lang,
+          );
+        res.statusCode = 200;
+        res.message = 'Update cart successfully';
+        res.data = {
+          customer_id: data.customer_id,
+          cart_info: cartItems,
+        };
+      } catch (error) {
+        if (error instanceof HttpException) {
+          res.statusCode = error.getStatus();
+          res.message = error.getResponse();
+          res.data = null;
+        } else {
+          res.statusCode = 500;
+          res.message = error.toString();
+          res.data = null;
+        }
+      }
+
+      return res;
+    }
+  }
+
+  @MessagePattern({ cmd: 'update_cart_basic' })
+  async updateCartBasic(
+    data: UpdateCartBasicRequest,
+  ): Promise<UpdateCartBasicResponse> {
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      const { customer_id, updated_items } = data;
+      const res = new UpdateCartAdvancedResponse(200, '');
+      try {
+        const cartItems: CartItem[] =
+          await this.cartService.updateCartBasicFromEndPoint(
+            customer_id,
+            updated_items,
           );
         res.statusCode = 200;
         res.message = 'Update cart successfully';

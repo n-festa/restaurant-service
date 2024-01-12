@@ -8,7 +8,7 @@ import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
   OptionSelection,
-  UpdatedCartItem,
+  QuantityUpdatedItem,
 } from 'src/type';
 
 @Injectable()
@@ -508,6 +508,16 @@ export class CartService {
           }
         },
       );
+    }
+  }
+
+  async updateCartBasicFromEndPoint(
+    customer_id: number,
+    quantity_updated_items: QuantityUpdatedItem[],
+  ): Promise<CartItem[]> {
+    // https://n-festa.atlassian.net/browse/FES-28
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      return await this.getCart(customer_id);
     }
   }
 }
