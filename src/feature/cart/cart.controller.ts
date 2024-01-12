@@ -92,16 +92,27 @@ export class CartController {
   @MessagePattern({ cmd: 'update_cart' })
   async updateCart(data: UpdateCartRequest): Promise<UpdateCartResponse> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      const { customer_id, updated_items, lang = 'vie' } = data;
+      const {
+        customer_id,
+        item_id,
+        sku_id,
+        qty_ordered,
+        advanced_taste_customization_obj,
+        basic_taste_customization_obj,
+        notes,
+        lang = 'vie',
+      } = data;
       const res = new UpdateCartResponse(200, '');
       try {
-        if (updated_items.length <= 0) {
-          throw new HttpException('Updated Items cannot be empty', 400);
-        }
         const cartItems: CartItem[] =
           await this.cartService.updateCartFromEndPoint(
             customer_id,
-            updated_items,
+            item_id,
+            sku_id,
+            qty_ordered,
+            advanced_taste_customization_obj,
+            basic_taste_customization_obj,
+            notes,
             lang,
           );
         res.statusCode = 200;
