@@ -4,8 +4,8 @@ import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { AddToCartRequest } from './dto/add-to-cart-request.dto';
 import { AddToCartResponse } from './dto/add-to-cart-response.dto';
-import { UpdateCartRequest } from './dto/update-cart-request.dto';
-import { UpdateCartResponse } from './dto/update-cart-response.dto';
+import { UpdateCartAdvancedRequest } from './dto/update-cart-advanced-request.dto';
+import { UpdateCartAdvancedResponse } from './dto/update-cart-advanced-response.dto';
 import { GetCartDetailResponse } from './dto/get-cart-detail-response.dto';
 import { CartItem } from 'src/entity/cart-item.entity';
 
@@ -89,8 +89,10 @@ export class CartController {
     }
   }
 
-  @MessagePattern({ cmd: 'update_cart' })
-  async updateCart(data: UpdateCartRequest): Promise<UpdateCartResponse> {
+  @MessagePattern({ cmd: 'update_cart_advanced' })
+  async updateCartAdvanced(
+    data: UpdateCartAdvancedRequest,
+  ): Promise<UpdateCartAdvancedResponse> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
       const {
         customer_id,
@@ -102,7 +104,7 @@ export class CartController {
         notes,
         lang = 'vie',
       } = data;
-      const res = new UpdateCartResponse(200, '');
+      const res = new UpdateCartAdvancedResponse(200, '');
       try {
         const cartItems: CartItem[] =
           await this.cartService.updateCartAdvancedFromEndPoint(
