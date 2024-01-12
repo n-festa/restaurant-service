@@ -546,7 +546,31 @@ export class CartService {
         );
       }
 
+      // MASS UPDATE
+      await this.massUpdateCartItemWithQuantity(quantity_updated_items);
+
       return await this.getCart(customer_id);
+    }
+  }
+
+  async massUpdateCartItemWithQuantity(
+    items: QuantityUpdatedItem[],
+  ): Promise<void> {
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      await this.entityManager.transaction(
+        async (transactionalEntityManager) => {
+          for (const item of items) {
+            await transactionalEntityManager
+              .createQueryBuilder()
+              .update(CartItem)
+              .set({
+                qty_ordered: item.qty_ordered,
+              })
+              .where('item_id = :item_id', { item_id: item.item_id })
+              .execute();
+          }
+        },
+      );
     }
   }
 }
