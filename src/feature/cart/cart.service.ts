@@ -236,7 +236,7 @@ export class CartService {
     }
   }
 
-  async updateCartFromEndPoint(
+  async updateCartAdvancedFromEndPoint(
     customer_id: number,
     item_id: number,
     sku_id: number,
@@ -247,6 +247,8 @@ export class CartService {
     lang: string,
   ): Promise<CartItem[]> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      // https://n-festa.atlassian.net/browse/FES-28
+
       // Get the corresponding cart items in DB
       const mentionedCartItem = (
         await this.getCartByItemId([item_id], customer_id)

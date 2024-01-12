@@ -105,7 +105,7 @@ export class CartController {
       const res = new UpdateCartResponse(200, '');
       try {
         const cartItems: CartItem[] =
-          await this.cartService.updateCartFromEndPoint(
+          await this.cartService.updateCartAdvancedFromEndPoint(
             customer_id,
             item_id,
             sku_id,
