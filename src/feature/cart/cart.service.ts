@@ -517,6 +517,35 @@ export class CartService {
   ): Promise<CartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      // quantity_updated_items cannot be empty
+      if (!quantity_updated_items || quantity_updated_items.length <= 0) {
+        throw new HttpException('The updated_items cannot be empty', 400);
+      }
+
+      // Get the corresponding cart items in DB
+      const mentionedCartItems = await this.getCartByItemId(
+        quantity_updated_items.map((i) => i.item_id),
+        customer_id,
+      );
+      // The list of updated items must belong to the customer
+      if (mentionedCartItems.length != quantity_updated_items.length) {
+        throw new HttpException(
+          'Some of cart items do not belong to the customer or not exist',
+          404,
+        );
+      }
+
+      // The quantity must be greater than 0
+      const isQuantityValid = quantity_updated_items.find(
+        (i) => !Boolean(i.qty_ordered > 0),
+      );
+      if (isQuantityValid) {
+        throw new HttpException(
+          'The quantity cannot be negative or different from number',
+          400,
+        );
+      }
+
       return await this.getCart(customer_id);
     }
   }
