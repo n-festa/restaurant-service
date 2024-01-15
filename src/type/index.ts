@@ -98,3 +98,8 @@ export interface UpdatedCartItem {
   basic_taste_customization_obj: BasicTasteSelection[];
   notes: string;
 }
+
+export interface QuantityUpdatedItem {
+  item_id: number;
+  qty_ordered: number;
+}

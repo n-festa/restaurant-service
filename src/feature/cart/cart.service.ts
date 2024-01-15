@@ -8,7 +8,7 @@ import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
   OptionSelection,
-  UpdatedCartItem,
+  QuantityUpdatedItem,
 } from 'src/type';
 
 @Injectable()
@@ -236,7 +236,7 @@ export class CartService {
     }
   }
 
-  async updateCartFromEndPoint(
+  async updateCartAdvancedFromEndPoint(
     customer_id: number,
     item_id: number,
     sku_id: number,
@@ -247,6 +247,8 @@ export class CartService {
     lang: string,
   ): Promise<CartItem[]> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      // https://n-festa.atlassian.net/browse/FES-28
+
       // Get the corresponding cart items in DB
       const mentionedCartItem = (
         await this.getCartByItemId([item_id], customer_id)
@@ -502,6 +504,69 @@ export class CartService {
                 created_at: cart_item.created_at,
               })
               .where('item_id = :item_id', { item_id: cart_item.item_id })
+              .execute();
+          }
+        },
+      );
+    }
+  }
+
+  async updateCartBasicFromEndPoint(
+    customer_id: number,
+    quantity_updated_items: QuantityUpdatedItem[],
+  ): Promise<CartItem[]> {
+    // https://n-festa.atlassian.net/browse/FES-28
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      // quantity_updated_items cannot be empty
+      if (!quantity_updated_items || quantity_updated_items.length <= 0) {
+        throw new HttpException('The updated_items cannot be empty', 400);
+      }
+
+      // Get the corresponding cart items in DB
+      const mentionedCartItems = await this.getCartByItemId(
+        quantity_updated_items.map((i) => i.item_id),
+        customer_id,
+      );
+      // The list of updated items must belong to the customer
+      if (mentionedCartItems.length != quantity_updated_items.length) {
+        throw new HttpException(
+          'Some of cart items do not belong to the customer or not exist',
+          404,
+        );
+      }
+
+      // The quantity must be greater than 0
+      const isQuantityValid = quantity_updated_items.find(
+        (i) => !Boolean(i.qty_ordered > 0),
+      );
+      if (isQuantityValid) {
+        throw new HttpException(
+          'The quantity cannot be negative or different from number',
+          400,
+        );
+      }
+
+      // MASS UPDATE
+      await this.massUpdateCartItemWithQuantity(quantity_updated_items);
+
+      return await this.getCart(customer_id);
+    }
+  }
+
+  async massUpdateCartItemWithQuantity(
+    items: QuantityUpdatedItem[],
+  ): Promise<void> {
+    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
+      await this.entityManager.transaction(
+        async (transactionalEntityManager) => {
+          for (const item of items) {
+            await transactionalEntityManager
+              .createQueryBuilder()
+              .update(CartItem)
+              .set({
+                qty_ordered: item.qty_ordered,
+              })
+              .where('item_id = :item_id', { item_id: item.item_id })
               .execute();
           }
         },

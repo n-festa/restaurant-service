@@ -1,4 +1,4 @@
-export class UpdateCartRequest {
+export class UpdateCartAdvancedRequest {
   customer_id: number;
   item_id: number;
   sku_id: number;

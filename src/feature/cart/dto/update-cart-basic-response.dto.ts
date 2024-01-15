@@ -1,6 +1,6 @@
 import { GeneralResponse } from 'src/dto/general-response.dto';
 
-export class UpdateCartResponse extends GeneralResponse {
+export class UpdateCartBasicResponse extends GeneralResponse {
   data: CartDetail;
 }
 
