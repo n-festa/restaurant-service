@@ -573,4 +573,15 @@ export class CartService {
       );
     }
   }
+
+  async deleteAllCartItem(customer_id: number) {
+    if (this.flagService.isFeatureEnabled('fes-36-delete-whole-cart')) {
+      await this.entityManager
+        .createQueryBuilder()
+        .delete()
+        .from(CartItem)
+        .where('customer_id = :customer_id', { customer_id })
+        .execute();
+    }
+  }
 }
