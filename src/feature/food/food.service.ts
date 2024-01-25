@@ -56,7 +56,7 @@ export class FoodService {
       max: rawData[0].max,
     };
     return range;
-  }
+  } // end of getPriceRangeByMenuItem
 
   async getFoodsWithListOfRestaurants(restaurantIds: number[]) {
     const foodList = await this.menuItemRepo
@@ -70,7 +70,7 @@ export class FoodService {
       .andWhere('sku.is_active = :active', { active: TRUE })
       .getMany();
     return foodList;
-  }
+  } // end of getFoodsWithListOfRestaurants
 
   async getFoodsWithListOfMenuItem(
     menuItems: number[],
@@ -132,7 +132,7 @@ export class FoodService {
     }
 
     return foodList;
-  }
+  } // end of getFoodsWithListOfMenuItem
 
   async getFoodDetailByMenuItemId(
     menuItemId: number,
@@ -237,7 +237,7 @@ export class FoodService {
     result.message = 'Getting Food Detail Successfully';
     result.data = data;
     return result;
-  }
+  } // end of getFoodDetailByMenuItemId
 
   async getReviewByMenuItemId(menu_item_id: number): Promise<Review[]> {
     const reviews: Review[] = [];
@@ -264,7 +264,7 @@ export class FoodService {
     }
 
     return reviews;
-  }
+  } // end of getReviewByMenuItemId
 
   async getRatingStatisticByMenuItemId(
     menu_item_id: number,
@@ -281,7 +281,7 @@ export class FoodService {
       min_score: Number(data[0].min) || null,
     };
     return result;
-  }
+  } // end of getRatingStatisticByMenuItemId
 
   async getAllMediaByMenuItemId(menu_item_id: number): Promise<Media[]> {
     // Get data from table Media
@@ -307,7 +307,7 @@ export class FoodService {
       .orWhere('media.packaging_id IN (:...packaging_ids)', { packaging_ids })
       .getMany();
     return data;
-  }
+  } // end of getAllMediaByMenuItemId
 
   async getPackagingByMenuItemId(menu_item_id: number): Promise<Packaging[]> {
     const data = await this.entityManager
@@ -316,7 +316,7 @@ export class FoodService {
       .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
       .getMany();
     return data;
-  }
+  } // end of getPackagingByMenuItemId
 
   async getRecipeByMenuItemId(menu_item_id: number): Promise<Recipe[]> {
     const data = await this.entityManager
@@ -326,7 +326,7 @@ export class FoodService {
       .where('recipe.menu_item_id = :menu_item_id', { menu_item_id })
       .getMany();
     return data;
-  }
+  } // end of getRecipeByMenuItemId
 
   async getPortionCustomizationByMenuItemId(
     menu_item_id: number,
@@ -340,7 +340,7 @@ export class FoodService {
       .andWhere("attribute.type_id = 'portion'")
       .getMany();
     return data;
-  }
+  } // end of getPortionCustomizationByMenuItemId
 
   async generatePackageSentenceByLang(packageInfo: Packaging[]) {
     const sentenceByLang: TextByLang[] = [];
@@ -354,7 +354,7 @@ export class FoodService {
       });
     }
     return sentenceByLang;
-  }
+  } // end of generatePackageSentenceByLang
 
   async convertPortionCustomization(
     portionCustomization: MenuItemAttribute[],
@@ -387,7 +387,7 @@ export class FoodService {
       options.push(option);
     }
     return options;
-  }
+  } // end of convertPortionCustomization
 
   async convertTasteCustomization(
     tasteCustomization: MenuItemAttribute[],
@@ -424,7 +424,7 @@ export class FoodService {
       options.push(option);
     }
     return options;
-  }
+  } // end of convertTasteCustomization
 
   async getListOfSkuById(id: number) {
     const result = new GeneralResponse(200, '');
@@ -476,7 +476,8 @@ export class FoodService {
     result.message = 'Getting List Of SKUs Successfully';
     result.data = data;
     return result;
-  }
+  } // end of getListOfSkuById
+
   async getSkuPriceUnit(sku_id: number) {
     const unit = await this.entityManager
       .createQueryBuilder(Unit, 'unit')
@@ -490,7 +491,7 @@ export class FoodService {
       .where('sku.sku_id = :sku_id', { sku_id })
       .getOne();
     return unit.symbol;
-  }
+  } // end of getSkuPriceUnit
 
   async getMenuItemPriceUnit(menu_item_id: number) {
     const unit = await this.entityManager
@@ -504,178 +505,174 @@ export class FoodService {
       .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
       .getOne();
     return unit.symbol;
-  }
+  } // end of getMenuItemPriceUnit
 
   async getSideDishByMenuItemId(
     inputData: GetSideDishRequest,
   ): Promise<GetSideDishResonse> {
-    if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
-      const res = new GetSideDishResonse(200, '');
+    const res = new GetSideDishResonse(200, '');
 
-      const { menu_item_id, timestamp } = inputData;
+    const { menu_item_id, timestamp } = inputData;
 
-      //Get the list of menu_item_id (side dishes) from table 'Main_Side_Dish'
-      const sideDishesIds = (
-        await this.entityManager
-          .createQueryBuilder(MainSideDish, 'mainSideDish')
-          .where('mainSideDish.main_dish_id = :main_dish_id', {
-            main_dish_id: menu_item_id,
-          })
-          .select('mainSideDish.side_dish_id')
-          .getMany()
-      ).map((item) => item.side_dish_id);
+    //Get the list of menu_item_id (side dishes) from table 'Main_Side_Dish'
+    const sideDishesIds = (
+      await this.entityManager
+        .createQueryBuilder(MainSideDish, 'mainSideDish')
+        .where('mainSideDish.main_dish_id = :main_dish_id', {
+          main_dish_id: menu_item_id,
+        })
+        .select('mainSideDish.side_dish_id')
+        .getMany()
+    ).map((item) => item.side_dish_id);
 
-      // Check if there is no sidedish for this main dish
-      if (sideDishesIds.length === 0) {
-        res.statusCode = 404;
-        res.message = 'No side dishes found';
-        return res;
-      }
-
-      //Get main dish schedule
-      const mainDishSchedule = JSON.parse(
-        (
-          await this.entityManager
-            .createQueryBuilder(MenuItem, 'menuItem')
-            .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
-            .getOne()
-        )?.cooking_schedule || null,
-      );
-
-      //get the earlies available dayshift of main dish
-      const earliestDayShift = this.getEarliesAvailabeDayShift(
-        timestamp,
-        mainDishSchedule,
-      );
-
-      //Get data for the side dishes
-      const sideDishes = await this.getFoodsWithListOfMenuItem(sideDishesIds);
-
-      //Filter availabe side dishes
-      const availableSideDishes = sideDishes.filter((sideDish) => {
-        const sideDishSchedule: DayShift[] = JSON.parse(
-          sideDish.cooking_schedule,
-        );
-        const correspondingDayShift = sideDishSchedule.find(
-          (dayShift) =>
-            dayShift.dayId == earliestDayShift.dayId &&
-            dayShift.from == earliestDayShift.from &&
-            dayShift.to == earliestDayShift.to,
-        );
-        return correspondingDayShift.isAvailable == true;
-      });
-
-      //Convert to DTO
-      const sideDishesDTOs: FoodDTO[] = [];
-      for (const availableSideDish of availableSideDishes) {
-        const sidesideDishesDTO: FoodDTO =
-          await this.commonService.convertIntoFoodDTO(availableSideDish);
-        sideDishesDTOs.push(sidesideDishesDTO);
-      }
-
-      res.statusCode = 200;
-      res.message = 'Get side dishes successfully';
-      res.data = sideDishesDTOs;
+    // Check if there is no sidedish for this main dish
+    if (sideDishesIds.length === 0) {
+      res.statusCode = 404;
+      res.message = 'No side dishes found';
       return res;
     }
-  }
+
+    //Get main dish schedule
+    const mainDishSchedule = JSON.parse(
+      (
+        await this.entityManager
+          .createQueryBuilder(MenuItem, 'menuItem')
+          .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+          .getOne()
+      )?.cooking_schedule || null,
+    );
+
+    //get the earlies available dayshift of main dish
+    const earliestDayShift = this.getEarliesAvailabeDayShift(
+      timestamp,
+      mainDishSchedule,
+    );
+
+    //Get data for the side dishes
+    const sideDishes = await this.getFoodsWithListOfMenuItem(sideDishesIds);
+
+    //Filter availabe side dishes
+    const availableSideDishes = sideDishes.filter((sideDish) => {
+      const sideDishSchedule: DayShift[] = JSON.parse(
+        sideDish.cooking_schedule,
+      );
+      const correspondingDayShift = sideDishSchedule.find(
+        (dayShift) =>
+          dayShift.dayId == earliestDayShift.dayId &&
+          dayShift.from == earliestDayShift.from &&
+          dayShift.to == earliestDayShift.to,
+      );
+      return correspondingDayShift.isAvailable == true;
+    });
+
+    //Convert to DTO
+    const sideDishesDTOs: FoodDTO[] = [];
+    for (const availableSideDish of availableSideDishes) {
+      const sidesideDishesDTO: FoodDTO =
+        await this.commonService.convertIntoFoodDTO(availableSideDish);
+      sideDishesDTOs.push(sidesideDishesDTO);
+    }
+
+    res.statusCode = 200;
+    res.message = 'Get side dishes successfully';
+    res.data = sideDishesDTOs;
+    return res;
+  } // end of getSideDishByMenuItemId
 
   getEarliesAvailabeDayShift(
     timestamp: number,
     schedule: DayShift[],
   ): DayShift {
-    if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
-      const now = new Date(timestamp);
-      const currentTimeString = `${now
-        .getHours()
-        .toString()
-        .padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now
-        .getSeconds()
-        .toString()
-        .padStart(2, '0')}`;
-      console.log(currentTimeString);
-      const currentDayShift: DayShift = {
-        dayId: (now.getDay() + 1).toString(),
-        dayName: '',
-        from: '   ',
-        to: '',
-      };
-      switch (currentDayShift.dayId) {
-        case '1':
-          currentDayShift.dayName = Day.Sunday;
-          break;
-        case '2':
-          currentDayShift.dayName = Day.Monday;
-          break;
-        case '3':
-          currentDayShift.dayName = Day.Tuesday;
-          break;
-        case '4':
-          currentDayShift.dayName = Day.Wednesday;
-          break;
-        case '5':
-          currentDayShift.dayName = Day.Thursday;
-          break;
-        case '6':
-          currentDayShift.dayName = Day.Friday;
-          break;
-        case '7':
-          currentDayShift.dayName = Day.Saturday;
-          break;
+    const now = new Date(timestamp);
+    const currentTimeString = `${now
+      .getHours()
+      .toString()
+      .padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now
+      .getSeconds()
+      .toString()
+      .padStart(2, '0')}`;
+    console.log(currentTimeString);
+    const currentDayShift: DayShift = {
+      dayId: (now.getDay() + 1).toString(),
+      dayName: '',
+      from: '   ',
+      to: '',
+    };
+    switch (currentDayShift.dayId) {
+      case '1':
+        currentDayShift.dayName = Day.Sunday;
+        break;
+      case '2':
+        currentDayShift.dayName = Day.Monday;
+        break;
+      case '3':
+        currentDayShift.dayName = Day.Tuesday;
+        break;
+      case '4':
+        currentDayShift.dayName = Day.Wednesday;
+        break;
+      case '5':
+        currentDayShift.dayName = Day.Thursday;
+        break;
+      case '6':
+        currentDayShift.dayName = Day.Friday;
+        break;
+      case '7':
+        currentDayShift.dayName = Day.Saturday;
+        break;
 
-        default:
-          break;
-      }
-      if (
-        currentTimeString >= Shift.MorningFrom &&
-        currentTimeString <= Shift.MorningTo
-      ) {
-        currentDayShift.from = Shift.MorningFrom;
-        currentDayShift.to = Shift.MorningTo;
-      } else if (
-        currentTimeString >= Shift.AfternoonFrom &&
-        currentTimeString <= Shift.AfternoonTo
-      ) {
-        currentDayShift.from = Shift.AfternoonFrom;
-        currentDayShift.to = Shift.AfternoonTo;
-      } else if (
-        currentTimeString >= Shift.NightFrom ||
-        currentTimeString <= Shift.NightTo
-      ) {
-        currentDayShift.from = Shift.NightFrom;
-        currentDayShift.to = Shift.NightTo;
-      }
-
-      //Get earliest available day shift
-      const earliestAvailabeDayShift: DayShift = {
-        dayId: null,
-        dayName: null,
-        from: null,
-        to: null,
-        isAvailable: null,
-      };
-      const currentIndex = schedule.findIndex(
-        (item) =>
-          item.dayId == currentDayShift.dayId &&
-          item.from == currentDayShift.from &&
-          item.to == currentDayShift.to,
-      );
-      for (
-        let index = currentIndex;
-        index < schedule.length + currentIndex;
-        index++
-      ) {
-        const i = index % schedule.length;
-        if (schedule[i].isAvailable) {
-          earliestAvailabeDayShift.dayId = schedule[i].dayId;
-          earliestAvailabeDayShift.dayName = schedule[i].dayName;
-          earliestAvailabeDayShift.from = schedule[i].from;
-          earliestAvailabeDayShift.to = schedule[i].to;
-          earliestAvailabeDayShift.isAvailable = schedule[i].isAvailable;
-          break;
-        }
-      }
-      return earliestAvailabeDayShift;
+      default:
+        break;
     }
-  }
+    if (
+      currentTimeString >= Shift.MorningFrom &&
+      currentTimeString <= Shift.MorningTo
+    ) {
+      currentDayShift.from = Shift.MorningFrom;
+      currentDayShift.to = Shift.MorningTo;
+    } else if (
+      currentTimeString >= Shift.AfternoonFrom &&
+      currentTimeString <= Shift.AfternoonTo
+    ) {
+      currentDayShift.from = Shift.AfternoonFrom;
+      currentDayShift.to = Shift.AfternoonTo;
+    } else if (
+      currentTimeString >= Shift.NightFrom ||
+      currentTimeString <= Shift.NightTo
+    ) {
+      currentDayShift.from = Shift.NightFrom;
+      currentDayShift.to = Shift.NightTo;
+    }
+
+    //Get earliest available day shift
+    const earliestAvailabeDayShift: DayShift = {
+      dayId: null,
+      dayName: null,
+      from: null,
+      to: null,
+      isAvailable: null,
+    };
+    const currentIndex = schedule.findIndex(
+      (item) =>
+        item.dayId == currentDayShift.dayId &&
+        item.from == currentDayShift.from &&
+        item.to == currentDayShift.to,
+    );
+    for (
+      let index = currentIndex;
+      index < schedule.length + currentIndex;
+      index++
+    ) {
+      const i = index % schedule.length;
+      if (schedule[i].isAvailable) {
+        earliestAvailabeDayShift.dayId = schedule[i].dayId;
+        earliestAvailabeDayShift.dayName = schedule[i].dayName;
+        earliestAvailabeDayShift.from = schedule[i].from;
+        earliestAvailabeDayShift.to = schedule[i].to;
+        earliestAvailabeDayShift.isAvailable = schedule[i].isAvailable;
+        break;
+      }
+    }
+    return earliestAvailabeDayShift;
+  } // end of getEarliesAvailabeDayShift
 }

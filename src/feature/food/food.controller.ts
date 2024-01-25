@@ -14,17 +14,15 @@ export class FoodController {
   @MessagePattern({ cmd: 'get_food_detail_by_id' })
   async getFoodDetailById(id: number) {
     return await this.foodService.getFoodDetailByMenuItemId(id);
-  }
+  } // end of getFoodDetailById
 
   @MessagePattern({ cmd: 'get_list_of_sku_by_id' })
   async getListOfSkuById(id: number) {
     return await this.foodService.getListOfSkuById(id);
-  }
+  } // end of getListOfSkuById
 
   @MessagePattern({ cmd: 'get_side_dish_by_menu_item_id' })
   async getSideDishByMenuItemId(data: GetSideDishRequest) {
-    if (this.flagService.isFeatureEnabled('fes-23-get-side-dishes')) {
-      return await this.foodService.getSideDishByMenuItemId(data);
-    }
-  }
+    return await this.foodService.getSideDishByMenuItemId(data);
+  } //end of getSideDishByMenuItemId
 }

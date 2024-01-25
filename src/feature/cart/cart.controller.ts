@@ -22,217 +22,204 @@ export class CartController {
   ) {}
   @MessagePattern({ cmd: 'add_cart_item' })
   async addCartItem(data: AddToCartRequest): Promise<AddToCartResponse> {
-    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
-      const {
+    const {
+      customer_id,
+      sku_id,
+      qty_ordered,
+      advanced_taste_customization_obj,
+      basic_taste_customization_obj,
+      notes,
+    } = data;
+    const res = new AddToCartResponse(200, '');
+    try {
+      const cart = await this.cartService.addCartItem(
         customer_id,
         sku_id,
         qty_ordered,
         advanced_taste_customization_obj,
         basic_taste_customization_obj,
         notes,
-      } = data;
-      const res = new AddToCartResponse(200, '');
-      try {
-        const cart = await this.cartService.addCartItem(
-          customer_id,
-          sku_id,
-          qty_ordered,
-          advanced_taste_customization_obj,
-          basic_taste_customization_obj,
-          notes,
-        );
-        //success
-        res.statusCode = 200;
-        res.message = 'Add to cart successfully';
-        res.data = {
-          customer_id: customer_id,
-          cart_info: cart,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+      );
+      //success
+      res.statusCode = 200;
+      res.message = 'Add to cart successfully';
+      res.data = {
+        customer_id: customer_id,
+        cart_info: cart,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-      return res;
     }
+    return res;
   } // end of addCartItem
 
   @MessagePattern({ cmd: 'get_cart_detail' })
   async getCartDetail(customer_id: number): Promise<GetCartDetailResponse> {
-    if (this.flagService.isFeatureEnabled('fes-27-get-cart-info')) {
-      const res = new GetCartDetailResponse(200, '');
+    const res = new GetCartDetailResponse(200, '');
 
-      try {
-        const cartItems: CartItem[] =
-          await this.cartService.getCart(customer_id);
-        res.statusCode = 200;
-        res.message = 'Get cart detail successfully';
-        res.data = {
-          customer_id: customer_id,
-          cart_info: cartItems,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
-        return res;
+    try {
+      const cartItems: CartItem[] = await this.cartService.getCart(customer_id);
+      res.statusCode = 200;
+      res.message = 'Get cart detail successfully';
+      res.data = {
+        customer_id: customer_id,
+        cart_info: cartItems,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-
       return res;
     }
+
+    return res;
   } // end of getCartDetail
 
   @MessagePattern({ cmd: 'update_cart_advanced' })
   async updateCartAdvanced(
     data: UpdateCartAdvancedRequest,
   ): Promise<UpdateCartAdvancedResponse> {
-    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      const {
-        customer_id,
-        item_id,
-        sku_id,
-        qty_ordered,
-        advanced_taste_customization_obj,
-        basic_taste_customization_obj,
-        notes,
-        lang = 'vie',
-      } = data;
-      const res = new UpdateCartAdvancedResponse(200, '');
-      try {
-        const cartItems: CartItem[] =
-          await this.cartService.updateCartAdvancedFromEndPoint(
-            customer_id,
-            item_id,
-            sku_id,
-            qty_ordered,
-            advanced_taste_customization_obj,
-            basic_taste_customization_obj,
-            notes,
-            lang,
-          );
-        res.statusCode = 200;
-        res.message = 'Update cart successfully';
-        res.data = {
-          customer_id: data.customer_id,
-          cart_info: cartItems,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+    const {
+      customer_id,
+      item_id,
+      sku_id,
+      qty_ordered,
+      advanced_taste_customization_obj,
+      basic_taste_customization_obj,
+      notes,
+      lang = 'vie',
+    } = data;
+    const res = new UpdateCartAdvancedResponse(200, '');
+    try {
+      const cartItems: CartItem[] =
+        await this.cartService.updateCartAdvancedFromEndPoint(
+          customer_id,
+          item_id,
+          sku_id,
+          qty_ordered,
+          advanced_taste_customization_obj,
+          basic_taste_customization_obj,
+          notes,
+          lang,
+        );
+      res.statusCode = 200;
+      res.message = 'Update cart successfully';
+      res.data = {
+        customer_id: data.customer_id,
+        cart_info: cartItems,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-
-      return res;
     }
+
+    return res;
   } // end of updateCartAdvanced
 
   @MessagePattern({ cmd: 'update_cart_basic' })
   async updateCartBasic(
     data: UpdateCartBasicRequest,
   ): Promise<UpdateCartBasicResponse> {
-    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      const { customer_id, updated_items } = data;
-      const res = new UpdateCartAdvancedResponse(200, '');
-      try {
-        const cartItems: CartItem[] =
-          await this.cartService.updateCartBasicFromEndPoint(
-            customer_id,
-            updated_items,
-          );
-        res.statusCode = 200;
-        res.message = 'Update cart successfully';
-        res.data = {
-          customer_id: data.customer_id,
-          cart_info: cartItems,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+    const { customer_id, updated_items } = data;
+    const res = new UpdateCartAdvancedResponse(200, '');
+    try {
+      const cartItems: CartItem[] =
+        await this.cartService.updateCartBasicFromEndPoint(
+          customer_id,
+          updated_items,
+        );
+      res.statusCode = 200;
+      res.message = 'Update cart successfully';
+      res.data = {
+        customer_id: data.customer_id,
+        cart_info: cartItems,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-
-      return res;
     }
+
+    return res;
   } // end of updateCartBasic
 
   @MessagePattern({ cmd: 'delete_cart_items' })
   async deleteCartItems(
     requestData: DeleteCartItemRequest,
   ): Promise<DeleteCartItemResponse> {
-    if (this.flagService.isFeatureEnabled('fes-37-delete-some-of-cart-items')) {
-      const { customer_id, cart_items } = requestData;
-      const res = new DeleteCartItemResponse(200, '');
-      try {
-        const cart = await this.cartService.deleteCartItemsFromEndPoint(
-          customer_id,
-          cart_items,
-        );
-        res.statusCode = 200;
-        res.message = 'Delete cart items successfully';
-        res.data = {
-          customer_id: customer_id,
-          cart_info: cart,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+    const { customer_id, cart_items } = requestData;
+    const res = new DeleteCartItemResponse(200, '');
+    try {
+      const cart = await this.cartService.deleteCartItemsFromEndPoint(
+        customer_id,
+        cart_items,
+      );
+      res.statusCode = 200;
+      res.message = 'Delete cart items successfully';
+      res.data = {
+        customer_id: customer_id,
+        cart_info: cart,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-      return res;
     }
+    return res;
   } // end of deleteCartItems
 
   @MessagePattern({ cmd: 'delete_all_cart_item' })
   async deleteAllCartItem(customer_id: number): Promise<GeneralResponse> {
-    if (this.flagService.isFeatureEnabled('fes-36-delete-whole-cart')) {
-      const res = new GeneralResponse(200, '');
-      try {
-        await this.cartService.deleteAllCartItem(customer_id);
-        res.statusCode = 200;
-        res.message = 'Delete all cart items successfully';
+    const res = new GeneralResponse(200, '');
+    try {
+      await this.cartService.deleteAllCartItem(customer_id);
+      res.statusCode = 200;
+      res.message = 'Delete all cart items successfully';
+      res.data = null;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
         res.data = null;
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-      return res;
     }
+    return res;
   } // end of deleteAllCartItem
 }
