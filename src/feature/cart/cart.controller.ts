@@ -12,6 +12,7 @@ import { UpdateCartBasicRequest } from './dto/update-cart-basic-request.dto';
 import { UpdateCartBasicResponse } from './dto/update-cart-basic-response.dto';
 import { DeleteCartItemRequest } from './dto/delete-cart-item-request.dto';
 import { DeleteCartItemResponse } from './dto/delete-cart-item-response.dto';
+import { GeneralResponse } from 'src/dto/general-response.dto';
 
 @Controller()
 export class CartController {
@@ -60,7 +61,7 @@ export class CartController {
       }
       return res;
     }
-  }
+  } // end of addCartItem
 
   @MessagePattern({ cmd: 'get_cart_detail' })
   async getCartDetail(customer_id: number): Promise<GetCartDetailResponse> {
@@ -91,7 +92,7 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of getCartDetail
 
   @MessagePattern({ cmd: 'update_cart_advanced' })
   async updateCartAdvanced(
@@ -141,7 +142,7 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of updateCartAdvanced
 
   @MessagePattern({ cmd: 'update_cart_basic' })
   async updateCartBasic(
@@ -176,7 +177,7 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of updateCartBasic
 
   @MessagePattern({ cmd: 'delete_cart_items' })
   async deleteCartItems(
@@ -210,4 +211,28 @@ export class CartController {
       return res;
     }
   } // end of deleteCartItems
+
+  @MessagePattern({ cmd: 'delete_all_cart_item' })
+  async deleteAllCartItem(customer_id: number): Promise<GeneralResponse> {
+    if (this.flagService.isFeatureEnabled('fes-36-delete-whole-cart')) {
+      const res = new GeneralResponse(200, '');
+      try {
+        await this.cartService.deleteAllCartItem(customer_id);
+        res.statusCode = 200;
+        res.message = 'Delete all cart items successfully';
+        res.data = null;
+      } catch (error) {
+        if (error instanceof HttpException) {
+          res.statusCode = error.getStatus();
+          res.message = error.getResponse();
+          res.data = null;
+        } else {
+          res.statusCode = 500;
+          res.message = error.toString();
+          res.data = null;
+        }
+      }
+      return res;
+    }
+  } // end of deleteAllCartItem
 }

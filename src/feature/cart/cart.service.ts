@@ -158,7 +158,7 @@ export class CartService {
       );
       return await this.getCart(customer_id);
     }
-  }
+  } // end of addCartItem
 
   async getCart(customer_id: number): Promise<CartItem[]> {
     if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
@@ -167,7 +167,7 @@ export class CartService {
         .where('cart.customer_id = :customer_id', { customer_id })
         .getMany();
     }
-  }
+  } // end of getCart
 
   async insertCart(
     customer_id: number,
@@ -200,7 +200,7 @@ export class CartService {
         })
         .execute();
     }
-  }
+  } // end of insertCart
 
   async updateCart(
     item_id: number,
@@ -234,7 +234,7 @@ export class CartService {
         .where('item_id = :item_id', { item_id })
         .execute();
     }
-  }
+  } // end of updateCart
 
   async updateCartAdvancedFromEndPoint(
     customer_id: number,
@@ -449,7 +449,8 @@ export class CartService {
 
       return await this.getCart(customer_id);
     }
-  }
+  } // end of updateCartAdvancedFromEndPoint
+
   async getCartByItemId(item_ids: number[], customer_id) {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
       return await this.entityManager
@@ -458,7 +459,7 @@ export class CartService {
         .andWhere('cart.item_id IN (:...item_ids)', { item_ids })
         .getMany();
     }
-  }
+  } // end of getCartByItemId
 
   async massUpdateCartItem(cart_items: CartItem[]): Promise<void> {
     //Only do the mass updating if the udated sku has the same as the sku of the current item
@@ -509,7 +510,7 @@ export class CartService {
         },
       );
     }
-  }
+  } // end of massUpdateCartItem
 
   async updateCartBasicFromEndPoint(
     customer_id: number,
@@ -551,7 +552,7 @@ export class CartService {
 
       return await this.getCart(customer_id);
     }
-  }
+  } // end of updateCartBasicFromEndPoint
 
   async massUpdateCartItemWithQuantity(
     items: QuantityUpdatedItem[],
@@ -572,7 +573,17 @@ export class CartService {
         },
       );
     }
-  }
+  } //end of massUpdateCartItemWithQuantity
+  async deleteAllCartItem(customer_id: number) {
+    if (this.flagService.isFeatureEnabled('fes-36-delete-whole-cart')) {
+      await this.entityManager
+        .createQueryBuilder()
+        .delete()
+        .from(CartItem)
+        .where('customer_id = :customer_id', { customer_id })
+        .execute();
+    }
+  } // end of deleteAllCartItem
 
   async deleteCartItemsFromEndPoint(
     customer_id: number,
