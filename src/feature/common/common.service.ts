@@ -426,24 +426,22 @@ export class CommonService {
   } // end of validateBasicTasteCustomizationObjWithMenuItem
 
   async checkIfSkuHasSameMenuItem(sku_ids: number[]): Promise<boolean> {
-    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      const skuList = await this.entityManager
-        .createQueryBuilder(SKU, 'sku')
-        .where('sku.sku_id IN (:...sku_ids)', { sku_ids })
-        .getMany();
+    const skuList = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .where('sku.sku_id IN (:...sku_ids)', { sku_ids })
+      .getMany();
 
-      if (skuList.length != sku_ids.length) {
-        throw new HttpException(
-          'There are some sku_id which does not exist',
-          404,
-        );
-      }
-      const menuItems = skuList.map((i) => i.menu_item_id);
-      const uniqueMenuItems = [...new Set(menuItems)];
-      if (uniqueMenuItems.length != 1) {
-        return false;
-      }
-      return true;
+    if (skuList.length != sku_ids.length) {
+      throw new HttpException(
+        'There are some sku_id which does not exist',
+        404,
+      );
     }
+    const menuItems = skuList.map((i) => i.menu_item_id);
+    const uniqueMenuItems = [...new Set(menuItems)];
+    if (uniqueMenuItems.length != 1) {
+      return false;
+    }
+    return true;
   } // end of checkIfSkuHasSameMenuItem
 }

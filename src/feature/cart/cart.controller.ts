@@ -93,85 +93,81 @@ export class CartController {
   async updateCartAdvanced(
     data: UpdateCartAdvancedRequest,
   ): Promise<UpdateCartAdvancedResponse> {
-    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      const {
-        customer_id,
-        item_id,
-        sku_id,
-        qty_ordered,
-        advanced_taste_customization_obj,
-        basic_taste_customization_obj,
-        notes,
-        lang = 'vie',
-      } = data;
-      const res = new UpdateCartAdvancedResponse(200, '');
-      try {
-        const cartItems: CartItem[] =
-          await this.cartService.updateCartAdvancedFromEndPoint(
-            customer_id,
-            item_id,
-            sku_id,
-            qty_ordered,
-            advanced_taste_customization_obj,
-            basic_taste_customization_obj,
-            notes,
-            lang,
-          );
-        res.statusCode = 200;
-        res.message = 'Update cart successfully';
-        res.data = {
-          customer_id: data.customer_id,
-          cart_info: cartItems,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+    const {
+      customer_id,
+      item_id,
+      sku_id,
+      qty_ordered,
+      advanced_taste_customization_obj,
+      basic_taste_customization_obj,
+      notes,
+      lang = 'vie',
+    } = data;
+    const res = new UpdateCartAdvancedResponse(200, '');
+    try {
+      const cartItems: CartItem[] =
+        await this.cartService.updateCartAdvancedFromEndPoint(
+          customer_id,
+          item_id,
+          sku_id,
+          qty_ordered,
+          advanced_taste_customization_obj,
+          basic_taste_customization_obj,
+          notes,
+          lang,
+        );
+      res.statusCode = 200;
+      res.message = 'Update cart successfully';
+      res.data = {
+        customer_id: data.customer_id,
+        cart_info: cartItems,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-
-      return res;
     }
+
+    return res;
   } // end of updateCartAdvanced
 
   @MessagePattern({ cmd: 'update_cart_basic' })
   async updateCartBasic(
     data: UpdateCartBasicRequest,
   ): Promise<UpdateCartBasicResponse> {
-    if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
-      const { customer_id, updated_items } = data;
-      const res = new UpdateCartAdvancedResponse(200, '');
-      try {
-        const cartItems: CartItem[] =
-          await this.cartService.updateCartBasicFromEndPoint(
-            customer_id,
-            updated_items,
-          );
-        res.statusCode = 200;
-        res.message = 'Update cart successfully';
-        res.data = {
-          customer_id: data.customer_id,
-          cart_info: cartItems,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+    const { customer_id, updated_items } = data;
+    const res = new UpdateCartAdvancedResponse(200, '');
+    try {
+      const cartItems: CartItem[] =
+        await this.cartService.updateCartBasicFromEndPoint(
+          customer_id,
+          updated_items,
+        );
+      res.statusCode = 200;
+      res.message = 'Update cart successfully';
+      res.data = {
+        customer_id: data.customer_id,
+        cart_info: cartItems,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-
-      return res;
     }
+
+    return res;
   } // end of updateCartBasic
 
   @MessagePattern({ cmd: 'delete_cart_items' })
