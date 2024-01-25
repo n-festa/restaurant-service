@@ -59,7 +59,7 @@ export class CartController {
       }
       return res;
     }
-  }
+  } // end of addCartItem
 
   @MessagePattern({ cmd: 'get_cart_detail' })
   async getCartDetail(customer_id: number): Promise<GetCartDetailResponse> {
@@ -90,7 +90,7 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of getCartDetail
 
   @MessagePattern({ cmd: 'update_cart_advanced' })
   async updateCartAdvanced(
@@ -140,7 +140,7 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of updateCartAdvanced
 
   @MessagePattern({ cmd: 'update_cart_basic' })
   async updateCartBasic(
@@ -175,7 +175,7 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of updateCartBasic
 
   @MessagePattern({ cmd: 'delete_all_cart_item' })
   async deleteAllCartItem(customer_id: number): Promise<GeneralResponse> {
@@ -200,5 +200,5 @@ export class CartController {
 
       return res;
     }
-  }
+  } // end of deleteAllCartItem
 }
