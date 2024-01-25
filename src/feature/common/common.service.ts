@@ -36,7 +36,7 @@ export class CommonService {
       .createQueryBuilder(RestaurantExt, 'resExt')
       .where('resExt.restaurant_id = :id', { id })
       .getMany();
-  }
+  } // end of getRestaurantExtension
 
   async getReviewsByRestaurantId(
     restaurant_id: number,
@@ -70,7 +70,7 @@ export class CommonService {
     }
 
     return reviews;
-  }
+  } // end of getReviewsByRestaurantId
 
   async getAvailableSkuDiscountBySkuId(skuId: number): Promise<SkuDiscount> {
     const now = new Date();
@@ -88,7 +88,8 @@ export class CommonService {
         },
       });
     return skuDiscount;
-  }
+  } // end of getAvailableSkuDiscountBySkuId
+
   async getAvailableDiscountPrice(sku: SKU) {
     let discountPrice = sku.price;
     const skuDiscount = await this.getAvailableSkuDiscountBySkuId(sku.sku_id);
@@ -107,7 +108,7 @@ export class CommonService {
     }
 
     return discountPrice;
-  }
+  } // end of getAvailableDiscountPrice
 
   async convertIntoFoodDTO(
     menuItem: MenuItem,
@@ -171,160 +172,154 @@ export class CommonService {
       cooking_schedule: menuItem.cooking_schedule,
       units_sold: menuItem.units_sold,
     };
-  }
+  } // end of convertIntoFoodDTO
 
   async interpretAdvanceTaseCustomization(
     obj_list: OptionSelection[],
     lang: string = 'vie',
   ): Promise<string> {
-    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
-      let result = '';
+    let result = '';
 
-      //if object is empty => return ''
-      if (obj_list.length == 0) {
-        result = '';
-        return result;
-      }
-
-      const menuItemAttributeIds = obj_list.map((i) => i.option_id);
-      const menuItemAttributes = await this.entityManager
-        .createQueryBuilder(MenuItemAttribute, 'menuItemAttribute')
-        .leftJoinAndSelect('menuItemAttribute.taste_ext', 'taseExt')
-        .where('menuItemAttribute.attribute_id IN (:...menuItemAttributeIds)', {
-          menuItemAttributeIds,
-        })
-        .andWhere('menuItemAttribute.type_id = :type', { type: 'taste' })
-        .andWhere('taseExt.ISO_language_code = :lang', { lang })
-        .getMany();
-
-      const menuItemAttributeValueIds = obj_list.map((i) => i.value_id);
-      const menuItemAttributeValues = await this.entityManager
-        .createQueryBuilder(MenuItemAttributeValue, 'attValue')
-        .leftJoinAndSelect('attValue.taste_value_ext', 'ext')
-        .where('attValue.value_id IN (:...menuItemAttributeValueIds)', {
-          menuItemAttributeValueIds,
-        })
-        .andWhere('attValue.taste_value <> :tasteVal', { tasteVal: 'original' }) //dont generate note for original options
-        .andWhere('ext.ISO_language_code = :lang', { lang })
-        .getMany();
-
-      const strArr = [];
-      for (const option of obj_list) {
-        let str = '';
-        const menuItemAttribute = menuItemAttributes.find(
-          (i) => i.attribute_id.toString() == option.option_id,
-        );
-        //check if the option_id has been filtered out
-        if (!menuItemAttribute) {
-          continue;
-        }
-        const menuItemAttributeValue = menuItemAttributeValues.find(
-          (i) => i.value_id.toString() == option.value_id,
-        );
-        // check if the value_id has been filtered out
-        if (!menuItemAttributeValue) {
-          continue;
-        }
-        //check if the option_id and value_id is consistent - belong to the same attribute_id
-        if (
-          menuItemAttributeValue.attribute_id != menuItemAttribute.attribute_id
-        ) {
-          console.log(
-            'menuItemAttributeValue ',
-            menuItemAttributeValue.value_id,
-            ' does not belong to menuItemAttribute ',
-            menuItemAttribute.attribute_id,
-          );
-          continue;
-        }
-        str =
-          menuItemAttributeValue.taste_value_ext[0].name +
-          ' ' +
-          menuItemAttribute.taste_ext[0].name;
-
-        strArr.push(str);
-      }
-      result = strArr.join(' - ');
-
+    //if object is empty => return ''
+    if (obj_list.length == 0) {
+      result = '';
       return result;
     }
-  }
+
+    const menuItemAttributeIds = obj_list.map((i) => i.option_id);
+    const menuItemAttributes = await this.entityManager
+      .createQueryBuilder(MenuItemAttribute, 'menuItemAttribute')
+      .leftJoinAndSelect('menuItemAttribute.taste_ext', 'taseExt')
+      .where('menuItemAttribute.attribute_id IN (:...menuItemAttributeIds)', {
+        menuItemAttributeIds,
+      })
+      .andWhere('menuItemAttribute.type_id = :type', { type: 'taste' })
+      .andWhere('taseExt.ISO_language_code = :lang', { lang })
+      .getMany();
+
+    const menuItemAttributeValueIds = obj_list.map((i) => i.value_id);
+    const menuItemAttributeValues = await this.entityManager
+      .createQueryBuilder(MenuItemAttributeValue, 'attValue')
+      .leftJoinAndSelect('attValue.taste_value_ext', 'ext')
+      .where('attValue.value_id IN (:...menuItemAttributeValueIds)', {
+        menuItemAttributeValueIds,
+      })
+      .andWhere('attValue.taste_value <> :tasteVal', { tasteVal: 'original' }) //dont generate note for original options
+      .andWhere('ext.ISO_language_code = :lang', { lang })
+      .getMany();
+
+    const strArr = [];
+    for (const option of obj_list) {
+      let str = '';
+      const menuItemAttribute = menuItemAttributes.find(
+        (i) => i.attribute_id.toString() == option.option_id,
+      );
+      //check if the option_id has been filtered out
+      if (!menuItemAttribute) {
+        continue;
+      }
+      const menuItemAttributeValue = menuItemAttributeValues.find(
+        (i) => i.value_id.toString() == option.value_id,
+      );
+      // check if the value_id has been filtered out
+      if (!menuItemAttributeValue) {
+        continue;
+      }
+      //check if the option_id and value_id is consistent - belong to the same attribute_id
+      if (
+        menuItemAttributeValue.attribute_id != menuItemAttribute.attribute_id
+      ) {
+        console.log(
+          'menuItemAttributeValue ',
+          menuItemAttributeValue.value_id,
+          ' does not belong to menuItemAttribute ',
+          menuItemAttribute.attribute_id,
+        );
+        continue;
+      }
+      str =
+        menuItemAttributeValue.taste_value_ext[0].name +
+        ' ' +
+        menuItemAttribute.taste_ext[0].name;
+
+      strArr.push(str);
+    }
+    result = strArr.join(' - ');
+
+    return result;
+  } // end of interpretAdvanceTaseCustomization
 
   async interpretBasicTaseCustomization(
     obj_list: BasicTasteSelection[],
     lang: string = 'vie',
   ): Promise<string> {
-    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
-      let result: string = '';
+    let result: string = '';
 
-      //if object is empty => return ''
-      if (obj_list.length == 0) {
-        result = '';
-        return result;
-      }
-
-      //get unique no_adding_id from obj_list
-      const uniqueNoAddingIds = obj_list
-        .map((i) => i.no_adding_id)
-        .filter((value, index, self) => {
-          return self.indexOf(value) === index;
-        });
-
-      result = (
-        await this.entityManager
-          .createQueryBuilder(NoAddingExt, 'ext')
-          .where('ext.no_adding_id IN (:...uniqueNoAddingIds)', {
-            uniqueNoAddingIds,
-          })
-          .andWhere('ext.ISO_language_code = :lang', { lang })
-          .getMany()
-      )
-        .map((i) => i.description)
-        .join(' - ');
-
+    //if object is empty => return ''
+    if (obj_list.length == 0) {
+      result = '';
       return result;
     }
-  }
+
+    //get unique no_adding_id from obj_list
+    const uniqueNoAddingIds = obj_list
+      .map((i) => i.no_adding_id)
+      .filter((value, index, self) => {
+        return self.indexOf(value) === index;
+      });
+
+    result = (
+      await this.entityManager
+        .createQueryBuilder(NoAddingExt, 'ext')
+        .where('ext.no_adding_id IN (:...uniqueNoAddingIds)', {
+          uniqueNoAddingIds,
+        })
+        .andWhere('ext.ISO_language_code = :lang', { lang })
+        .getMany()
+    )
+      .map((i) => i.description)
+      .join(' - ');
+
+    return result;
+  } // end of interpretBasicTaseCustomization
 
   async interpretPortionCustomization(
     sku_id: number,
     lang: string = 'vie',
   ): Promise<string> {
-    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
-      let result: string = '';
+    let result: string = '';
 
-      const skuDetail = await this.entityManager
-        .createQueryBuilder(SkuDetail, 'skuDetail')
-        .leftJoinAndSelect('skuDetail.attribute_obj', 'attribute')
-        .leftJoinAndSelect(
-          'attribute.menu_item_attribute_ext_obj',
-          'attributeExt',
-        )
-        .leftJoinAndSelect('skuDetail.value_obj', 'value')
-        .leftJoinAndSelect('value.unit_obj', 'unit')
-        .where('skuDetail.sku_id = :sku_id', { sku_id })
-        .andWhere('attributeExt.ISO_language_code = :lang', { lang })
-        .getMany();
+    const skuDetail = await this.entityManager
+      .createQueryBuilder(SkuDetail, 'skuDetail')
+      .leftJoinAndSelect('skuDetail.attribute_obj', 'attribute')
+      .leftJoinAndSelect(
+        'attribute.menu_item_attribute_ext_obj',
+        'attributeExt',
+      )
+      .leftJoinAndSelect('skuDetail.value_obj', 'value')
+      .leftJoinAndSelect('value.unit_obj', 'unit')
+      .where('skuDetail.sku_id = :sku_id', { sku_id })
+      .andWhere('attributeExt.ISO_language_code = :lang', { lang })
+      .getMany();
 
-      if (skuDetail.length == 0) {
-        result = '';
-        return result;
-      }
-
-      result = skuDetail
-        .map((i) => {
-          return (
-            i.attribute_obj.menu_item_attribute_ext_obj[0].name +
-            ' ' +
-            i.value_obj.value +
-            i.value_obj.unit_obj.symbol
-          );
-        })
-        .join(' - ');
-
+    if (skuDetail.length == 0) {
+      result = '';
       return result;
     }
-  }
+
+    result = skuDetail
+      .map((i) => {
+        return (
+          i.attribute_obj.menu_item_attribute_ext_obj[0].name +
+          ' ' +
+          i.value_obj.value +
+          i.value_obj.unit_obj.symbol
+        );
+      })
+      .join(' - ');
+
+    return result;
+  } // end of interpretPortionCustomization
 
   async getBasicCustomizationByMenuItemId(
     menu_item_id: number,
@@ -337,7 +332,8 @@ export class CommonService {
       })
       .getMany();
     return data;
-  }
+  } // end of getBasicCustomizationByMenuItemId
+
   async getTasteCustomizationByMenuItemId(
     menu_item_id: number,
   ): Promise<MenuItemAttribute[]> {
@@ -350,86 +346,84 @@ export class CommonService {
       .andWhere("attribute.type_id = 'taste'")
       .getMany();
     return data;
-  }
+  } // end of getTasteCustomizationByMenuItemId
 
   async validateAdvacedTasteCustomizationObjWithMenuItem(
     obj_list: OptionSelection[],
     menu_item_id: number,
   ): Promise<ValidationResult> {
     // Check if the advanced_taste_customization_obj is all available to this menu item
-    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
-      const result: ValidationResult = {
-        isValid: true,
-        message: null,
-        data: null,
-      };
 
-      const avaibleAdvanceTasteCustomizationList = await this.entityManager
-        .createQueryBuilder(MenuItemAttribute, 'attribute')
-        .leftJoinAndSelect('attribute.values', 'values')
-        .where('attribute.menu_item_id = :menu_item_id', {
-          menu_item_id,
-        })
-        .andWhere("attribute.type_id = 'taste'")
-        .getMany();
-      for (const obj of obj_list) {
-        //find the attribute
-        const attribute = avaibleAdvanceTasteCustomizationList.find(
-          (i) => i.attribute_id.toString() == obj.option_id,
-        );
-        if (!attribute) {
-          result.isValid = false;
-          result.message = `Advanced Taste Customization: option_id ${obj.option_id} cannot be found`;
-          break;
-        }
-        //check the value
-        const value = attribute.values.find(
-          (i) => i.value_id.toString() == obj.value_id,
-        );
-        if (!value) {
-          result.isValid = false;
-          result.message = `Advanced Taste Customization: value_id ${obj.value_id} is not availabe for option_id ${obj.option_id}`;
-          break;
-        }
+    const result: ValidationResult = {
+      isValid: true,
+      message: null,
+      data: null,
+    };
+
+    const avaibleAdvanceTasteCustomizationList = await this.entityManager
+      .createQueryBuilder(MenuItemAttribute, 'attribute')
+      .leftJoinAndSelect('attribute.values', 'values')
+      .where('attribute.menu_item_id = :menu_item_id', {
+        menu_item_id,
+      })
+      .andWhere("attribute.type_id = 'taste'")
+      .getMany();
+    for (const obj of obj_list) {
+      //find the attribute
+      const attribute = avaibleAdvanceTasteCustomizationList.find(
+        (i) => i.attribute_id.toString() == obj.option_id,
+      );
+      if (!attribute) {
+        result.isValid = false;
+        result.message = `Advanced Taste Customization: option_id ${obj.option_id} cannot be found`;
+        break;
       }
-
-      return result;
+      //check the value
+      const value = attribute.values.find(
+        (i) => i.value_id.toString() == obj.value_id,
+      );
+      if (!value) {
+        result.isValid = false;
+        result.message = `Advanced Taste Customization: value_id ${obj.value_id} is not availabe for option_id ${obj.option_id}`;
+        break;
+      }
     }
-  }
+
+    return result;
+  } // end of validateAdvacedTasteCustomizationObjWithMenuItem
 
   async validateBasicTasteCustomizationObjWithMenuItem(
     obj_list: BasicTasteSelection[],
     menu_item_id: number,
   ): Promise<ValidationResult> {
     // Check if the advanced_taste_customization_obj is all available to this menu item
-    if (this.flagService.isFeatureEnabled('fes-24-add-to-cart')) {
-      const result: ValidationResult = {
-        isValid: true,
-        message: null,
-        data: null,
-      };
 
-      const avaibleBasicTasteCustomizationList = await this.entityManager
-        .createQueryBuilder(BasicCustomization, 'basicCustomization')
-        .where('basicCustomization.menu_item_id = :menu_item_id', {
-          menu_item_id,
-        })
-        .getMany();
-      for (const obj of obj_list) {
-        //find the attribute
-        const noAddingId = avaibleBasicTasteCustomizationList.find(
-          (i) => i.no_adding_id == obj.no_adding_id,
-        );
-        if (!noAddingId) {
-          result.isValid = false;
-          result.message = `Basic Taste Customization: no_adding_id ${obj.no_adding_id} cannot be found`;
-          break;
-        }
+    const result: ValidationResult = {
+      isValid: true,
+      message: null,
+      data: null,
+    };
+
+    const avaibleBasicTasteCustomizationList = await this.entityManager
+      .createQueryBuilder(BasicCustomization, 'basicCustomization')
+      .where('basicCustomization.menu_item_id = :menu_item_id', {
+        menu_item_id,
+      })
+      .getMany();
+    for (const obj of obj_list) {
+      //find the attribute
+      const noAddingId = avaibleBasicTasteCustomizationList.find(
+        (i) => i.no_adding_id == obj.no_adding_id,
+      );
+      if (!noAddingId) {
+        result.isValid = false;
+        result.message = `Basic Taste Customization: no_adding_id ${obj.no_adding_id} cannot be found`;
+        break;
       }
-
-      return result;
     }
-  }
+
+    return result;
+  } // end of validateBasicTasteCustomizationObjWithMenuItem
 
   async checkIfSkuHasSameMenuItem(sku_ids: number[]): Promise<boolean> {
     if (this.flagService.isFeatureEnabled('fes-28-update-cart')) {
@@ -451,5 +445,5 @@ export class CommonService {
       }
       return true;
     }
-  }
+  } // end of checkIfSkuHasSameMenuItem
 }
