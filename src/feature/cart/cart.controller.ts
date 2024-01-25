@@ -63,33 +63,30 @@ export class CartController {
 
   @MessagePattern({ cmd: 'get_cart_detail' })
   async getCartDetail(customer_id: number): Promise<GetCartDetailResponse> {
-    if (this.flagService.isFeatureEnabled('fes-27-get-cart-info')) {
-      const res = new GetCartDetailResponse(200, '');
+    const res = new GetCartDetailResponse(200, '');
 
-      try {
-        const cartItems: CartItem[] =
-          await this.cartService.getCart(customer_id);
-        res.statusCode = 200;
-        res.message = 'Get cart detail successfully';
-        res.data = {
-          customer_id: customer_id,
-          cart_info: cartItems,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
-        return res;
+    try {
+      const cartItems: CartItem[] = await this.cartService.getCart(customer_id);
+      res.statusCode = 200;
+      res.message = 'Get cart detail successfully';
+      res.data = {
+        customer_id: customer_id,
+        cart_info: cartItems,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-
       return res;
     }
+
+    return res;
   } // end of getCartDetail
 
   @MessagePattern({ cmd: 'update_cart_advanced' })
