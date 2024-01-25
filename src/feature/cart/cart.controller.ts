@@ -174,33 +174,31 @@ export class CartController {
   async deleteCartItems(
     requestData: DeleteCartItemRequest,
   ): Promise<DeleteCartItemResponse> {
-    if (this.flagService.isFeatureEnabled('fes-37-delete-some-of-cart-items')) {
-      const { customer_id, cart_items } = requestData;
-      const res = new DeleteCartItemResponse(200, '');
-      try {
-        const cart = await this.cartService.deleteCartItemsFromEndPoint(
-          customer_id,
-          cart_items,
-        );
-        res.statusCode = 200;
-        res.message = 'Delete cart items successfully';
-        res.data = {
-          customer_id: customer_id,
-          cart_info: cart,
-        };
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+    const { customer_id, cart_items } = requestData;
+    const res = new DeleteCartItemResponse(200, '');
+    try {
+      const cart = await this.cartService.deleteCartItemsFromEndPoint(
+        customer_id,
+        cart_items,
+      );
+      res.statusCode = 200;
+      res.message = 'Delete cart items successfully';
+      res.data = {
+        customer_id: customer_id,
+        cart_info: cart,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-      return res;
     }
+    return res;
   } // end of deleteCartItems
 
   @MessagePattern({ cmd: 'delete_all_cart_item' })

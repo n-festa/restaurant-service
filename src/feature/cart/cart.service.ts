@@ -562,35 +562,31 @@ export class CartService {
     customer_id: number,
     item_ids: number[],
   ): Promise<CartItem[]> {
-    if (this.flagService.isFeatureEnabled('fes-37-delete-some-of-cart-items')) {
-      //Check if the item_ids belongs to the customers
-      const mentionedCartItems = await this.getCartByItemId(
-        item_ids,
-        customer_id,
+    //Check if the item_ids belongs to the customers
+    const mentionedCartItems = await this.getCartByItemId(
+      item_ids,
+      customer_id,
+    );
+    if (mentionedCartItems.length != item_ids.length) {
+      throw new HttpException(
+        'Some of cart items do not belong to the customer or not exist',
+        404,
       );
-      if (mentionedCartItems.length != item_ids.length) {
-        throw new HttpException(
-          'Some of cart items do not belong to the customer or not exist',
-          404,
-        );
-      }
-
-      //Delete the cart items
-      await this.deleteCartItems(item_ids);
-
-      //Get the cart again after deleting the cart items
-      return await this.getCart(customer_id);
     }
+
+    //Delete the cart items
+    await this.deleteCartItems(item_ids);
+
+    //Get the cart again after deleting the cart items
+    return await this.getCart(customer_id);
   } // end of deleteCartItemsFromEndPoint
 
   async deleteCartItems(item_ids: number[]): Promise<void> {
-    if (this.flagService.isFeatureEnabled('fes-37-delete-some-of-cart-items')) {
-      await this.entityManager
-        .createQueryBuilder()
-        .delete()
-        .from(CartItem)
-        .whereInIds(item_ids)
-        .execute();
-    }
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(CartItem)
+      .whereInIds(item_ids)
+      .execute();
   } // end of deleteCartItems
 }
