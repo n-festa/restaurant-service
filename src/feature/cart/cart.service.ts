@@ -597,7 +597,7 @@ export class CartService {
       //Get the cart again after deleting the cart items
       return await this.getCart(customer_id);
     }
-  }
+  } // end of deleteCartItemsFromEndPoint
 
   async deleteCartItems(item_ids: number[]): Promise<void> {
     if (this.flagService.isFeatureEnabled('fes-37-delete-some-of-cart-items')) {
@@ -608,5 +608,5 @@ export class CartService {
         .whereInIds(item_ids)
         .execute();
     }
-  }
+  } // end of deleteCartItems
 }
