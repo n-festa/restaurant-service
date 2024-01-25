@@ -550,14 +550,12 @@ export class CartService {
     });
   } //end of massUpdateCartItemWithQuantity
   async deleteAllCartItem(customer_id: number) {
-    if (this.flagService.isFeatureEnabled('fes-36-delete-whole-cart')) {
-      await this.entityManager
-        .createQueryBuilder()
-        .delete()
-        .from(CartItem)
-        .where('customer_id = :customer_id', { customer_id })
-        .execute();
-    }
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(CartItem)
+      .where('customer_id = :customer_id', { customer_id })
+      .execute();
   } // end of deleteAllCartItem
 
   async deleteCartItemsFromEndPoint(

@@ -205,25 +205,23 @@ export class CartController {
 
   @MessagePattern({ cmd: 'delete_all_cart_item' })
   async deleteAllCartItem(customer_id: number): Promise<GeneralResponse> {
-    if (this.flagService.isFeatureEnabled('fes-36-delete-whole-cart')) {
-      const res = new GeneralResponse(200, '');
-      try {
-        await this.cartService.deleteAllCartItem(customer_id);
-        res.statusCode = 200;
-        res.message = 'Delete all cart items successfully';
+    const res = new GeneralResponse(200, '');
+    try {
+      await this.cartService.deleteAllCartItem(customer_id);
+      res.statusCode = 200;
+      res.message = 'Delete all cart items successfully';
+      res.data = null;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
         res.data = null;
-      } catch (error) {
-        if (error instanceof HttpException) {
-          res.statusCode = error.getStatus();
-          res.message = error.getResponse();
-          res.data = null;
-        } else {
-          res.statusCode = 500;
-          res.message = error.toString();
-          res.data = null;
-        }
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
       }
-      return res;
     }
+    return res;
   } // end of deleteAllCartItem
 }
