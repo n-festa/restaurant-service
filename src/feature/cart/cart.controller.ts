@@ -209,5 +209,5 @@ export class CartController {
       }
       return res;
     }
-  }
+  } // end of deleteCartItems
 }
