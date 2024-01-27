@@ -16,3 +16,7 @@ export enum Day {
   Friday = 'Fri',
   Saturday = 'Sat',
 }
+export enum FetchMode {
+  Some = 'some',
+  Full = 'full',
+}
