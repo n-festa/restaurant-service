@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
@@ -6,7 +6,6 @@ import { DeliveryRestaurant, PriceRange, TextByLang } from 'src/type';
 import { Between, EntityManager, In, Repository } from 'typeorm';
 import { RestaurantDTO } from '../../dto/restaurant.dto';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
-import { GeneralResponse } from 'src/dto/general-response.dto';
 import { RestaurantDetailDTO } from 'src/dto/restaurant-detail.dto';
 import { Media } from 'src/entity/media.entity';
 import { CommonService } from '../common/common.service';
@@ -27,7 +26,7 @@ export class RestaurantService {
 
   async findAll(): Promise<Restaurant[]> {
     return await this.restaurantRepo.find();
-  }
+  } // end of findAll
 
   async getRestaurantByRadius(
     lat: number,
@@ -60,12 +59,12 @@ export class RestaurantService {
     for (const restaurant of restaurants) {
       const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
         {
-          lat: lat,
-          long: long,
-        },
-        {
           lat: Number(restaurant.address.latitude),
           long: Number(restaurant.address.longitude),
+        },
+        {
+          lat: lat,
+          long: long,
         },
       );
       restaurantsByRadius.push({
@@ -76,7 +75,7 @@ export class RestaurantService {
       });
     }
     return restaurantsByRadius;
-  }
+  } // end of getRestaurantByRadius
 
   async getDeliveryRestaurantById(
     id: number,
@@ -88,12 +87,12 @@ export class RestaurantService {
     });
     const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
       {
-        lat: lat,
-        long: long,
-      },
-      {
         lat: Number(restaurant.address.latitude),
         long: Number(restaurant.address.longitude),
+      },
+      {
+        lat: lat,
+        long: long,
       },
     );
     return {
@@ -102,7 +101,7 @@ export class RestaurantService {
       distance_km: timeAnhDistance.distance_km,
       delivery_time_s: timeAnhDistance.duration_s,
     };
-  }
+  } // getDeliveryRestaurantById
 
   async getDeliveryRestaurantByListOfId(
     ids: number[],
@@ -125,12 +124,12 @@ export class RestaurantService {
 
       const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
         {
-          lat: lat,
-          long: long,
-        },
-        {
           lat: Number(restaurant.address.latitude),
           long: Number(restaurant.address.longitude),
+        },
+        {
+          lat: lat,
+          long: long,
         },
       );
       deliveryRestaurants.push({
@@ -141,7 +140,7 @@ export class RestaurantService {
       });
     }
     return deliveryRestaurants;
-  }
+  } // getDeliveryRestaurantByListOfId
 
   async convertIntoRestaurantDTO(
     restaurant: DeliveryRestaurant,
@@ -185,10 +184,15 @@ export class RestaurantService {
     restaurantDTO.unit = restaurant.unit_obj.symbol;
 
     return restaurantDTO;
-  }
+  } // convertIntoRestaurantDTO
 
-  async getRestaurantDetails(restaurant_id: number) {
-    const result = new GeneralResponse(200, '');
+  async getRestaurantDetailsFromEndPoint(
+    restaurant_id: number,
+    lat: number,
+    long: number,
+  ): Promise<RestaurantDetailDTO> {
+    console.log('lat', lat);
+    console.log('long', long);
 
     const restaurant = await this.entityManager
       .createQueryBuilder(Restaurant, 'restaurant')
@@ -209,9 +213,7 @@ export class RestaurantService {
       .getOne();
 
     if (!restaurant) {
-      result.statusCode = 404;
-      result.message = 'Restaurant not found';
-      return result;
+      throw new HttpException('Restaurant not found', HttpStatus.NOT_FOUND);
     }
 
     //Get medias
@@ -249,6 +251,18 @@ export class RestaurantService {
     }
     cutoff_time.sort();
 
+    //Calculate distance and time delivery
+    const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
+      {
+        lat: Number(restaurant.address.latitude),
+        long: Number(restaurant.address.longitude),
+      },
+      {
+        lat: lat,
+        long: long,
+      },
+    );
+
     //Mapping data with output
     const data: RestaurantDetailDTO = {
       restaurant_id: restaurant.restaurant_id,
@@ -280,13 +294,12 @@ export class RestaurantService {
       having_vegeterian_food: having_vegeterian_food,
       unit: restaurant.unit_obj.symbol,
       menu: convertedMenuItems,
+      distance_km: timeAnhDistance.distance_km,
+      delivery_time_s: timeAnhDistance.duration_s,
     };
 
-    result.statusCode = 200;
-    result.message = 'Getting Restaurant Details Successfully';
-    result.data = data;
-    return result;
-  }
+    return data;
+  } // getRestaurantDetailsFromEndPoint
 
   async convertRestaurantExtToTextByLang(
     restaurant_ext: RestaurantExt[],
@@ -319,7 +332,7 @@ export class RestaurantService {
       result.introduction.push(introductionByLang);
     }
     return result;
-  }
+  } // convertRestaurantExtToTextByLang
 
   async getAllMediaByRestaurantId(restaurant_id: number): Promise<Media[]> {
     const data = await this.entityManager
@@ -333,5 +346,5 @@ export class RestaurantService {
       .orWhere('media.restaurant_id = :restaurant_id', { restaurant_id })
       .getMany();
     return data;
-  }
+  } // getAllMediaByRestaurantId
 }

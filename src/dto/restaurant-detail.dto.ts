@@ -18,4 +18,6 @@ export class RestaurantDetailDTO {
   having_vegeterian_food: boolean;
   unit: string;
   menu: FoodDTO[];
+  distance_km: number;
+  delivery_time_s: number;
 }
