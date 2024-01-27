@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { RestaurantService } from '../restaurant/restaurant.service';
 import { RestaurantDTO } from '../../dto/restaurant.dto';
 import { PriceRange } from 'src/type';
@@ -6,8 +6,8 @@ import { FoodService } from '../food/food.service';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { FoodDTO } from '../../dto/food.dto';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
-import { GeneralResponse } from 'src/dto/general-response.dto';
 import { CommonService } from '../common/common.service';
+import { FetchMode } from 'src/enum';
 
 @Injectable()
 export class RecommendationService {
@@ -19,8 +19,12 @@ export class RecommendationService {
     private readonly commonService: CommonService,
   ) {}
 
-  async getGeneralFoodRecomendation(lat: number, long: number): Promise<any> {
-    const response = new GeneralResponse(200, '');
+  async getGeneralFoodRecomendationFromEndPoint(
+    lat: number,
+    long: number,
+    fetch_mode: FetchMode = FetchMode.Some,
+  ): Promise<FoodDTO[]> {
+    // const response = new GeneralResponse(200, '');
     const foodDTOs: FoodDTO[] = [];
     const restaurants = await this.restaurantService.getRestaurantByRadius(
       lat,
@@ -34,7 +38,21 @@ export class RecommendationService {
     const foods =
       await this.foodService.getFoodsWithListOfRestaurants(restauranIds);
 
-    for (const food of foods) {
+    let fillteredFoods = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredFoods = foods.slice(0, 3); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredFoods = foods;
+        break;
+
+      default:
+        throw new HttpException('fetch_mode is invalid', 400);
+    }
+
+    for (const food of fillteredFoods) {
       const restaurant = restaurants.find(
         (res) => res.restaurant_id === food.restaurant_id,
       );
@@ -47,21 +65,14 @@ export class RecommendationService {
       foodDTOs.push(foodDTO);
     }
 
-    // Build response
-    response.statusCode = 200;
-    response.message = 'Get food recommendation successfully';
-    response.data = foodDTOs;
-
-    return response;
+    return foodDTOs;
   }
 
-  async getGeneralRestaurantRecomendation(
-    lat,
-    long,
-    lang: string = 'vie',
-  ): Promise<any> {
-    const response = new GeneralResponse(200, '');
-
+  async getGeneralRestaurantRecomendationFromEndPoint(
+    lat: number,
+    long: number,
+    fetch_mode: FetchMode = FetchMode.Some,
+  ): Promise<RestaurantDTO[]> {
     const restaurantList: RestaurantDTO[] = [];
     const restaurants = await this.restaurantService.getRestaurantByRadius(
       lat,
@@ -69,7 +80,21 @@ export class RecommendationService {
       5000,
     );
 
-    for (const restaurant of restaurants) {
+    let fillteredRestaurants = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredRestaurants = restaurants.slice(0, 0); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredRestaurants = restaurants;
+        break;
+
+      default:
+        throw new HttpException('fetch_mode is invalid', 400);
+    }
+
+    for (const restaurant of fillteredRestaurants) {
       const menuItems = await restaurant.menu_items;
 
       //remove the restaurant which having no menu item
@@ -88,11 +113,6 @@ export class RecommendationService {
 
       restaurantList.push(restaurantDTO);
     }
-
-    //Build response
-    response.statusCode = 200;
-    response.message = 'Get restaurant recommendation successfully';
-    response.data = restaurantList;
-    return response;
+    return restaurantList;
   }
 }
