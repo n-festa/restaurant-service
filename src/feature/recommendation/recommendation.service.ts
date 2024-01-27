@@ -83,7 +83,7 @@ export class RecommendationService {
     let fillteredRestaurants = [];
     switch (fetch_mode) {
       case FetchMode.Some:
-        fillteredRestaurants = restaurants.slice(0, 0); // get only 3 items
+        fillteredRestaurants = restaurants.slice(0, 3); // get only 3 items
         break;
 
       case FetchMode.Full:
