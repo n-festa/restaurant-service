@@ -1,10 +1,14 @@
 import { GeneralResponse } from 'src/dto/general-response.dto';
+import { TextByLang } from 'src/type';
 
 export class DeleteCartItemResponse extends GeneralResponse {
   data: Data;
 }
 interface Data {
   customer_id: number;
+  restaurant_id: number;
+  restaurant_name: TextByLang[];
+  restaurant_logo_img: string;
   cart_info: CartItem[];
 }
 

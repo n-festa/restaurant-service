@@ -1,4 +1,5 @@
 import { GeneralResponse } from 'src/dto/general-response.dto';
+import { TextByLang } from 'src/type';
 
 export class AddToCartResponse extends GeneralResponse {
   data: AddToCartResponseData;
@@ -6,6 +7,9 @@ export class AddToCartResponse extends GeneralResponse {
 
 interface AddToCartResponseData {
   customer_id: number;
+  restaurant_id: number;
+  restaurant_name: TextByLang[];
+  restaurant_logo_img: string;
   cart_info: CartItem[];
 }
 

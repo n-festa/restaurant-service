@@ -13,12 +13,15 @@ import { UpdateCartBasicResponse } from './dto/update-cart-basic-response.dto';
 import { DeleteCartItemRequest } from './dto/delete-cart-item-request.dto';
 import { DeleteCartItemResponse } from './dto/delete-cart-item-response.dto';
 import { GeneralResponse } from 'src/dto/general-response.dto';
+import { CommonService } from '../common/common.service';
+import { RestaurantBasicInfo } from 'src/type';
 
 @Controller()
 export class CartController {
   constructor(
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     private readonly cartService: CartService,
+    private readonly commonService: CommonService,
   ) {}
   @MessagePattern({ cmd: 'add_cart_item' })
   async addCartItem(data: AddToCartRequest): Promise<AddToCartResponse> {
@@ -40,11 +43,25 @@ export class CartController {
         basic_taste_customization_obj,
         notes,
       );
+
+      let restaurant: RestaurantBasicInfo = {
+        id: null,
+        name: [],
+        logo_url: null,
+      };
+      if (cart.length > 0) {
+        restaurant = await this.commonService.getRestaurantBasicInfo(
+          cart[0].restaurant_id,
+        );
+      }
       //success
       res.statusCode = 200;
       res.message = 'Add to cart successfully';
       res.data = {
         customer_id: customer_id,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+        restaurant_logo_img: restaurant.logo_url,
         cart_info: cart,
       };
     } catch (error) {
@@ -67,10 +84,24 @@ export class CartController {
 
     try {
       const cartItems: CartItem[] = await this.cartService.getCart(customer_id);
+      let restaurant: RestaurantBasicInfo = {
+        id: null,
+        name: [],
+        logo_url: null,
+      };
+      if (cartItems.length > 0) {
+        restaurant = await this.commonService.getRestaurantBasicInfo(
+          cartItems[0].restaurant_id,
+        );
+      }
+
       res.statusCode = 200;
       res.message = 'Get cart detail successfully';
       res.data = {
         customer_id: customer_id,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+        restaurant_logo_img: restaurant.logo_url,
         cart_info: cartItems,
       };
     } catch (error) {
@@ -116,10 +147,23 @@ export class CartController {
           notes,
           lang,
         );
+      let restaurant: RestaurantBasicInfo = {
+        id: null,
+        name: [],
+        logo_url: null,
+      };
+      if (cartItems.length > 0) {
+        restaurant = await this.commonService.getRestaurantBasicInfo(
+          cartItems[0].restaurant_id,
+        );
+      }
       res.statusCode = 200;
       res.message = 'Update cart successfully';
       res.data = {
         customer_id: data.customer_id,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+        restaurant_logo_img: restaurant.logo_url,
         cart_info: cartItems,
       };
     } catch (error) {
@@ -142,17 +186,30 @@ export class CartController {
     data: UpdateCartBasicRequest,
   ): Promise<UpdateCartBasicResponse> {
     const { customer_id, updated_items } = data;
-    const res = new UpdateCartAdvancedResponse(200, '');
+    const res = new UpdateCartBasicResponse(200, '');
     try {
       const cartItems: CartItem[] =
         await this.cartService.updateCartBasicFromEndPoint(
           customer_id,
           updated_items,
         );
+      let restaurant: RestaurantBasicInfo = {
+        id: null,
+        name: [],
+        logo_url: null,
+      };
+      if (cartItems.length > 0) {
+        restaurant = await this.commonService.getRestaurantBasicInfo(
+          cartItems[0].restaurant_id,
+        );
+      }
       res.statusCode = 200;
       res.message = 'Update cart successfully';
       res.data = {
         customer_id: data.customer_id,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+        restaurant_logo_img: restaurant.logo_url,
         cart_info: cartItems,
       };
     } catch (error) {
@@ -181,10 +238,24 @@ export class CartController {
         customer_id,
         cart_items,
       );
+
+      let restaurant: RestaurantBasicInfo = {
+        id: null,
+        name: [],
+        logo_url: null,
+      };
+      if (cart.length > 0) {
+        restaurant = await this.commonService.getRestaurantBasicInfo(
+          cart[0].restaurant_id,
+        );
+      }
       res.statusCode = 200;
       res.message = 'Delete cart items successfully';
       res.data = {
         customer_id: customer_id,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+        restaurant_logo_img: restaurant.logo_url,
         cart_info: cart,
       };
     } catch (error) {

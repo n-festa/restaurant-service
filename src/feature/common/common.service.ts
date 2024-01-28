@@ -3,6 +3,7 @@ import {
   BasicTasteSelection,
   DeliveryRestaurant,
   OptionSelection,
+  RestaurantBasicInfo,
   Review,
   TextByLang,
   ValidationResult,
@@ -23,6 +24,7 @@ import { MenuItemAttributeValue } from 'src/entity/menu-item-attribute-value.ent
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
+import { Restaurant } from 'src/entity/restaurant.entity';
 
 @Injectable()
 export class CommonService {
@@ -444,4 +446,31 @@ export class CommonService {
     }
     return true;
   } // end of checkIfSkuHasSameMenuItem
+
+  async getRestaurantBasicInfo(
+    restaurant_id: number,
+  ): Promise<RestaurantBasicInfo> {
+    const result: RestaurantBasicInfo = {
+      id: restaurant_id,
+      name: [],
+      logo_url: null,
+    };
+
+    const restaurant = await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.logo', 'logo')
+      .leftJoinAndSelect('restaurant.restaurant_ext', 'ext')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+
+    result.logo_url = restaurant.logo.url;
+    for (const ext of restaurant.restaurant_ext) {
+      const textByLang: TextByLang = {
+        ISO_language_code: ext.ISO_language_code,
+        text: ext.name,
+      };
+      result.name.push(textByLang);
+    }
+    return result;
+  }
 }

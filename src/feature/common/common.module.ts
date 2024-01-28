@@ -21,6 +21,7 @@ import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { SkuDetail } from 'src/entity/sku-detail.entity';
+import { Restaurant } from 'src/entity/restaurant.entity';
 
 @Global()
 @Module({
@@ -46,6 +47,7 @@ import { SkuDetail } from 'src/entity/sku-detail.entity';
       NoAddingExt,
       RestaurantExt,
       SkuDetail,
+      Restaurant,
     ]),
   ],
   exports: [CommonService],
