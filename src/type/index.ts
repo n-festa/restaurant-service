@@ -1,3 +1,4 @@
+import exp from 'constants';
 import { Restaurant } from 'src/entity/restaurant.entity';
 
 export interface Coordinate {
@@ -102,4 +103,10 @@ export interface UpdatedCartItem {
 export interface QuantityUpdatedItem {
   item_id: number;
   qty_ordered: number;
+}
+
+export interface RestaurantBasicInfo {
+  id: number;
+  name: TextByLang[];
+  logo_url: string;
 }
