@@ -28,7 +28,7 @@ import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
-import { Day, Shift } from 'src/enum';
+import { DayName, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
 
 @Injectable()
@@ -600,25 +600,25 @@ export class FoodService {
     };
     switch (currentDayShift.dayId) {
       case '1':
-        currentDayShift.dayName = Day.Sunday;
+        currentDayShift.dayName = DayName.Sunday;
         break;
       case '2':
-        currentDayShift.dayName = Day.Monday;
+        currentDayShift.dayName = DayName.Monday;
         break;
       case '3':
-        currentDayShift.dayName = Day.Tuesday;
+        currentDayShift.dayName = DayName.Tuesday;
         break;
       case '4':
-        currentDayShift.dayName = Day.Wednesday;
+        currentDayShift.dayName = DayName.Wednesday;
         break;
       case '5':
-        currentDayShift.dayName = Day.Thursday;
+        currentDayShift.dayName = DayName.Thursday;
         break;
       case '6':
-        currentDayShift.dayName = Day.Friday;
+        currentDayShift.dayName = DayName.Friday;
         break;
       case '7':
-        currentDayShift.dayName = Day.Saturday;
+        currentDayShift.dayName = DayName.Saturday;
         break;
 
       default:

@@ -9,7 +9,9 @@ import {
   BasicTasteSelection,
   OptionSelection,
   QuantityUpdatedItem,
+  TimeSlot,
 } from 'src/type';
+import { DAY_ID, DAY_NAME, HOURS, MINUTES } from 'src/constant';
 
 @Injectable()
 export class CartService {
@@ -589,4 +591,27 @@ export class CartService {
       .whereInIds(item_ids)
       .execute();
   } // end of deleteCartItems
+
+  async getAvailableDeliveryTimeFromEndPoint(
+    menu_item_ids,
+    now,
+    long,
+    lat,
+  ): Promise<TimeSlot[]> {
+    const timeSlots = [];
+
+    console.log(menu_item_ids, now, long, lat);
+    const randomDayId =
+      DAY_ID[this.commonService.getRandomInteger(0, DAY_ID.length - 1)];
+    timeSlots.push({
+      dayId: randomDayId, // 1->7: Sunday -> Saturday
+      dayName: DAY_NAME[randomDayId - 1], //sun,mon,tue,wed,thu,fri,sat
+      date: this.commonService.getThisDate(now, randomDayId),
+      hour: HOURS[this.commonService.getRandomInteger(0, HOURS.length - 1)],
+      minutes:
+        MINUTES[this.commonService.getRandomInteger(0, MINUTES.length - 1)],
+    });
+
+    return timeSlots;
+  }
 }

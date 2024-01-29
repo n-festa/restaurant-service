@@ -7,7 +7,7 @@ export enum Shift {
   NightTo = '05:59:59',
 }
 
-export enum Day {
+export enum DayName {
   Sunday = 'Sun',
   Monday = 'Mon',
   Tuesday = 'Tue',
@@ -15,6 +15,15 @@ export enum Day {
   Thursday = 'Thu',
   Friday = 'Fri',
   Saturday = 'Sat',
+}
+export enum DayId {
+  Sunday = 1,
+  Monday = 2,
+  Tuesday = 3,
+  Wednesday = 4,
+  Thursday = 5,
+  Friday = 6,
+  Saturday = 7,
 }
 export enum FetchMode {
   Some = 'some',

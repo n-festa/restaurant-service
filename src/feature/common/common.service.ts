@@ -25,6 +25,7 @@ import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
+import { DayId } from 'src/enum';
 
 @Injectable()
 export class CommonService {
@@ -472,5 +473,22 @@ export class CommonService {
       result.name.push(textByLang);
     }
     return result;
-  }
+  } // end of getRestaurantBasicInfo
+
+  getRandomInteger(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  } // end of getRandomInteger
+
+  getThisDate(now: number, dayId: DayId): string {
+    const today = new Date(now);
+    // Get the day of the week (0 = Sunday, 6 = Saturday)
+    const dayOfWeek = today.getDay();
+    // Calculate the difference to Saturday
+    const daysToDayId = dayId - (dayOfWeek + 1);
+    // Add the difference to today's date to get Saturday's date
+    const thisDate = new Date(
+      today.getTime() + daysToDayId * 24 * 60 * 60 * 1000,
+    );
+    return thisDate.toISOString().split('T')[0]; // remove the time part of the date string
+  } // end of getThisDate
 }

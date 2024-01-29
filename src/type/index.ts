@@ -110,3 +110,11 @@ export interface RestaurantBasicInfo {
   name: TextByLang[];
   logo_url: string;
 }
+
+export interface TimeSlot {
+  dayId: number; // 1->7: Sunday -> Saturday
+  dayName: string; //sun,mon,tue,wed,thu,fri,sat
+  date: Date;
+  hour: string;
+  minutes: string;
+}
