@@ -121,3 +121,8 @@ export interface ThisDate {
   dayId: number; // 1->7: Sunday -> Saturday
   date: string;
 }
+
+export interface TimeRange {
+  from: number; //timestamp
+  to: number; //timestamp
+}

@@ -7,13 +7,15 @@ import {
   Review,
   TextByLang,
   ThisDate,
+  TimeRange,
+  TimeSlot,
   ValidationResult,
 } from 'src/type';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
-import { TRUE } from 'src/constant';
+import { DAY_NAME, TRUE } from 'src/constant';
 import { FoodRating } from 'src/entity/food-rating.entity';
 import { SkuDiscount } from 'src/entity/sku-discount.entity';
 import { SKU } from 'src/entity/sku.entity';
@@ -27,6 +29,7 @@ import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { DayId } from 'src/enum';
+import { OperationHours } from 'src/entity/operation-hours.entity';
 
 @Injectable()
 export class CommonService {
@@ -502,5 +505,41 @@ export class CommonService {
       .where('menuItem.menu_item_id IN (:...ids)', { ids })
       .getMany();
     return data;
+  }
+
+  convertTimeRangeToTimeSlot(
+    time_range: TimeRange,
+    time_step_m = 15, //in minutes
+  ): TimeSlot[] {
+    const { from, to } = time_range;
+    const timeSlots: TimeSlot[] = [];
+
+    const fromDate = new Date(from);
+    const fromDateMinute =
+      Math.floor(fromDate.getHours() / time_step_m) * time_step_m;
+    fromDate.setMinutes(fromDateMinute);
+    let timestamp = fromDate.getTime();
+    while (timestamp <= to) {
+      const loopDate = new Date(timestamp);
+      const timeSlot: TimeSlot = {
+        dayId: loopDate.getDay() + 1, // 1->7: Sunday -> Saturday
+        dayName: DAY_NAME[loopDate.getDay()], //sun,mon,tue,wed,thu,fri,sat
+        date: loopDate.toISOString().split('T')[0],
+        hours: loopDate.getHours().toString().padStart(2, '0'),
+        minutes: loopDate.getMinutes().toString().padStart(2, '0'),
+      };
+      timeSlots.push(timeSlot);
+      timestamp += time_step_m * 60 * 1000; // add 15 minutes to the timestamp for each iteration
+    }
+
+    return timeSlots;
+  }
+
+  async getRestaurantOperationHours(restaurant_id): Promise<OperationHours[]> {
+    const opsHours = await this.entityManager
+      .createQueryBuilder(OperationHours, 'ops')
+      .where('ops.restaurant_id = :restaurant_id', { restaurant_id })
+      .getMany();
+    return opsHours;
   }
 }

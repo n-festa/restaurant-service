@@ -11,9 +11,10 @@ import {
   OptionSelection,
   QuantityUpdatedItem,
   ThisDate,
+  TimeRange,
   TimeSlot,
 } from 'src/type';
-import { DAY_ID, DAY_NAME, HOURS, MINUTES } from 'src/constant';
+import { DAY_ID, DAY_NAME } from 'src/constant';
 import { Shift } from 'src/enum';
 
 @Injectable()
@@ -620,6 +621,7 @@ export class CartService {
     }
 
     const today = new Date(now);
+    console.log(today.toUTCString());
     const todayId = today.getDay() + 1; // 1->7: Sunday -> Saturday
 
     //Find the schedule in which all of the menu items are available
@@ -678,103 +680,38 @@ export class CartService {
 
     // Convert the schedule to TimeSlot format (1)
     const menuItemAvailableTimeSlots: TimeSlot[] = [];
+    const menuItemAvailableTimeRanges: TimeRange[] = [];
     for (const dayShift of overlapSchedule) {
       if (dayShift.isAvailable == false) {
         continue;
       }
-
       const thisDate = datesOfThisWeek.find((i) => i.dayId == dayShift.dayId);
-      let nextDayId = null;
-      let nextDayName = null;
-      let nextDate = null;
-      if (dayShift.dayId < 7) {
-        //the current date is not Saturday
-        nextDayId = dayShift.dayId + 1;
-        nextDayName = DAY_NAME[nextDayId - 1];
-        nextDate = this.commonService.getThisDate(today, nextDayId);
-      } else if (dayShift.dayId == 7) {
-        //the current date is Saturday
-        nextDayId = 1;
-        nextDayName = DAY_NAME[nextDayId - 1];
-        nextDate = new Date(
-          new Date(thisDate.date).getTime() + 24 * 60 * 60 * 1000,
-        )
-          .toISOString()
-          .split('T')[0];
-      } else {
-        throw new HttpException(
-          'Unknown error with dayId of function getAvailableDeliveryTimeFromEndPoint',
-          500,
-        );
-      }
+      let from: number = 0;
+      let to: number = 0;
       switch (dayShift.from) {
         case Shift.MorningFrom:
-          for (let hoursIndex = 6; hoursIndex < 14; hoursIndex++) {
-            for (
-              let minutesIndex = 0;
-              minutesIndex < MINUTES.length;
-              minutesIndex++
-            ) {
-              menuItemAvailableTimeSlots.push({
-                dayId: dayShift.dayId,
-                dayName: dayShift.dayName,
-                date: thisDate.date,
-                hours: HOURS[hoursIndex],
-                minutes: MINUTES[minutesIndex],
-              });
-            }
-          }
+          from = new Date(thisDate.date).setHours(6, 0, 0, 0);
+          to = from + 8 * 60 * 60 * 1000 - 1000;
+          menuItemAvailableTimeRanges.push({
+            from: from,
+            to: to,
+          });
           break;
         case Shift.AfternoonFrom:
-          for (let hoursIndex = 14; hoursIndex < 22; hoursIndex++) {
-            for (
-              let minutesIndex = 0;
-              minutesIndex < MINUTES.length;
-              minutesIndex++
-            ) {
-              menuItemAvailableTimeSlots.push({
-                dayId: dayShift.dayId,
-                dayName: dayShift.dayName,
-                date: thisDate.date,
-                hours: HOURS[hoursIndex],
-                minutes: MINUTES[minutesIndex],
-              });
-            }
-          }
+          from = new Date(thisDate.date).setHours(14, 0, 0, 0);
+          to = from + 8 * 60 * 60 * 1000 - 1000;
+          menuItemAvailableTimeRanges.push({
+            from: from,
+            to: to,
+          });
           break;
         case Shift.NightFrom:
-          //Within the date
-          for (let hoursIndex = 22; hoursIndex < 24; hoursIndex++) {
-            for (
-              let minutesIndex = 0;
-              minutesIndex < MINUTES.length;
-              minutesIndex++
-            ) {
-              menuItemAvailableTimeSlots.push({
-                dayId: dayShift.dayId,
-                dayName: dayShift.dayName,
-                date: thisDate.date,
-                hours: HOURS[hoursIndex],
-                minutes: MINUTES[minutesIndex],
-              });
-            }
-          }
-          //Next date
-          for (let hoursIndex = 0; hoursIndex < 6; hoursIndex++) {
-            for (
-              let minutesIndex = 0;
-              minutesIndex < MINUTES.length;
-              minutesIndex++
-            ) {
-              menuItemAvailableTimeSlots.push({
-                dayId: nextDayId,
-                dayName: nextDayName,
-                date: nextDate,
-                hours: HOURS[hoursIndex],
-                minutes: MINUTES[minutesIndex],
-              });
-            }
-          }
+          from = new Date(thisDate.date).setHours(22, 0, 0, 0);
+          to = from + 8 * 60 * 60 * 1000 - 1000;
+          menuItemAvailableTimeRanges.push({
+            from: from,
+            to: to,
+          });
           break;
 
         default:
@@ -784,20 +721,21 @@ export class CartService {
           );
       }
     }
-    console.log('menuItemAvailableTimeSlots', menuItemAvailableTimeSlots);
+    for (const timeRange of menuItemAvailableTimeRanges) {
+      const convertData =
+        this.commonService.convertTimeRangeToTimeSlot(timeRange);
+      convertData.forEach((i) => menuItemAvailableTimeSlots.push(i));
+    }
 
-    // const dayId =
-    //   DAY_ID[this.commonService.getRandomInteger(0, DAY_ID.length - 1)];
-    timeSlots.push({
-      dayId: todayId, // 1->7: Sunday -> Saturday
-      dayName: DAY_NAME[todayId - 1], //sun,mon,tue,wed,thu,fri,sat
-      // date: this.commonService.getThisDate(today, todayId).date,
-      date: menuItemAvailableTimeSlots,
-      hours: HOURS[this.commonService.getRandomInteger(0, HOURS.length - 1)],
-      minutes:
-        MINUTES[this.commonService.getRandomInteger(0, MINUTES.length - 1)],
-    });
+    // Get operation data of the restaurant
+    const opsHours = (
+      await this.commonService.getRestaurantOperationHours(restaurantId)
+    ).filter((i) => i.day_of_week >= todayId);
 
+    console.log(opsHours);
+
+    menuItemAvailableTimeSlots.forEach((i) => timeSlots.push(i));
+    console.log('timeSlots', timeSlots.length);
     return timeSlots;
   }
 }
