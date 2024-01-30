@@ -1,4 +1,3 @@
-import exp from 'constants';
 import { Restaurant } from 'src/entity/restaurant.entity';
 
 export interface Coordinate {
@@ -69,7 +68,7 @@ export interface StandardAddress {
 }
 
 export interface DayShift {
-  dayId: string;
+  dayId: number;
   dayName: string;
   from: string;
   to: string;
@@ -114,7 +113,11 @@ export interface RestaurantBasicInfo {
 export interface TimeSlot {
   dayId: number; // 1->7: Sunday -> Saturday
   dayName: string; //sun,mon,tue,wed,thu,fri,sat
-  date: Date;
-  hour: string;
+  date: string;
+  hours: string;
   minutes: string;
+}
+export interface ThisDate {
+  dayId: number; // 1->7: Sunday -> Saturday
+  date: string;
 }

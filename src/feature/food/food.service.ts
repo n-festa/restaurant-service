@@ -593,31 +593,31 @@ export class FoodService {
       .padStart(2, '0')}`;
     console.log(currentTimeString);
     const currentDayShift: DayShift = {
-      dayId: (now.getDay() + 1).toString(),
+      dayId: now.getDay() + 1,
       dayName: '',
       from: '   ',
       to: '',
     };
     switch (currentDayShift.dayId) {
-      case '1':
+      case 1:
         currentDayShift.dayName = DayName.Sunday;
         break;
-      case '2':
+      case 2:
         currentDayShift.dayName = DayName.Monday;
         break;
-      case '3':
+      case 3:
         currentDayShift.dayName = DayName.Tuesday;
         break;
-      case '4':
+      case 4:
         currentDayShift.dayName = DayName.Wednesday;
         break;
-      case '5':
+      case 5:
         currentDayShift.dayName = DayName.Thursday;
         break;
-      case '6':
+      case 6:
         currentDayShift.dayName = DayName.Friday;
         break;
-      case '7':
+      case 7:
         currentDayShift.dayName = DayName.Saturday;
         break;
 

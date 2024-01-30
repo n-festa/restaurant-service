@@ -7,11 +7,14 @@ import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
+  DayShift,
   OptionSelection,
   QuantityUpdatedItem,
+  ThisDate,
   TimeSlot,
 } from 'src/type';
 import { DAY_ID, DAY_NAME, HOURS, MINUTES } from 'src/constant';
+import { Shift } from 'src/enum';
 
 @Injectable()
 export class CartService {
@@ -600,14 +603,197 @@ export class CartService {
   ): Promise<TimeSlot[]> {
     const timeSlots = [];
 
-    console.log(menu_item_ids, now, long, lat);
-    const randomDayId =
-      DAY_ID[this.commonService.getRandomInteger(0, DAY_ID.length - 1)];
+    const menuItems = await this.commonService.getMenuItemByIds(menu_item_ids);
+
+    //Check if menu_item_ids do exist
+    if (menuItems.length != menu_item_ids.length) {
+      throw new HttpException('Some of menu items do not exist', 404);
+    }
+
+    //Check if menu_item_ids belong to the same restaurant
+    const restaurantId = menuItems[0].restaurant_id;
+    if (menuItems.find((i) => i.restaurant_id != restaurantId)) {
+      throw new HttpException(
+        'Some of menu items do not belong to the same restaurant',
+        400,
+      );
+    }
+
+    const today = new Date(now);
+    const todayId = today.getDay() + 1; // 1->7: Sunday -> Saturday
+
+    //Find the schedule in which all of the menu items are available
+    const overlapSchedule: DayShift[] = [];
+    for (let index = todayId - 1; index < DAY_ID.length; index++) {
+      const dayId = DAY_ID[index];
+      overlapSchedule.push({
+        dayId: dayId,
+        dayName: DAY_NAME[index],
+        from: Shift.MorningFrom,
+        to: Shift.MorningTo,
+        isAvailable: true,
+      });
+      overlapSchedule.push({
+        dayId: dayId,
+        dayName: DAY_NAME[index],
+        from: Shift.AfternoonFrom,
+        to: Shift.AfternoonTo,
+        isAvailable: true,
+      });
+      overlapSchedule.push({
+        dayId: dayId,
+        dayName: DAY_NAME[index],
+        from: Shift.NightFrom,
+        to: Shift.NightTo,
+        isAvailable: true,
+      });
+    }
+    for (const menuItem of menuItems) {
+      const menuItemSchedule: DayShift[] = JSON.parse(
+        menuItem.cooking_schedule,
+      );
+      // console.log('menuItemSchedule', menuItemSchedule);
+      for (const dayShift of menuItemSchedule) {
+        if (dayShift.isAvailable == false) {
+          const index = overlapSchedule.findIndex(
+            (i) => i.dayId == dayShift.dayId && i.from == dayShift.from,
+          );
+          if (index == -1) {
+            //cannot find the same day shift in overlapSchedule
+            continue;
+          }
+          overlapSchedule[index].isAvailable = false;
+        }
+      }
+    }
+    // console.log(overlapSchedule);
+
+    //build datesOfThisWeek => only for performance purpose
+    const datesOfThisWeek: ThisDate[] = [];
+    for (let index = todayId - 1; index < DAY_ID.length; index++) {
+      const dayId = DAY_ID[index];
+      datesOfThisWeek.push(this.commonService.getThisDate(today, dayId));
+    }
+    console.log('datesOfThisWeek', datesOfThisWeek);
+
+    // Convert the schedule to TimeSlot format (1)
+    const menuItemAvailableTimeSlots: TimeSlot[] = [];
+    for (const dayShift of overlapSchedule) {
+      if (dayShift.isAvailable == false) {
+        continue;
+      }
+
+      const thisDate = datesOfThisWeek.find((i) => i.dayId == dayShift.dayId);
+      let nextDayId = null;
+      let nextDayName = null;
+      let nextDate = null;
+      if (dayShift.dayId < 7) {
+        //the current date is not Saturday
+        nextDayId = dayShift.dayId + 1;
+        nextDayName = DAY_NAME[nextDayId - 1];
+        nextDate = this.commonService.getThisDate(today, nextDayId);
+      } else if (dayShift.dayId == 7) {
+        //the current date is Saturday
+        nextDayId = 1;
+        nextDayName = DAY_NAME[nextDayId - 1];
+        nextDate = new Date(
+          new Date(thisDate.date).getTime() + 24 * 60 * 60 * 1000,
+        )
+          .toISOString()
+          .split('T')[0];
+      } else {
+        throw new HttpException(
+          'Unknown error with dayId of function getAvailableDeliveryTimeFromEndPoint',
+          500,
+        );
+      }
+      switch (dayShift.from) {
+        case Shift.MorningFrom:
+          for (let hoursIndex = 6; hoursIndex < 14; hoursIndex++) {
+            for (
+              let minutesIndex = 0;
+              minutesIndex < MINUTES.length;
+              minutesIndex++
+            ) {
+              menuItemAvailableTimeSlots.push({
+                dayId: dayShift.dayId,
+                dayName: dayShift.dayName,
+                date: thisDate.date,
+                hours: HOURS[hoursIndex],
+                minutes: MINUTES[minutesIndex],
+              });
+            }
+          }
+          break;
+        case Shift.AfternoonFrom:
+          for (let hoursIndex = 14; hoursIndex < 22; hoursIndex++) {
+            for (
+              let minutesIndex = 0;
+              minutesIndex < MINUTES.length;
+              minutesIndex++
+            ) {
+              menuItemAvailableTimeSlots.push({
+                dayId: dayShift.dayId,
+                dayName: dayShift.dayName,
+                date: thisDate.date,
+                hours: HOURS[hoursIndex],
+                minutes: MINUTES[minutesIndex],
+              });
+            }
+          }
+          break;
+        case Shift.NightFrom:
+          //Within the date
+          for (let hoursIndex = 22; hoursIndex < 24; hoursIndex++) {
+            for (
+              let minutesIndex = 0;
+              minutesIndex < MINUTES.length;
+              minutesIndex++
+            ) {
+              menuItemAvailableTimeSlots.push({
+                dayId: dayShift.dayId,
+                dayName: dayShift.dayName,
+                date: thisDate.date,
+                hours: HOURS[hoursIndex],
+                minutes: MINUTES[minutesIndex],
+              });
+            }
+          }
+          //Next date
+          for (let hoursIndex = 0; hoursIndex < 6; hoursIndex++) {
+            for (
+              let minutesIndex = 0;
+              minutesIndex < MINUTES.length;
+              minutesIndex++
+            ) {
+              menuItemAvailableTimeSlots.push({
+                dayId: nextDayId,
+                dayName: nextDayName,
+                date: nextDate,
+                hours: HOURS[hoursIndex],
+                minutes: MINUTES[minutesIndex],
+              });
+            }
+          }
+          break;
+
+        default:
+          throw new HttpException(
+            'Unknown error with dayShift of function getAvailableDeliveryTimeFromEndPoint',
+            500,
+          );
+      }
+    }
+    console.log('menuItemAvailableTimeSlots', menuItemAvailableTimeSlots);
+
+    // const dayId =
+    //   DAY_ID[this.commonService.getRandomInteger(0, DAY_ID.length - 1)];
     timeSlots.push({
-      dayId: randomDayId, // 1->7: Sunday -> Saturday
-      dayName: DAY_NAME[randomDayId - 1], //sun,mon,tue,wed,thu,fri,sat
-      date: this.commonService.getThisDate(now, randomDayId),
-      hour: HOURS[this.commonService.getRandomInteger(0, HOURS.length - 1)],
+      dayId: todayId, // 1->7: Sunday -> Saturday
+      dayName: DAY_NAME[todayId - 1], //sun,mon,tue,wed,thu,fri,sat
+      // date: this.commonService.getThisDate(today, todayId).date,
+      date: menuItemAvailableTimeSlots,
+      hours: HOURS[this.commonService.getRandomInteger(0, HOURS.length - 1)],
       minutes:
         MINUTES[this.commonService.getRandomInteger(0, MINUTES.length - 1)],
     });
