@@ -1,18 +1,23 @@
 import { HttpException, Inject, Injectable } from '@nestjs/common';
 import {
   BasicTasteSelection,
+  Coordinate,
+  DeliveryInfo,
   DeliveryRestaurant,
   OptionSelection,
   RestaurantBasicInfo,
   Review,
   TextByLang,
+  ThisDate,
+  TimeRange,
+  TimeSlot,
   ValidationResult,
 } from 'src/type';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
-import { TRUE } from 'src/constant';
+import { DAY_NAME, TRUE } from 'src/constant';
 import { FoodRating } from 'src/entity/food-rating.entity';
 import { SkuDiscount } from 'src/entity/sku-discount.entity';
 import { SKU } from 'src/entity/sku.entity';
@@ -25,12 +30,18 @@ import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
+import { DayId } from 'src/enum';
+import { OperationHours } from 'src/entity/operation-hours.entity';
+import { RestaurantDayOff } from 'src/entity/restaurant-day-off.entity';
+import { ManualOpenRestaurant } from 'src/entity/manual-open-restaurant.entity';
+import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 
 @Injectable()
 export class CommonService {
   constructor(
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectEntityManager() private entityManager: EntityManager,
+    private readonly ahamoveService: AhamoveService,
   ) {}
 
   async getRestaurantExtension(id: number): Promise<RestaurantExt[]> {
@@ -231,12 +242,6 @@ export class CommonService {
       if (
         menuItemAttributeValue.attribute_id != menuItemAttribute.attribute_id
       ) {
-        console.log(
-          'menuItemAttributeValue ',
-          menuItemAttributeValue.value_id,
-          ' does not belong to menuItemAttribute ',
-          menuItemAttribute.attribute_id,
-        );
         continue;
       }
       str =
@@ -472,5 +477,242 @@ export class CommonService {
       result.name.push(textByLang);
     }
     return result;
+  } // end of getRestaurantBasicInfo
+
+  getRandomInteger(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  } // end of getRandomInteger
+
+  getThisDate(
+    now: number,
+    day_id: DayId,
+    time_zone_offset_in_milliseconds: number,
+  ): ThisDate {
+    const today = new Date(now + time_zone_offset_in_milliseconds); // convert to local time
+    const thisDate: ThisDate = {
+      dayId: day_id,
+      date: null,
+    };
+    // Get the day of the week (0 = Sunday, 6 = Saturday)
+    const dayOfWeek = today.getUTCDay();
+    // Calculate the difference to Saturday
+    const daysToDayId = day_id - (dayOfWeek + 1);
+    // Add the difference to today's date to get Saturday's date
+    const date = new Date(today.getTime() + daysToDayId * 24 * 60 * 60 * 1000);
+    thisDate.date = date.toISOString().split('T')[0]; // remove the time part of the date string
+
+    return thisDate;
+  } // end of getThisDate
+
+  async getMenuItemByIds(ids: number[]): Promise<MenuItem[]> {
+    const data = await this.entityManager
+      .createQueryBuilder(MenuItem, 'menuItem')
+      .where('menuItem.menu_item_id IN (:...ids)', { ids })
+      .getMany();
+    return data;
+  }
+
+  convertTimeRangeToTimeSlot(
+    time_range: TimeRange,
+    // time_zone_offset_in_milliseconds: number,
+    utc_offset: number = 7,
+    time_step_m = 15, //in minutes
+    mode = 0, //ceiling; 1: floor
+  ): TimeSlot[] {
+    const { from, to } = time_range;
+    const timeSlots: TimeSlot[] = [];
+    const timeStepInMiliseconds = time_step_m * 60 * 1000;
+    const timeZoneOffsetInMilliseconds = utc_offset * 60 * 60 * 1000;
+
+    let timestamp = 0;
+
+    switch (mode) {
+      case 0:
+        timestamp =
+          Math.ceil(
+            (from + timeZoneOffsetInMilliseconds) / timeStepInMiliseconds,
+          ) * timeStepInMiliseconds;
+        break;
+
+      case 1:
+        timestamp =
+          Math.floor(
+            (from + timeZoneOffsetInMilliseconds) / timeStepInMiliseconds,
+          ) * timeStepInMiliseconds;
+        break;
+
+      default:
+        throw new HttpException('wrong mode value', 500);
+    }
+
+    while (timestamp <= to + timeZoneOffsetInMilliseconds) {
+      const loopDate = new Date(timestamp);
+      const timeSlot: TimeSlot = {
+        dayId: loopDate.getUTCDay() + 1, // 1->7: Sunday -> Saturday
+        dayName: DAY_NAME[loopDate.getUTCDay()], //sun,mon,tue,wed,thu,fri,sat
+        date: loopDate.toISOString().split('T')[0],
+        hours: loopDate.getUTCHours().toString().padStart(2, '0'),
+        minutes: loopDate.getUTCMinutes().toString().padStart(2, '0'),
+        utc_offset: utc_offset,
+      };
+      timeSlots.push(timeSlot);
+      timestamp += timeStepInMiliseconds; // add 15 minutes to the timestamp for each iteration
+    }
+
+    return timeSlots;
+  }
+
+  async getRestaurantOperationHours(
+    restaurant_id: number,
+  ): Promise<OperationHours[]> {
+    const opsHours = await this.entityManager
+      .createQueryBuilder(OperationHours, 'ops')
+      .where('ops.restaurant_id = :restaurant_id', { restaurant_id })
+      .getMany();
+    return opsHours;
+  }
+
+  async getUtcTimeZone(restaurant_id: number): Promise<number> {
+    return Number(
+      (
+        await this.entityManager
+          .createQueryBuilder(Restaurant, 'res')
+          .where('res.restaurant_id = :restaurant_id', { restaurant_id })
+          .select(['res.utc_time_zone'])
+          .getOne()
+      ).utc_time_zone,
+    );
+  }
+
+  async getAvailableRestaurantDayOff(
+    restaurant_id: number,
+    now: number,
+  ): Promise<RestaurantDayOff[]> {
+    const restaurantUtcTimeZone = await this.getUtcTimeZone(restaurant_id);
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+    const todayStr = new Date(now + timeZoneOffset).toISOString().split('T')[0];
+    const query = `SELECT * FROM Restaurant_Day_Off where date >= date("${todayStr}")`;
+    const data = await this.entityManager.query(query);
+    return data; // Return the array of RestaurantDayOff objects
+  }
+  convertTimeToSeconds(
+    time: string, //format hh:mm:ss
+  ): number {
+    const timeRegex = new RegExp(/^\d{2}:\d{2}:\d{2}$/);
+    if (!timeRegex.test(time)) {
+      throw new HttpException('Invalid time format hh:mm:ss', 400); // Throw an HTTP exception with status code 400 for invalid time format
+    }
+    const [hours, minutes, seconds] = time.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+  convertSecondsToTime(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  async getTodayOpsTime(
+    restaurant_id: number,
+    now: number,
+  ): Promise<TimeRange | null> {
+    const timeRange: TimeRange = {
+      from: null,
+      to: null,
+    };
+    const restaurantUtcTimeZone = await this.getUtcTimeZone(restaurant_id);
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+
+    //Get latest manual open data
+    const query = `SELECT * FROM Manual_Open_Restaurant where date = date(FROM_UNIXTIME(${
+      (now + timeZoneOffset) / 1000
+    })) ORDER BY created_at DESC LIMIT 0,1`;
+    const data: ManualOpenRestaurant[] = await this.entityManager.query(query);
+
+    if (data.length <= 0) {
+      //No manual open data => Get the day off data from the table Restaurant_Day_Off
+
+      const todayStr = new Date(now + timeZoneOffset)
+        .toISOString()
+        .split('T')[0];
+      const query = `SELECT * FROM Restaurant_Day_Off where date = date("${todayStr}")`;
+      const dayOffs: RestaurantDayOff[] = await this.entityManager.query(query);
+
+      if (dayOffs.length > 0) {
+        //Today is the day off => return no data
+        return null;
+      }
+
+      //Get the operation hours of the restaurant for today
+      const todayOpsHours = (
+        await this.getRestaurantOperationHours(restaurant_id)
+      ).filter(
+        (i) => i.day_of_week == new Date(now + timeZoneOffset).getUTCDay() + 1,
+      );
+      const [fromHours, fromMinutes, fromSeconds] = todayOpsHours[0].from_time
+        .split(':')
+        .map((i) => parseInt(i));
+      const [toHours, toMinutes, toSeconds] = todayOpsHours[0].to_time
+        .split(':')
+        .map((i) => parseInt(i));
+      timeRange.from =
+        new Date(now + timeZoneOffset).setUTCHours(
+          fromHours,
+          fromMinutes,
+          fromSeconds,
+        ) - timeZoneOffset;
+      timeRange.to =
+        new Date(now + timeZoneOffset).setUTCHours(
+          toHours,
+          toMinutes,
+          toSeconds,
+        ) - timeZoneOffset;
+      return timeRange;
+    }
+
+    // Existing manual open data
+    timeRange.from = new Date(data[0].from_time).getTime();
+    timeRange.to = new Date(data[0].to_time).getTime();
+
+    return timeRange;
+  }
+
+  getOverlappingTimeRange(
+    timeRange1: TimeRange,
+    timeRange2: TimeRange,
+  ): TimeRange | null {
+    const from = Math.max(timeRange1.from, timeRange2.from);
+    const to = Math.min(timeRange1.to, timeRange2.to);
+    if (from <= to) {
+      return { from, to };
+    }
+    return null; // No overlapping time range.
+  }
+
+  async estimateTimeAndDistanceForRestaurant(
+    restaurant_id: number,
+    user_long: number,
+    user_lat: number,
+  ): Promise<DeliveryInfo> {
+    const restaurant = await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.address', 'address')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+    const userLocation: Coordinate = {
+      lat: user_lat,
+      long: user_long,
+    };
+
+    const restaurantLocation: Coordinate = {
+      lat: restaurant.address.latitude,
+      long: restaurant.address.longitude,
+    };
+    return await this.ahamoveService.estimateTimeAndDistance(
+      restaurantLocation,
+      userLocation,
+    );
   }
 }

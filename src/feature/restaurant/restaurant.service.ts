@@ -117,7 +117,6 @@ export class RestaurantService {
     for (const restaurant of restaurants) {
       //remove the restaurant which having no menu item
       const menuItems = await restaurant.menu_items;
-      console.log('menuItems', menuItems);
       if (menuItems.length <= 0) {
         continue;
       }
@@ -191,9 +190,6 @@ export class RestaurantService {
     lat: number,
     long: number,
   ): Promise<RestaurantDetailDTO> {
-    console.log('lat', lat);
-    console.log('long', long);
-
     const restaurant = await this.entityManager
       .createQueryBuilder(Restaurant, 'restaurant')
       .leftJoinAndSelect('restaurant.restaurant_ext', 'extension')

@@ -14,7 +14,9 @@ import { DeleteCartItemRequest } from './dto/delete-cart-item-request.dto';
 import { DeleteCartItemResponse } from './dto/delete-cart-item-response.dto';
 import { GeneralResponse } from 'src/dto/general-response.dto';
 import { CommonService } from '../common/common.service';
-import { RestaurantBasicInfo } from 'src/type';
+import { RestaurantBasicInfo, TimeSlot } from 'src/type';
+import { GetAvailableDeliveryTimeRequest } from './dto/get-available-delivery-time-request.dto';
+import { GetAvailableDeliveryTimeResponse } from './dto/get-available-delivery-time-response.dto';
 
 @Controller()
 export class CartController {
@@ -293,4 +295,38 @@ export class CartController {
     }
     return res;
   } // end of deleteAllCartItem
+
+  @MessagePattern({ cmd: 'get_available_delivery_time' })
+  async getAvailableDeliveryTime(
+    data: GetAvailableDeliveryTimeRequest,
+  ): Promise<GetAvailableDeliveryTimeResponse> {
+    const res = new GetAvailableDeliveryTimeResponse(200, '');
+    const { menu_item_ids, now, long, lat, utc_offset } = data;
+
+    try {
+      const timeSlots: TimeSlot[] =
+        await this.cartService.getAvailableDeliveryTimeFromEndPoint(
+          menu_item_ids,
+          now,
+          long,
+          lat,
+          utc_offset,
+        );
+      res.statusCode = 200;
+      res.message = 'Get available delivery time successfully';
+      res.data = timeSlots;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
+      }
+    }
+
+    return res;
+  } // end of getAvailableDeliveryTime
 }

@@ -23,13 +23,13 @@ export class AhamoveService {
         order_time: 0,
         path: [
           {
-            lat: startingPoint.lat,
-            lng: startingPoint.long,
+            lat: Number(startingPoint.lat),
+            lng: Number(startingPoint.long),
             address: 'starting point',
           },
           {
-            lat: destination.lat,
-            lng: destination.long,
+            lat: Number(destination.lat),
+            lng: Number(destination.long),
             address: 'destination',
           },
         ],

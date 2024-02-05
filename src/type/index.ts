@@ -1,4 +1,3 @@
-import exp from 'constants';
 import { Restaurant } from 'src/entity/restaurant.entity';
 
 export interface Coordinate {
@@ -69,11 +68,13 @@ export interface StandardAddress {
 }
 
 export interface DayShift {
-  dayId: string;
-  dayName: string;
+  day_id: number;
+  day_name: string;
   from: string;
   to: string;
-  isAvailable?: boolean;
+  is_available?: boolean;
+  cutoff_time?: string;
+  waiting_time_s?: number; // the time a customer has to wait until the food is ready for delivery from the begining of the shift
 }
 
 export interface OptionSelection {
@@ -109,4 +110,30 @@ export interface RestaurantBasicInfo {
   id: number;
   name: TextByLang[];
   logo_url: string;
+}
+
+export interface TimeSlot {
+  dayId: number; // 1->7: Sunday -> Saturday
+  dayName: string; //sun,mon,tue,wed,thu,fri,sat
+  date: string;
+  hours: string;
+  minutes: string;
+  utc_offset: number;
+}
+export interface ThisDate {
+  dayId: number; // 1->7: Sunday -> Saturday
+  date: string;
+}
+
+export interface TimeRange {
+  from: number; //timestamp
+  to: number; //timestamp
+}
+
+export type DayNameType = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
+export type DayIdType = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export interface DeliveryInfo {
+  distance_km: number;
+  duration_s: number;
 }

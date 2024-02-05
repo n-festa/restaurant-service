@@ -28,7 +28,7 @@ import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
-import { Day, Shift } from 'src/enum';
+import { DayName, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
 
 @Injectable()
@@ -533,18 +533,20 @@ export class FoodService {
     }
 
     //Get main dish schedule
-    const mainDishSchedule = JSON.parse(
-      (
-        await this.entityManager
-          .createQueryBuilder(MenuItem, 'menuItem')
-          .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
-          .getOne()
-      )?.cooking_schedule || null,
-    );
+    const mainDish = await this.entityManager
+      .createQueryBuilder(MenuItem, 'menuItem')
+      .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+      .getOne();
+    const mainDishSchedule = JSON.parse(mainDish?.cooking_schedule || null);
 
     //get the earlies available dayshift of main dish
+    const restaurantUtcTimeZone = await this.commonService.getUtcTimeZone(
+      mainDish.restaurant_id,
+    );
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
     const earliestDayShift = this.getEarliesAvailabeDayShift(
       timestamp,
+      timeZoneOffset,
       mainDishSchedule,
     );
 
@@ -558,11 +560,11 @@ export class FoodService {
       );
       const correspondingDayShift = sideDishSchedule.find(
         (dayShift) =>
-          dayShift.dayId == earliestDayShift.dayId &&
+          dayShift.day_id == earliestDayShift.day_id &&
           dayShift.from == earliestDayShift.from &&
           dayShift.to == earliestDayShift.to,
       );
-      return correspondingDayShift.isAvailable == true;
+      return correspondingDayShift.is_available == true;
     });
 
     //Convert to DTO
@@ -581,44 +583,47 @@ export class FoodService {
 
   getEarliesAvailabeDayShift(
     timestamp: number,
+    time_zone_offset_in_milliseconds: number,
     schedule: DayShift[],
   ): DayShift {
-    const now = new Date(timestamp);
-    const currentTimeString = `${now
-      .getHours()
+    const adjustedNow = new Date(timestamp + time_zone_offset_in_milliseconds);
+    const currentTimeString = `${adjustedNow
+      .getUTCHours()
       .toString()
-      .padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now
-      .getSeconds()
+      .padStart(2, '0')}:${adjustedNow
+      .getUTCMinutes()
+      .toString()
+      .padStart(2, '0')}:${adjustedNow
+      .getUTCSeconds()
       .toString()
       .padStart(2, '0')}`;
-    console.log(currentTimeString);
     const currentDayShift: DayShift = {
-      dayId: (now.getDay() + 1).toString(),
-      dayName: '',
+      day_id: adjustedNow.getUTCDay() + 1,
+      day_name: '',
       from: '   ',
       to: '',
     };
-    switch (currentDayShift.dayId) {
-      case '1':
-        currentDayShift.dayName = Day.Sunday;
+    switch (currentDayShift.day_id) {
+      case 1:
+        currentDayShift.day_name = DayName.Sunday;
         break;
-      case '2':
-        currentDayShift.dayName = Day.Monday;
+      case 2:
+        currentDayShift.day_name = DayName.Monday;
         break;
-      case '3':
-        currentDayShift.dayName = Day.Tuesday;
+      case 3:
+        currentDayShift.day_name = DayName.Tuesday;
         break;
-      case '4':
-        currentDayShift.dayName = Day.Wednesday;
+      case 4:
+        currentDayShift.day_name = DayName.Wednesday;
         break;
-      case '5':
-        currentDayShift.dayName = Day.Thursday;
+      case 5:
+        currentDayShift.day_name = DayName.Thursday;
         break;
-      case '6':
-        currentDayShift.dayName = Day.Friday;
+      case 6:
+        currentDayShift.day_name = DayName.Friday;
         break;
-      case '7':
-        currentDayShift.dayName = Day.Saturday;
+      case 7:
+        currentDayShift.day_name = DayName.Saturday;
         break;
 
       default:
@@ -646,15 +651,15 @@ export class FoodService {
 
     //Get earliest available day shift
     const earliestAvailabeDayShift: DayShift = {
-      dayId: null,
-      dayName: null,
+      day_id: null,
+      day_name: null,
       from: null,
       to: null,
-      isAvailable: null,
+      is_available: null,
     };
     const currentIndex = schedule.findIndex(
       (item) =>
-        item.dayId == currentDayShift.dayId &&
+        item.day_id == currentDayShift.day_id &&
         item.from == currentDayShift.from &&
         item.to == currentDayShift.to,
     );
@@ -664,12 +669,12 @@ export class FoodService {
       index++
     ) {
       const i = index % schedule.length;
-      if (schedule[i].isAvailable) {
-        earliestAvailabeDayShift.dayId = schedule[i].dayId;
-        earliestAvailabeDayShift.dayName = schedule[i].dayName;
+      if (schedule[i].is_available) {
+        earliestAvailabeDayShift.day_id = schedule[i].day_id;
+        earliestAvailabeDayShift.day_name = schedule[i].day_name;
         earliestAvailabeDayShift.from = schedule[i].from;
         earliestAvailabeDayShift.to = schedule[i].to;
-        earliestAvailabeDayShift.isAvailable = schedule[i].isAvailable;
+        earliestAvailabeDayShift.is_available = schedule[i].is_available;
         break;
       }
     }

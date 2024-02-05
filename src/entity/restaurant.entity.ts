@@ -99,6 +99,15 @@ export class Restaurant {
   @Column({ type: 'int', nullable: true, unique: false })
   public unit: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 2,
+    scale: 0,
+    nullable: true,
+    unique: false,
+  })
+  public utc_time_zone: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,
