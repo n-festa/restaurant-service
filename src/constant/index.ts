@@ -1,8 +1,18 @@
+import { DayIdType, DayNameType } from 'src/type';
+
 export const TRUE = 1;
 export const FALSE = 0;
 
-export const DAY_NAME = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-export const DAY_ID = [1, 2, 3, 4, 5, 6, 7];
+export const DAY_NAME: DayNameType[] = [
+  'Sun',
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+];
+export const DAY_ID: DayIdType[] = [1, 2, 3, 4, 5, 6, 7];
 
 // export const HOURS = [
 //   '00',

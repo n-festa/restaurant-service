@@ -301,7 +301,7 @@ export class CartController {
     data: GetAvailableDeliveryTimeRequest,
   ): Promise<GetAvailableDeliveryTimeResponse> {
     const res = new GetAvailableDeliveryTimeResponse(200, '');
-    const { menu_item_ids, now, long, lat } = data;
+    const { menu_item_ids, now, long, lat, utc_offset } = data;
 
     try {
       const timeSlots: TimeSlot[] =
@@ -310,6 +310,7 @@ export class CartController {
           now,
           long,
           lat,
+          utc_offset,
         );
       res.statusCode = 200;
       res.message = 'Get available delivery time successfully';

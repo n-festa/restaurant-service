@@ -16,5 +16,9 @@ async function bootstrap() {
     },
   );
   await app.listen();
+
+  //Set timezone
+  process.env.TZ = 'UTC';
+  console.log(`The default timezone at ${process.env.TZ}`);
 }
 bootstrap();

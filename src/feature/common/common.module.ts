@@ -23,6 +23,7 @@ import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { OperationHours } from 'src/entity/operation-hours.entity';
+import { AhamoveModule } from 'src/dependency/ahamove/ahamove.module';
 
 @Global()
 @Module({
@@ -51,6 +52,7 @@ import { OperationHours } from 'src/entity/operation-hours.entity';
       Restaurant,
       OperationHours,
     ]),
+    AhamoveModule,
   ],
   exports: [CommonService],
   providers: [CommonService],

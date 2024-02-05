@@ -7,6 +7,7 @@ import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
+  Coordinate,
   DayShift,
   OptionSelection,
   QuantityUpdatedItem,
@@ -16,6 +17,7 @@ import {
 } from 'src/type';
 import { DAY_ID, DAY_NAME } from 'src/constant';
 import { Shift } from 'src/enum';
+import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 
 @Injectable()
 export class CartService {
@@ -23,6 +25,7 @@ export class CartService {
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectEntityManager() private readonly entityManager: EntityManager,
     private readonly commonService: CommonService,
+    private readonly ahamoveService: AhamoveService,
   ) {}
   async addCartItem(
     customer_id: number,
@@ -597,10 +600,12 @@ export class CartService {
   } // end of deleteCartItems
 
   async getAvailableDeliveryTimeFromEndPoint(
-    menu_item_ids,
-    now,
-    long,
-    lat,
+    menu_item_ids: number[],
+    now: number,
+    long: number,
+    lat: number,
+    utc_offset: number,
+    buffer_s = 5 * 60, // 5 mins
   ): Promise<TimeSlot[]> {
     const timeSlots = [];
 
@@ -620,98 +625,120 @@ export class CartService {
       );
     }
 
-    const today = new Date(now);
-    console.log(today.toUTCString());
-    const todayId = today.getDay() + 1; // 1->7: Sunday -> Saturday
+    //get the delivery time
+    const delivery_time_s = (
+      await this.commonService.estimateTimeAndDistanceForRestaurant(
+        restaurantId,
+        long,
+        lat,
+      )
+    ).duration_s;
+    if (!delivery_time_s) {
+      throw new HttpException(
+        'There some error with the delivery estimation',
+        500,
+      );
+    }
+
+    const restaurantUtcTimeZone =
+      await this.commonService.getUtcTimeZone(restaurantId);
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+
+    const localTodayId = new Date(now + timeZoneOffset).getUTCDay() + 1; // 1->7: Sunday -> Saturday
 
     //Find the schedule in which all of the menu items are available
     const overlapSchedule: DayShift[] = [];
-    for (let index = todayId - 1; index < DAY_ID.length; index++) {
-      const dayId = DAY_ID[index];
+    for (let index = localTodayId - 1; index < DAY_ID.length; index++) {
+      const localTodayId = DAY_ID[index];
       overlapSchedule.push({
-        dayId: dayId,
-        dayName: DAY_NAME[index],
+        day_id: localTodayId,
+        day_name: DAY_NAME[index],
         from: Shift.MorningFrom,
         to: Shift.MorningTo,
-        isAvailable: true,
+        is_available: true,
+        waiting_time_s: 0,
       });
       overlapSchedule.push({
-        dayId: dayId,
-        dayName: DAY_NAME[index],
+        day_id: localTodayId,
+        day_name: DAY_NAME[index],
         from: Shift.AfternoonFrom,
         to: Shift.AfternoonTo,
-        isAvailable: true,
+        is_available: true,
+        waiting_time_s: 0,
       });
       overlapSchedule.push({
-        dayId: dayId,
-        dayName: DAY_NAME[index],
+        day_id: localTodayId,
+        day_name: DAY_NAME[index],
         from: Shift.NightFrom,
         to: Shift.NightTo,
-        isAvailable: true,
+        is_available: true,
+        waiting_time_s: 0,
       });
     }
     for (const menuItem of menuItems) {
       const menuItemSchedule: DayShift[] = JSON.parse(
         menuItem.cooking_schedule,
       );
-      // console.log('menuItemSchedule', menuItemSchedule);
       for (const dayShift of menuItemSchedule) {
-        if (dayShift.isAvailable == false) {
-          const index = overlapSchedule.findIndex(
-            (i) => i.dayId == dayShift.dayId && i.from == dayShift.from,
-          );
-          if (index == -1) {
-            //cannot find the same day shift in overlapSchedule
-            continue;
+        const index = overlapSchedule.findIndex(
+          (i) => i.day_id == dayShift.day_id && i.from == dayShift.from,
+        );
+        if (index == -1) {
+          //cannot find the same day shift in overlapSchedule
+          continue;
+        }
+        if (dayShift.is_available == false) {
+          overlapSchedule[index].is_available = false;
+        } else if (
+          dayShift.is_available == true &&
+          overlapSchedule[index].is_available == true
+        ) {
+          if (dayShift.cutoff_time) {
+            const waiting_time_s =
+              this.commonService.convertTimeToSeconds(dayShift.cutoff_time) +
+              menuItem.cooking_time_s -
+              this.commonService.convertTimeToSeconds(dayShift.from);
+            if (waiting_time_s > overlapSchedule[index].waiting_time_s) {
+              overlapSchedule[index].waiting_time_s = waiting_time_s;
+            }
           }
-          overlapSchedule[index].isAvailable = false;
         }
       }
     }
-    // console.log(overlapSchedule);
 
     //build datesOfThisWeek => only for performance purpose
     const datesOfThisWeek: ThisDate[] = [];
-    for (let index = todayId - 1; index < DAY_ID.length; index++) {
-      const dayId = DAY_ID[index];
-      datesOfThisWeek.push(this.commonService.getThisDate(today, dayId));
+    for (let index = localTodayId - 1; index < DAY_ID.length; index++) {
+      const localTodayId = DAY_ID[index];
+      datesOfThisWeek.push(
+        this.commonService.getThisDate(now, localTodayId, timeZoneOffset),
+      );
     }
-    console.log('datesOfThisWeek', datesOfThisWeek);
 
     // Convert the schedule to TimeSlot format (1)
-    const menuItemAvailableTimeSlots: TimeSlot[] = [];
     const menuItemAvailableTimeRanges: TimeRange[] = [];
     for (const dayShift of overlapSchedule) {
-      if (dayShift.isAvailable == false) {
+      if (dayShift.is_available == false) {
         continue;
       }
-      const thisDate = datesOfThisWeek.find((i) => i.dayId == dayShift.dayId);
+      const thisDate = datesOfThisWeek.find((i) => i.dayId == dayShift.day_id);
       let from: number = 0;
       let to: number = 0;
       switch (dayShift.from) {
         case Shift.MorningFrom:
-          from = new Date(thisDate.date).setHours(6, 0, 0, 0);
+          from =
+            new Date(thisDate.date).setUTCHours(6, 0, 0, 0) - timeZoneOffset;
           to = from + 8 * 60 * 60 * 1000 - 1000;
-          menuItemAvailableTimeRanges.push({
-            from: from,
-            to: to,
-          });
           break;
         case Shift.AfternoonFrom:
-          from = new Date(thisDate.date).setHours(14, 0, 0, 0);
+          from =
+            new Date(thisDate.date).setUTCHours(14, 0, 0, 0) - timeZoneOffset;
           to = from + 8 * 60 * 60 * 1000 - 1000;
-          menuItemAvailableTimeRanges.push({
-            from: from,
-            to: to,
-          });
           break;
         case Shift.NightFrom:
-          from = new Date(thisDate.date).setHours(22, 0, 0, 0);
+          from =
+            new Date(thisDate.date).setUTCHours(22, 0, 0, 0) - timeZoneOffset;
           to = from + 8 * 60 * 60 * 1000 - 1000;
-          menuItemAvailableTimeRanges.push({
-            from: from,
-            to: to,
-          });
           break;
 
         default:
@@ -720,22 +747,128 @@ export class CartService {
             500,
           );
       }
-    }
-    for (const timeRange of menuItemAvailableTimeRanges) {
-      const convertData =
-        this.commonService.convertTimeRangeToTimeSlot(timeRange);
-      convertData.forEach((i) => menuItemAvailableTimeSlots.push(i));
+      menuItemAvailableTimeRanges.push({
+        from: from + dayShift.waiting_time_s * 1000,
+        to: to,
+      });
     }
 
     // Get operation data of the restaurant
-    const opsHours = (
+    const fromTomorrowOpsHours = (
       await this.commonService.getRestaurantOperationHours(restaurantId)
-    ).filter((i) => i.day_of_week >= todayId);
+    ).filter((i) => i.day_of_week > localTodayId);
 
-    console.log(opsHours);
+    //Get the day off data from the table Restaurant_Day_Off with restaurant_id
+    let dayOffs = await this.commonService.getAvailableRestaurantDayOff(
+      restaurantId,
+      now,
+    );
+    //Only keep the day off for this week
+    if (dayOffs.length > 0) {
+      const thisSaturday = this.commonService.getThisDate(
+        now,
+        7,
+        timeZoneOffset,
+      );
+      dayOffs = dayOffs.filter((i) => i.date <= new Date(thisSaturday.date));
+    }
+    // filter the operation data above with the day off data
+    dayOffs.forEach((i) => {
+      const index = fromTomorrowOpsHours.findIndex(
+        (j) => j.day_of_week == i.date.getUTCDay() + 1,
+      );
+      if (index != -1) {
+        fromTomorrowOpsHours.splice(index, 1);
+      }
+    });
 
-    menuItemAvailableTimeSlots.forEach((i) => timeSlots.push(i));
-    console.log('timeSlots', timeSlots.length);
+    //convert fromTomorrowOpsHours to time ranges
+    const fromTomorrowOperationTimeRanges: TimeRange[] = [];
+    for (const opsHour of fromTomorrowOpsHours) {
+      const [fromHours, fromMinutes, fromSeconds] = opsHour.from_time
+        .split(':')
+        .map((i) => parseInt(i));
+      const [toHours, toMinutes, toSeconds] = opsHour.to_time
+        .split(':')
+        .map((i) => parseInt(i));
+      const thisDate = datesOfThisWeek.find(
+        (i) => i.dayId == opsHour.day_of_week,
+      );
+
+      fromTomorrowOperationTimeRanges.push({
+        from:
+          new Date(thisDate.date).setUTCHours(
+            fromHours,
+            fromMinutes,
+            fromSeconds,
+          ) - timeZoneOffset,
+        to:
+          new Date(thisDate.date).setUTCHours(toHours, toMinutes, toSeconds) -
+          timeZoneOffset,
+      });
+    }
+
+    const todayOperationTimeRange = await this.commonService.getTodayOpsTime(
+      restaurantId,
+      now,
+    );
+
+    //Build restaurantAvailabeTimeRanges
+    const restaurantAvailabeTimeRanges: TimeRange[] = [];
+    restaurantAvailabeTimeRanges.push(...fromTomorrowOperationTimeRanges);
+    if (todayOperationTimeRange) {
+      restaurantAvailabeTimeRanges.push(todayOperationTimeRange);
+    }
+
+    //find the overlap time ranges between menuItemAvailableTimeRanges and restaurantAvailabeTimeRanges
+    const foodAvailabeTimeRanges: TimeRange[] = [];
+    for (const menuItemAvailableTimeRange of menuItemAvailableTimeRanges) {
+      for (const restaurantAvailabeTimeRange of restaurantAvailabeTimeRanges) {
+        const overlapTimeRange = this.commonService.getOverlappingTimeRange(
+          menuItemAvailableTimeRange,
+          restaurantAvailabeTimeRange,
+        );
+        if (overlapTimeRange) {
+          foodAvailabeTimeRanges.push(overlapTimeRange);
+        }
+      }
+    }
+
+    //get the longest prepraring time for all the menu items
+    const listOfPreparingTime = menuItems.map((i) => i.preparing_time_s);
+    const longestPreparingTime = Math.max(...listOfPreparingTime);
+
+    //buil the AvailableDeliveryTime
+    //adjust the time ranges with
+    // - delivery time
+    // - preparing_time (the longest preparing time of all menu items)
+    // - buffer (5 mins)
+    // - now
+    const availableDeliveryTime: TimeRange[] = [];
+    foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+      let from = 0;
+      if (foodTimeRange.from < now) {
+        from = now;
+      } else if (foodTimeRange.from >= now) {
+        from = foodTimeRange.from;
+      }
+      const timeRange: TimeRange = {
+        from: from + (longestPreparingTime + delivery_time_s + buffer_s) * 1000,
+        to:
+          foodTimeRange.to +
+          (longestPreparingTime + delivery_time_s + buffer_s) * 1000,
+      };
+      availableDeliveryTime.push(timeRange);
+    });
+
+    //convert time ranges to time slots
+    for (const timeRange of availableDeliveryTime) {
+      const convertData = this.commonService.convertTimeRangeToTimeSlot(
+        timeRange,
+        utc_offset,
+      );
+      convertData.forEach((i) => timeSlots.push(i));
+    }
     return timeSlots;
   }
 }
