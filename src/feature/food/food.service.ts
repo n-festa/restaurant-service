@@ -30,6 +30,7 @@ import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
 import { DayName, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
+import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
 
 @Injectable()
 export class FoodService {
@@ -136,8 +137,8 @@ export class FoodService {
 
   async getFoodDetailByMenuItemId(
     menuItemId: number,
-  ): Promise<GeneralResponse> {
-    const result = new GeneralResponse(200, '');
+  ): Promise<GetFoodDetailResponse> {
+    const result = new GetFoodDetailResponse(200, '');
     //Get basic food data
     const foods = await this.getFoodsWithListOfMenuItem(
       [menuItemId],
@@ -412,12 +413,18 @@ export class FoodService {
       item.values.forEach((optionValue) => {
         const value = {} as OptionValue;
         value.value_id = optionValue.value_id.toString();
-        value.value_txt = optionValue.taste_value_ext.map((ext) => {
-          return {
-            ISO_language_code: ext.ISO_language_code,
-            text: ext.name,
-          };
-        });
+        value.value_txt = optionValue.taste_value_obj.taste_value_ext.map(
+          (ext) => {
+            return {
+              ISO_language_code: ext.ISO_language_code,
+              text: ext.name,
+            };
+          },
+        );
+        value.is_default = Boolean(
+          optionValue.taste_value_obj.is_default_taste,
+        );
+        value.order = optionValue.taste_value_obj.order;
         option.option_values.push(value);
       });
 

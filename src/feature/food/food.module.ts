@@ -22,6 +22,7 @@ import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { BasicCustomization } from 'src/entity/basic-customization.entity';
 import { NoAddingExt } from 'src/entity/no-adding-ext.entity';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
+import { TasteValue } from 'src/entity/taste-value.entity';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { MainSideDish } from 'src/entity/main-side-dish.entity';
       BasicCustomization,
       NoAddingExt,
       MainSideDish,
+      TasteValue,
     ]),
   ],
   controllers: [FoodController],

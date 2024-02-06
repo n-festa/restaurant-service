@@ -3,6 +3,7 @@ import { FoodService } from './food.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
+import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
 
 @Controller()
 export class FoodController {
@@ -12,7 +13,7 @@ export class FoodController {
   ) {}
 
   @MessagePattern({ cmd: 'get_food_detail_by_id' })
-  async getFoodDetailById(id: number) {
+  async getFoodDetailById(id: number): Promise<GetFoodDetailResponse> {
     return await this.foodService.getFoodDetailByMenuItemId(id);
   } // end of getFoodDetailById
 

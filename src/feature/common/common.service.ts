@@ -213,7 +213,8 @@ export class CommonService {
     const menuItemAttributeValueIds = obj_list.map((i) => i.value_id);
     const menuItemAttributeValues = await this.entityManager
       .createQueryBuilder(MenuItemAttributeValue, 'attValue')
-      .leftJoinAndSelect('attValue.taste_value_ext', 'ext')
+      .leftJoinAndSelect('attValue.taste_value_obj', 'tasteObj')
+      .leftJoinAndSelect('tasteObj.taste_value_ext', 'ext')
       .where('attValue.value_id IN (:...menuItemAttributeValueIds)', {
         menuItemAttributeValueIds,
       })
@@ -245,7 +246,7 @@ export class CommonService {
         continue;
       }
       str =
-        menuItemAttributeValue.taste_value_ext[0].name +
+        menuItemAttributeValue.taste_value_obj.taste_value_ext[0].name +
         ' ' +
         menuItemAttribute.taste_ext[0].name;
 
@@ -348,7 +349,8 @@ export class CommonService {
       .createQueryBuilder(MenuItemAttribute, 'attribute')
       .leftJoinAndSelect('attribute.values', 'values')
       .leftJoinAndSelect('attribute.taste_ext', 'tasteExt')
-      .leftJoinAndSelect('values.taste_value_ext', 'tasteValueExt')
+      .leftJoinAndSelect('values.taste_value_obj', 'tasteValueObj')
+      .leftJoinAndSelect('tasteValueObj.taste_value_ext', 'tasteValueExt')
       .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })
       .andWhere("attribute.type_id = 'taste'")
       .getMany();

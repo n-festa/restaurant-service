@@ -24,6 +24,7 @@ import { SkuDetail } from 'src/entity/sku-detail.entity';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { OperationHours } from 'src/entity/operation-hours.entity';
 import { AhamoveModule } from 'src/dependency/ahamove/ahamove.module';
+import { TasteValue } from 'src/entity/taste-value.entity';
 
 @Global()
 @Module({
@@ -51,6 +52,7 @@ import { AhamoveModule } from 'src/dependency/ahamove/ahamove.module';
       SkuDetail,
       Restaurant,
       OperationHours,
+      TasteValue,
     ]),
     AhamoveModule,
   ],
