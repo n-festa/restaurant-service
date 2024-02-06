@@ -10,6 +10,7 @@ import {
 import { MenuItemAttribute } from './menu-item-attribute.entity';
 import { Unit } from './unit.entity';
 import { TasteValueExt } from './taste-value-ext.entity';
+import { TasteValue } from './taste-value.entity';
 
 @Entity('Menu_Item_Attribute_Value')
 export class MenuItemAttributeValue {
@@ -58,6 +59,10 @@ export class MenuItemAttributeValue {
   })
   public unit_obj: Unit;
 
-  @OneToMany(() => TasteValueExt, (ext) => ext.taste_value_obj)
-  public taste_value_ext: TasteValueExt[];
+  @ManyToOne(() => TasteValue)
+  @JoinColumn({
+    name: 'taste_value',
+    referencedColumnName: 'value_id',
+  })
+  public taste_value_obj: TasteValue;
 }

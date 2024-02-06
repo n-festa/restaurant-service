@@ -50,6 +50,8 @@ export interface OptionValue {
   value_txt?: TextByLang[];
   value_nubmer?: number;
   value_unit?: string;
+  is_default?: boolean;
+  order?: number;
 }
 
 export interface MediaItem {
