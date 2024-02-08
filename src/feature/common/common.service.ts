@@ -7,6 +7,7 @@ import {
   OptionSelection,
   RestaurantBasicInfo,
   Review,
+  SkuNameAndImage,
   TextByLang,
   ThisDate,
   TimeRange,
@@ -716,5 +717,29 @@ export class CommonService {
       restaurantLocation,
       userLocation,
     );
+  }
+
+  async getNameAndImageOfSkus(skus: number[]): Promise<SkuNameAndImage[]> {
+    const data: SkuNameAndImage[] = [];
+    const menuItems = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'media')
+      .where('sku.sku_id IN (:...skus)', { skus })
+      .getMany();
+    for (const item of menuItems) {
+      data.push({
+        sku_id: item.sku_id,
+        sku_name: item.menu_item.menuItemExt.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.name,
+          };
+        }),
+        sku_img: item.menu_item.image_obj.url,
+      });
+    }
+    return data;
   }
 }

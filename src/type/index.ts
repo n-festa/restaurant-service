@@ -142,7 +142,7 @@ export interface DeliveryInfo {
 
 export interface FullCartItem {
   item_id: number;
-  item_name: string;
+  item_name: TextByLang[];
   item_img: string;
   customer_id: number;
   sku_id: number;
@@ -157,4 +157,10 @@ export interface FullCartItem {
   basic_taste_customization_obj: string;
   notes: string;
   restaurant_id: number;
+}
+
+export interface SkuNameAndImage {
+  sku_id: number;
+  sku_name: TextByLang[];
+  sku_img: string;
 }

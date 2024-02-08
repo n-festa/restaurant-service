@@ -172,6 +172,35 @@ export class CartService {
       .createQueryBuilder(CartItem, 'cart')
       .where('cart.customer_id = :customer_id', { customer_id })
       .getMany();
+
+    const nameAndImageForSkus = await this.commonService.getNameAndImageOfSkus(
+      cartItems.map((i) => i.sku_id),
+    );
+
+    for (const item of cartItems) {
+      const nameAndImageForSku = nameAndImageForSkus.find(
+        (i) => i.sku_id == item.sku_id,
+      );
+      const fullItem: FullCartItem = {
+        item_id: item.item_id,
+        item_name: nameAndImageForSku.sku_name,
+        item_img: nameAndImageForSku.sku_img,
+        customer_id: item.customer_id,
+        sku_id: item.customer_id,
+        price: null, //???
+        price_after_discount: null, //??
+        unit: null, //???
+        qty_ordered: item.qty_ordered,
+        advanced_taste_customization: item.advanced_taste_customization,
+        basic_taste_customization: item.basic_taste_customization,
+        portion_customization: item.portion_customization,
+        advanced_taste_customization_obj: item.advanced_taste_customization_obj,
+        basic_taste_customization_obj: item.basic_taste_customization_obj,
+        notes: item.notes,
+        restaurant_id: item.restaurant_id,
+      };
+      fullCart.push(fullItem);
+    }
     return fullCart;
   } // end of getCart
 

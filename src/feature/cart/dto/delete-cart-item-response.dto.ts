@@ -14,7 +14,7 @@ interface Data {
 
 interface FullCartItem {
   item_id: number;
-  item_name: string;
+  item_name: TextByLang[];
   item_img: string;
   customer_id: number;
   sku_id: number;
