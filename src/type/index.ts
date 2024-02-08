@@ -159,8 +159,15 @@ export interface FullCartItem {
   restaurant_id: number;
 }
 
-export interface SkuNameAndImage {
+export interface AdditionalInfoForSKU {
   sku_id: number;
   sku_name: TextByLang[];
   sku_img: string;
+  sku_price: number;
+  sku_price_after_discount: number;
+  sku_unit: string;
+}
+export interface PriceUnitByMenuItem {
+  menu_item_id: number;
+  price_unit: string;
 }

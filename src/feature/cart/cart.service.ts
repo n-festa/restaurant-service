@@ -173,23 +173,24 @@ export class CartService {
       .where('cart.customer_id = :customer_id', { customer_id })
       .getMany();
 
-    const nameAndImageForSkus = await this.commonService.getNameAndImageOfSkus(
-      cartItems.map((i) => i.sku_id),
-    );
+    const additionalInfoForSkus =
+      await this.commonService.getAdditionalInfoForSkus(
+        cartItems.map((i) => i.sku_id),
+      );
 
     for (const item of cartItems) {
-      const nameAndImageForSku = nameAndImageForSkus.find(
+      const additionalInfoForSku = additionalInfoForSkus.find(
         (i) => i.sku_id == item.sku_id,
       );
       const fullItem: FullCartItem = {
         item_id: item.item_id,
-        item_name: nameAndImageForSku.sku_name,
-        item_img: nameAndImageForSku.sku_img,
+        item_name: additionalInfoForSku.sku_name,
+        item_img: additionalInfoForSku.sku_img,
         customer_id: item.customer_id,
         sku_id: item.customer_id,
-        price: null, //???
-        price_after_discount: null, //??
-        unit: null, //???
+        price: additionalInfoForSku.sku_price, //???
+        price_after_discount: additionalInfoForSku.sku_price_after_discount, //??
+        unit: additionalInfoForSku.sku_unit, //???
         qty_ordered: item.qty_ordered,
         advanced_taste_customization: item.advanced_taste_customization,
         basic_taste_customization: item.basic_taste_customization,
@@ -901,5 +902,5 @@ export class CartService {
       convertData.forEach((i) => timeSlots.push(i));
     }
     return timeSlots;
-  }
+  } // end of getAvailableDeliveryTimeFromEndPoint
 }
