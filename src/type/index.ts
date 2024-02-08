@@ -139,3 +139,35 @@ export interface DeliveryInfo {
   distance_km: number;
   duration_s: number;
 }
+
+export interface FullCartItem {
+  item_id: number;
+  item_name: TextByLang[];
+  item_img: string;
+  customer_id: number;
+  sku_id: number;
+  price: number;
+  price_after_discount: number;
+  unit: string;
+  qty_ordered: number;
+  advanced_taste_customization: string;
+  basic_taste_customization: string;
+  portion_customization: string;
+  advanced_taste_customization_obj: string;
+  basic_taste_customization_obj: string;
+  notes: string;
+  restaurant_id: number;
+}
+
+export interface AdditionalInfoForSKU {
+  sku_id: number;
+  sku_name: TextByLang[];
+  sku_img: string;
+  sku_price: number;
+  sku_price_after_discount: number;
+  sku_unit: string;
+}
+export interface PriceUnitByMenuItem {
+  menu_item_id: number;
+  price_unit: string;
+}

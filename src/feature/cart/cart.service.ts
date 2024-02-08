@@ -7,8 +7,8 @@ import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
-  Coordinate,
   DayShift,
+  FullCartItem,
   OptionSelection,
   QuantityUpdatedItem,
   ThisDate,
@@ -35,7 +35,7 @@ export class CartService {
     basic_taste_customization_obj: BasicTasteSelection[],
     notes: string,
     lang: string = 'vie',
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     const advanced_taste_customization_obj_txt = JSON.stringify(
       advanced_taste_customization_obj,
     );
@@ -166,11 +166,43 @@ export class CartService {
     return await this.getCart(customer_id);
   } // end of addCartItem
 
-  async getCart(customer_id: number): Promise<CartItem[]> {
-    return await this.entityManager
+  async getCart(customer_id: number): Promise<FullCartItem[]> {
+    const fullCart: FullCartItem[] = [];
+    const cartItems = await this.entityManager
       .createQueryBuilder(CartItem, 'cart')
       .where('cart.customer_id = :customer_id', { customer_id })
       .getMany();
+
+    const additionalInfoForSkus =
+      await this.commonService.getAdditionalInfoForSkus(
+        cartItems.map((i) => i.sku_id),
+      );
+
+    for (const item of cartItems) {
+      const additionalInfoForSku = additionalInfoForSkus.find(
+        (i) => i.sku_id == item.sku_id,
+      );
+      const fullItem: FullCartItem = {
+        item_id: item.item_id,
+        item_name: additionalInfoForSku.sku_name,
+        item_img: additionalInfoForSku.sku_img,
+        customer_id: item.customer_id,
+        sku_id: item.customer_id,
+        price: additionalInfoForSku.sku_price, //???
+        price_after_discount: additionalInfoForSku.sku_price_after_discount, //??
+        unit: additionalInfoForSku.sku_unit, //???
+        qty_ordered: item.qty_ordered,
+        advanced_taste_customization: item.advanced_taste_customization,
+        basic_taste_customization: item.basic_taste_customization,
+        portion_customization: item.portion_customization,
+        advanced_taste_customization_obj: item.advanced_taste_customization_obj,
+        basic_taste_customization_obj: item.basic_taste_customization_obj,
+        notes: item.notes,
+        restaurant_id: item.restaurant_id,
+      };
+      fullCart.push(fullItem);
+    }
+    return fullCart;
   } // end of getCart
 
   async insertCart(
@@ -245,7 +277,7 @@ export class CartService {
     basic_taste_customization_obj: BasicTasteSelection[],
     notes: string,
     lang: string,
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
 
     // Get the corresponding cart items in DB
@@ -505,7 +537,7 @@ export class CartService {
   async updateCartBasicFromEndPoint(
     customer_id: number,
     quantity_updated_items: QuantityUpdatedItem[],
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
     // quantity_updated_items cannot be empty
     if (!quantity_updated_items || quantity_updated_items.length <= 0) {
@@ -570,7 +602,7 @@ export class CartService {
   async deleteCartItemsFromEndPoint(
     customer_id: number,
     item_ids: number[],
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     //Check if the item_ids belongs to the customers
     const mentionedCartItems = await this.getCartByItemId(
       item_ids,
@@ -870,5 +902,5 @@ export class CartService {
       convertData.forEach((i) => timeSlots.push(i));
     }
     return timeSlots;
-  }
+  } // end of getAvailableDeliveryTimeFromEndPoint
 }

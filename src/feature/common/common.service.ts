@@ -1,10 +1,12 @@
 import { HttpException, Inject, Injectable } from '@nestjs/common';
 import {
+  AdditionalInfoForSKU,
   BasicTasteSelection,
   Coordinate,
   DeliveryInfo,
   DeliveryRestaurant,
   OptionSelection,
+  PriceUnitByMenuItem,
   RestaurantBasicInfo,
   Review,
   TextByLang,
@@ -35,6 +37,7 @@ import { OperationHours } from 'src/entity/operation-hours.entity';
 import { RestaurantDayOff } from 'src/entity/restaurant-day-off.entity';
 import { ManualOpenRestaurant } from 'src/entity/manual-open-restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
+import { Unit } from 'src/entity/unit.entity';
 
 @Injectable()
 export class CommonService {
@@ -512,7 +515,7 @@ export class CommonService {
       .where('menuItem.menu_item_id IN (:...ids)', { ids })
       .getMany();
     return data;
-  }
+  } // end of getMenuItemByIds
 
   convertTimeRangeToTimeSlot(
     time_range: TimeRange,
@@ -562,7 +565,7 @@ export class CommonService {
     }
 
     return timeSlots;
-  }
+  } // end of convertTimeRangeToTimeSlot
 
   async getRestaurantOperationHours(
     restaurant_id: number,
@@ -572,7 +575,7 @@ export class CommonService {
       .where('ops.restaurant_id = :restaurant_id', { restaurant_id })
       .getMany();
     return opsHours;
-  }
+  } // end of getRestaurantOperationHours
 
   async getUtcTimeZone(restaurant_id: number): Promise<number> {
     return Number(
@@ -584,7 +587,7 @@ export class CommonService {
           .getOne()
       ).utc_time_zone,
     );
-  }
+  } // end of getUtcTimeZone
 
   async getAvailableRestaurantDayOff(
     restaurant_id: number,
@@ -596,7 +599,8 @@ export class CommonService {
     const query = `SELECT * FROM Restaurant_Day_Off where date >= date("${todayStr}")`;
     const data = await this.entityManager.query(query);
     return data; // Return the array of RestaurantDayOff objects
-  }
+  } // end of getAvailableRestaurantDayOff
+
   convertTimeToSeconds(
     time: string, //format hh:mm:ss
   ): number {
@@ -606,7 +610,8 @@ export class CommonService {
     }
     const [hours, minutes, seconds] = time.split(':').map(Number);
     return hours * 3600 + minutes * 60 + seconds;
-  }
+  } // end of convertTimeToSeconds
+
   convertSecondsToTime(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -614,7 +619,7 @@ export class CommonService {
     return `${hours.toString().padStart(2, '0')}:${minutes
       .toString()
       .padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
+  } // end of convertSecondsToTime
 
   async getTodayOpsTime(
     restaurant_id: number,
@@ -679,7 +684,7 @@ export class CommonService {
     timeRange.to = new Date(data[0].to_time).getTime();
 
     return timeRange;
-  }
+  } // end of getTodayOpsTime
 
   getOverlappingTimeRange(
     timeRange1: TimeRange,
@@ -691,7 +696,7 @@ export class CommonService {
       return { from, to };
     }
     return null; // No overlapping time range.
-  }
+  } // end of getOverlappingTimeRange
 
   async estimateTimeAndDistanceForRestaurant(
     restaurant_id: number,
@@ -716,5 +721,65 @@ export class CommonService {
       restaurantLocation,
       userLocation,
     );
-  }
+  } // end of estimateTimeAndDistanceForRestaurant
+
+  async getAdditionalInfoForSkus(
+    sku_ids: number[],
+  ): Promise<AdditionalInfoForSKU[]> {
+    const data: AdditionalInfoForSKU[] = [];
+    const skus = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'media')
+      .where('sku.sku_id IN (:...sku_ids)', { sku_ids })
+      .getMany();
+    const menuItemIds = skus.map((i) => i.menu_item_id);
+    const uniquemenuItemIds = menuItemIds.filter((value, index, self) => {
+      return self.indexOf(value) === index;
+    });
+    const priceUnits = await this.getPriceUnitByMenuItems(uniquemenuItemIds);
+    for (const item of skus) {
+      const priceUnit = priceUnits.find(
+        (i) => i.menu_item_id == item.menu_item_id,
+      );
+      const additionalInfoForSKU: AdditionalInfoForSKU = {
+        sku_id: item.sku_id,
+        sku_name: item.menu_item.menuItemExt.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.name,
+          };
+        }),
+        sku_img: item.menu_item.image_obj.url,
+        sku_price: item.price,
+        sku_price_after_discount: await this.getAvailableDiscountPrice(item),
+        sku_unit: priceUnit?.price_unit || null,
+      };
+      data.push(additionalInfoForSKU);
+    }
+    return data;
+  } //end of getAdditionalInfoForSkus
+
+  async getPriceUnitByMenuItems(
+    menu_item_ids: number[],
+  ): Promise<PriceUnitByMenuItem[]> {
+    const data: PriceUnitByMenuItem[] = [];
+    const menuItems = await this.entityManager
+      .createQueryBuilder(MenuItem, 'menuItem')
+      .leftJoinAndSelect('menuItem.restaurant', 'restaurant')
+      .leftJoinAndSelect('restaurant.unit_obj', 'unit')
+      .where('menuItem.menu_item_id IN (:...menu_item_ids)', { menu_item_ids })
+      .getMany();
+
+    for (const item of menuItems) {
+      const priceUnitByMenuItem: PriceUnitByMenuItem = {
+        menu_item_id: item.menu_item_id,
+        price_unit: item.restaurant.unit_obj.symbol,
+      };
+      data.push(priceUnitByMenuItem);
+    }
+
+    return data;
+  } // end of getPriceUnitByMenuItems
 }
