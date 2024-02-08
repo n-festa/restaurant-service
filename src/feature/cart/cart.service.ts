@@ -7,8 +7,8 @@ import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
-  Coordinate,
   DayShift,
+  FullCartItem,
   OptionSelection,
   QuantityUpdatedItem,
   ThisDate,
@@ -35,7 +35,7 @@ export class CartService {
     basic_taste_customization_obj: BasicTasteSelection[],
     notes: string,
     lang: string = 'vie',
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     const advanced_taste_customization_obj_txt = JSON.stringify(
       advanced_taste_customization_obj,
     );
@@ -166,11 +166,13 @@ export class CartService {
     return await this.getCart(customer_id);
   } // end of addCartItem
 
-  async getCart(customer_id: number): Promise<CartItem[]> {
-    return await this.entityManager
+  async getCart(customer_id: number): Promise<FullCartItem[]> {
+    const fullCart: FullCartItem[] = [];
+    const cartItems = await this.entityManager
       .createQueryBuilder(CartItem, 'cart')
       .where('cart.customer_id = :customer_id', { customer_id })
       .getMany();
+    return fullCart;
   } // end of getCart
 
   async insertCart(
@@ -245,7 +247,7 @@ export class CartService {
     basic_taste_customization_obj: BasicTasteSelection[],
     notes: string,
     lang: string,
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
 
     // Get the corresponding cart items in DB
@@ -505,7 +507,7 @@ export class CartService {
   async updateCartBasicFromEndPoint(
     customer_id: number,
     quantity_updated_items: QuantityUpdatedItem[],
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
     // quantity_updated_items cannot be empty
     if (!quantity_updated_items || quantity_updated_items.length <= 0) {
@@ -570,7 +572,7 @@ export class CartService {
   async deleteCartItemsFromEndPoint(
     customer_id: number,
     item_ids: number[],
-  ): Promise<CartItem[]> {
+  ): Promise<FullCartItem[]> {
     //Check if the item_ids belongs to the customers
     const mentionedCartItems = await this.getCartByItemId(
       item_ids,

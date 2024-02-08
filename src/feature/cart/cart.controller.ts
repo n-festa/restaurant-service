@@ -7,14 +7,13 @@ import { AddToCartResponse } from './dto/add-to-cart-response.dto';
 import { UpdateCartAdvancedRequest } from './dto/update-cart-advanced-request.dto';
 import { UpdateCartAdvancedResponse } from './dto/update-cart-advanced-response.dto';
 import { GetCartDetailResponse } from './dto/get-cart-detail-response.dto';
-import { CartItem } from 'src/entity/cart-item.entity';
 import { UpdateCartBasicRequest } from './dto/update-cart-basic-request.dto';
 import { UpdateCartBasicResponse } from './dto/update-cart-basic-response.dto';
 import { DeleteCartItemRequest } from './dto/delete-cart-item-request.dto';
 import { DeleteCartItemResponse } from './dto/delete-cart-item-response.dto';
 import { GeneralResponse } from 'src/dto/general-response.dto';
 import { CommonService } from '../common/common.service';
-import { RestaurantBasicInfo, TimeSlot } from 'src/type';
+import { FullCartItem, RestaurantBasicInfo, TimeSlot } from 'src/type';
 import { GetAvailableDeliveryTimeRequest } from './dto/get-available-delivery-time-request.dto';
 import { GetAvailableDeliveryTimeResponse } from './dto/get-available-delivery-time-response.dto';
 
@@ -85,7 +84,8 @@ export class CartController {
     const res = new GetCartDetailResponse(200, '');
 
     try {
-      const cartItems: CartItem[] = await this.cartService.getCart(customer_id);
+      const cartItems: FullCartItem[] =
+        await this.cartService.getCart(customer_id);
       let restaurant: RestaurantBasicInfo = {
         id: null,
         name: [],
@@ -138,7 +138,7 @@ export class CartController {
     } = data;
     const res = new UpdateCartAdvancedResponse(200, '');
     try {
-      const cartItems: CartItem[] =
+      const cartItems: FullCartItem[] =
         await this.cartService.updateCartAdvancedFromEndPoint(
           customer_id,
           item_id,
@@ -190,7 +190,7 @@ export class CartController {
     const { customer_id, updated_items } = data;
     const res = new UpdateCartBasicResponse(200, '');
     try {
-      const cartItems: CartItem[] =
+      const cartItems: FullCartItem[] =
         await this.cartService.updateCartBasicFromEndPoint(
           customer_id,
           updated_items,
