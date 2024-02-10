@@ -1,0 +1,125 @@
+[
+  {
+    "id": 1,
+    "image": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1701613497/Food/default_food_image_w6r6eo.png",
+    "top_label": "",
+    "bottom_label": null,
+    "name": [
+      {
+        "ISO_language_code": "vie",
+        "text": "Cơm Ức Gà Gạo Lứt"
+      }
+    ],
+    "restaurant_name": [
+      {
+        "ISO_language_code": "vie",
+        "text": "The Chef Town"
+      }
+    ],
+    "restaurant_id": 1,
+    "calorie_kcal": 366.0,
+    "rating": 4.5,
+    "distance_km": null,
+    "delivery_time_s": null,
+    "main_cooking_method": [
+      {
+        "ISO_language_code": "vie",
+        "text": "Luộc"
+      }
+    ],
+    "ingredient_brief_vie": "Gạo lứt, Thịt gà công nghiệp, lườn; Bánh tart; Súp lơ trắng; Ớt đỏ to",
+    "ingredient_brief_eng": "Brown rice; Chicken, breast; Egg tart; Cauliflower, raw; Peppers, red, raw",
+    "price": 95000,
+    "price_after_discount": 65000,
+    "promotion": "Ưu đãi đến 50k",
+    "cutoff_time": "09:00:00",
+    "preparing_time_s": 600,
+    "cooking_time_s": 1200,
+    "quantity_available": 5,
+    "is_vegetarian": false,
+    "cooking_schedule": "[{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":true},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false}]",
+    "units_sold": 0
+  },
+  {
+    "id": 1,
+    "image": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1701613497/Food/default_food_image_w6r6eo.png",
+    "top_label": "",
+    "bottom_label": null,
+    "name": [
+      {
+        "ISO_language_code": "vie",
+        "text": "Cơm Ức Gà Gạo Lứt"
+      }
+    ],
+    "restaurant_name": [
+      {
+        "ISO_language_code": "vie",
+        "text": "The Chef Town"
+      }
+    ],
+    "restaurant_id": 1,
+    "calorie_kcal": 366.0,
+    "rating": 4.5,
+    "distance_km": null,
+    "delivery_time_s": null,
+    "main_cooking_method": [
+      {
+        "ISO_language_code": "vie",
+        "text": "Luộc"
+      }
+    ],
+    "ingredient_brief_vie": "Gạo lứt, Thịt gà công nghiệp, lườn; Bánh tart; Súp lơ trắng; Ớt đỏ to",
+    "ingredient_brief_eng": "Brown rice; Chicken, breast; Egg tart; Cauliflower, raw; Peppers, red, raw",
+    "price": 95000,
+    "price_after_discount": 65000,
+    "promotion": "Ưu đãi đến 50k",
+    "cutoff_time": "09:00:00",
+    "preparing_time_s": 600,
+    "cooking_time_s": 1200,
+    "quantity_available": 5,
+    "is_vegetarian": false,
+    "cooking_schedule": "[{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":true},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false}]",
+    "units_sold": 0
+  },
+  {
+    "id": 1,
+    "image": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1701613497/Food/default_food_image_w6r6eo.png",
+    "top_label": "",
+    "bottom_label": null,
+    "name": [
+      {
+        "ISO_language_code": "vie",
+        "text": "Cơm Ức Gà Gạo Lứt"
+      }
+    ],
+    "restaurant_name": [
+      {
+        "ISO_language_code": "vie",
+        "text": "The Chef Town"
+      }
+    ],
+    "restaurant_id": 1,
+    "calorie_kcal": 366.0,
+    "rating": 4.5,
+    "distance_km": null,
+    "delivery_time_s": null,
+    "main_cooking_method": [
+      {
+        "ISO_language_code": "vie",
+        "text": "Luộc"
+      }
+    ],
+    "ingredient_brief_vie": "Gạo lứt, Thịt gà công nghiệp, lườn; Bánh tart; Súp lơ trắng; Ớt đỏ to",
+    "ingredient_brief_eng": "Brown rice; Chicken, breast; Egg tart; Cauliflower, raw; Peppers, red, raw",
+    "price": 95000,
+    "price_after_discount": 65000,
+    "promotion": "Ưu đãi đến 50k",
+    "cutoff_time": "09:00:00",
+    "preparing_time_s": 600,
+    "cooking_time_s": 1200,
+    "quantity_available": 5,
+    "is_vegetarian": false,
+    "cooking_schedule": "[{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":true},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false}]",
+    "units_sold": 0
+  }
+]
