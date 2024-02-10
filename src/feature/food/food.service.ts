@@ -31,6 +31,7 @@ import { MainSideDish } from 'src/entity/main-side-dish.entity';
 import { DayName, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
 import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
+import { readFileSync } from 'fs';
 
 @Injectable()
 export class FoodService {
@@ -687,4 +688,20 @@ export class FoodService {
     }
     return earliestAvailabeDayShift;
   } // end of getEarliesAvailabeDayShift
+
+  async getHotFoodFromEndPoint(): Promise<FoodDTO[]> {
+    const foods: FoodDTO[] = [];
+    try {
+      const filePath = 'src/fake_data/hot-food.json';
+      const fileContent = readFileSync(filePath, 'utf-8');
+      const parsedData = JSON.parse(fileContent) as FoodDTO[];
+      parsedData.forEach((item) => {
+        foods.push(item);
+      });
+    } catch (error) {
+      console.error('Error reading JSON file:', error);
+      throw error;
+    }
+    return foods;
+  } // end of getHotFoodFromEndPoint
 }
