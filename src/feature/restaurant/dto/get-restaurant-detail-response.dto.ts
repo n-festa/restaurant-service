@@ -43,7 +43,9 @@ interface Review {
   food_rating_id: number;
   score: number;
   remarks: string;
-  reviewer?: string;
+  reviewer_name?: string;
+  reviewer_title?: string;
+  reviewer_img?: string;
 }
 
 interface TextByLang {

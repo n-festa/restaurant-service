@@ -1,0 +1,42 @@
+[
+  {
+    "food_rating_id": 1,
+    "score": 5,
+    "remarks": "Tôi đã sử dụng 2all để đặt món ăn và rất hài lòng với trải nghiệm của mình. Dịch vụ giao hàng nhanh chóng và đáng tin cậy, và thực phẩm luôn được giao hàng trong tình trạng tốt nhất.",
+    "reviewer_name": "Alexander R.",
+    "reviewer_title": "Khách hàng thân thiết",
+    "reviewer_img": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1707646755/Avatar/customer_avatar_male_shion5.png"
+  },
+  {
+    "food_rating_id": 1,
+    "score": 5,
+    "remarks": "Tôi đã sử dụng 2all để đặt món ăn và rất hài lòng với trải nghiệm của mình. Dịch vụ giao hàng nhanh chóng và đáng tin cậy, và thực phẩm luôn được giao hàng trong tình trạng tốt nhất.",
+    "reviewer_name": "Alexander R.",
+    "reviewer_title": "Khách hàng thân thiết",
+    "reviewer_img": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1707646755/Avatar/customer_avatar_male_shion5.png"
+  },
+  {
+    "food_rating_id": 1,
+    "score": 5,
+    "remarks": "Tôi đã sử dụng 2all để đặt món ăn và rất hài lòng với trải nghiệm của mình. Dịch vụ giao hàng nhanh chóng và đáng tin cậy, và thực phẩm luôn được giao hàng trong tình trạng tốt nhất.",
+    "reviewer_name": "Alexander R.",
+    "reviewer_title": "Khách hàng thân thiết",
+    "reviewer_img": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1707646755/Avatar/customer_avatar_male_shion5.png"
+  },
+  {
+    "food_rating_id": 1,
+    "score": 5,
+    "remarks": "Tôi đã sử dụng 2all để đặt món ăn và rất hài lòng với trải nghiệm của mình. Dịch vụ giao hàng nhanh chóng và đáng tin cậy, và thực phẩm luôn được giao hàng trong tình trạng tốt nhất.",
+    "reviewer_name": "Alexander R.",
+    "reviewer_title": "Khách hàng thân thiết",
+    "reviewer_img": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1707646755/Avatar/customer_avatar_male_shion5.png"
+  },
+  {
+    "food_rating_id": 1,
+    "score": 5,
+    "remarks": "Tôi đã sử dụng 2all để đặt món ăn và rất hài lòng với trải nghiệm của mình. Dịch vụ giao hàng nhanh chóng và đáng tin cậy, và thực phẩm luôn được giao hàng trong tình trạng tốt nhất.",
+    "reviewer_name": "Alexander R.",
+    "reviewer_title": "Khách hàng thân thiết",
+    "reviewer_img": "https://res.cloudinary.com/dtopkwb9k/image/upload/v1707646755/Avatar/customer_avatar_male_shion5.png"
+  }
+]
