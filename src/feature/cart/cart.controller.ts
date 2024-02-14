@@ -16,6 +16,9 @@ import { CommonService } from '../common/common.service';
 import { FullCartItem, RestaurantBasicInfo, TimeSlot } from 'src/type';
 import { GetAvailableDeliveryTimeRequest } from './dto/get-available-delivery-time-request.dto';
 import { GetAvailableDeliveryTimeResponse } from './dto/get-available-delivery-time-response.dto';
+import { QuickAddToCartRequest } from './dto/quick-add-to-cart-request.dto';
+import { QuickAddToCartResponse } from './dto/quick-add-to-cart-response.dto';
+import { HttpStatusCode } from 'axios';
 
 @Controller()
 export class CartController {
@@ -329,4 +332,64 @@ export class CartController {
 
     return res;
   } // end of getAvailableDeliveryTime
+
+  @MessagePattern({ cmd: 'quick_add_to_cart' })
+  async quickAddToCart(
+    data: QuickAddToCartRequest,
+  ): Promise<QuickAddToCartResponse> {
+    const res = new QuickAddToCartResponse(200, '');
+    const { customer_id, menu_item_id } = data;
+
+    // get standard SKUs for menu_item_id
+    const sku = await this.commonService.getStandardSkuByMenuItem(menu_item_id);
+    if (!sku) {
+      res.statusCode = HttpStatusCode.NotFound;
+      res.message = 'Standard SKU for the menu item does not exist';
+      res.data = null;
+      return res;
+    }
+
+    const qtyOrdered = 1;
+
+    try {
+      const cart = await this.cartService.addCartItem(
+        customer_id,
+        sku.sku_id,
+        qtyOrdered,
+      );
+
+      let restaurant: RestaurantBasicInfo = {
+        id: null,
+        name: [],
+        logo_url: null,
+      };
+      if (cart.length > 0) {
+        restaurant = await this.commonService.getRestaurantBasicInfo(
+          cart[0].restaurant_id,
+        );
+      }
+      //success
+      res.statusCode = 200;
+      res.message = 'Quick-add to cart successfully';
+      res.data = {
+        customer_id: customer_id,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+        restaurant_logo_img: restaurant.logo_url,
+        cart_info: cart,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
+      }
+    }
+
+    return res;
+  } // end of quickAddToCart
 }

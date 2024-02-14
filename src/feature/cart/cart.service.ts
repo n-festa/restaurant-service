@@ -197,10 +197,10 @@ export class CartService {
         item_name: additionalInfoForSku.sku_name,
         item_img: additionalInfoForSku.sku_img,
         customer_id: item.customer_id,
-        sku_id: item.customer_id,
-        price: additionalInfoForSku.sku_price, //???
-        price_after_discount: additionalInfoForSku.sku_price_after_discount, //??
-        unit: additionalInfoForSku.sku_unit, //???
+        sku_id: item.sku_id,
+        price: additionalInfoForSku.sku_price,
+        price_after_discount: additionalInfoForSku.sku_price_after_discount,
+        unit: additionalInfoForSku.sku_unit,
         qty_ordered: item.qty_ordered,
         advanced_taste_customization: item.advanced_taste_customization,
         basic_taste_customization: item.basic_taste_customization,
