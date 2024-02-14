@@ -725,6 +725,9 @@ export class CommonService {
   async getAdditionalInfoForSkus(
     sku_ids: number[],
   ): Promise<AdditionalInfoForSKU[]> {
+    if (sku_ids.length <= 0) {
+      return [];
+    }
     const data: AdditionalInfoForSKU[] = [];
     const skus = await this.entityManager
       .createQueryBuilder(SKU, 'sku')
