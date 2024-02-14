@@ -11,6 +11,7 @@ import { MenuItem } from 'src/entity/menu-item.entity';
 import { Unit } from 'src/entity/unit.entity';
 import { UnitExt } from 'src/entity/unit-ext.entity';
 import { AhamoveModule } from 'src/dependency/ahamove/ahamove.module';
+import { Contact } from 'src/entity/contact.entity';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AhamoveModule } from 'src/dependency/ahamove/ahamove.module';
       MenuItem,
       Unit,
       UnitExt,
+      Contact,
     ]),
     AhamoveModule,
   ],

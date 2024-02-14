@@ -37,7 +37,6 @@ import { OperationHours } from 'src/entity/operation-hours.entity';
 import { RestaurantDayOff } from 'src/entity/restaurant-day-off.entity';
 import { ManualOpenRestaurant } from 'src/entity/manual-open-restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
-import { Unit } from 'src/entity/unit.entity';
 
 @Injectable()
 export class CommonService {
@@ -782,4 +781,11 @@ export class CommonService {
 
     return data;
   } // end of getPriceUnitByMenuItems
+
+  validateEmail(email: string): boolean {
+    const emailRegex = new RegExp(
+      /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/,
+    );
+    return emailRegex.test(email);
+  } // end of validateEmail
 }
