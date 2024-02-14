@@ -30,18 +30,20 @@ export class CartService {
   async addCartItem(
     customer_id: number,
     sku_id: number,
-    qty_ordered: number,
-    advanced_taste_customization_obj: OptionSelection[],
-    basic_taste_customization_obj: BasicTasteSelection[],
-    notes: string,
+    qty_ordered: number = 1,
+    advanced_taste_customization_obj: OptionSelection[] = [],
+    basic_taste_customization_obj: BasicTasteSelection[] = [],
+    notes: string = '',
     lang: string = 'vie',
   ): Promise<FullCartItem[]> {
-    const advanced_taste_customization_obj_txt = JSON.stringify(
-      advanced_taste_customization_obj,
-    );
-    const basic_taste_customization_obj_txt = JSON.stringify(
-      basic_taste_customization_obj,
-    );
+    const advanced_taste_customization_obj_txt =
+      advanced_taste_customization_obj.length > 0
+        ? JSON.stringify(advanced_taste_customization_obj)
+        : '';
+    const basic_taste_customization_obj_txt =
+      basic_taste_customization_obj.length > 0
+        ? JSON.stringify(basic_taste_customization_obj)
+        : '';
 
     //Check if the SKU does exist
     const sku = await this.entityManager
@@ -55,10 +57,12 @@ export class CartService {
 
     // Check if the advanced_taste_customization_obj is all available to this SKU
     const advancedTasteCustomizationValidation =
-      await this.commonService.validateAdvacedTasteCustomizationObjWithMenuItem(
-        advanced_taste_customization_obj,
-        sku.menu_item_id,
-      );
+      advanced_taste_customization_obj.length > 0
+        ? await this.commonService.validateAdvacedTasteCustomizationObjWithMenuItem(
+            advanced_taste_customization_obj,
+            sku.menu_item_id,
+          )
+        : { isValid: true, message: '' };
     if (!advancedTasteCustomizationValidation.isValid) {
       throw new HttpException(
         advancedTasteCustomizationValidation.message,
@@ -68,10 +72,12 @@ export class CartService {
 
     // Check if the basic_taste_customization_obj is all available to this SKU
     const basicTasteCustomizationValidation =
-      await this.commonService.validateBasicTasteCustomizationObjWithMenuItem(
-        basic_taste_customization_obj,
-        sku.menu_item_id,
-      );
+      basic_taste_customization_obj.length > 0
+        ? await this.commonService.validateBasicTasteCustomizationObjWithMenuItem(
+            basic_taste_customization_obj,
+            sku.menu_item_id,
+          )
+        : { isValid: true, message: '' };
     if (!basicTasteCustomizationValidation.isValid) {
       throw new HttpException(basicTasteCustomizationValidation.message, 400);
     }
@@ -81,17 +87,21 @@ export class CartService {
 
     //Interpret Advance Taste Customization
     const advanced_taste_customization =
-      await this.commonService.interpretAdvanceTaseCustomization(
-        advanced_taste_customization_obj,
-        lang,
-      );
+      advanced_taste_customization_obj.length > 0
+        ? await this.commonService.interpretAdvanceTaseCustomization(
+            advanced_taste_customization_obj,
+            lang,
+          )
+        : '';
 
     //Interpret Basic  Taste Customization
     const basic_taste_customization =
-      await this.commonService.interpretBasicTaseCustomization(
-        basic_taste_customization_obj,
-        lang,
-      );
+      basic_taste_customization_obj.length > 0
+        ? await this.commonService.interpretBasicTaseCustomization(
+            basic_taste_customization_obj,
+            lang,
+          )
+        : '';
 
     //Interpret Portion Customization
     const portion_customization =
@@ -187,10 +197,10 @@ export class CartService {
         item_name: additionalInfoForSku.sku_name,
         item_img: additionalInfoForSku.sku_img,
         customer_id: item.customer_id,
-        sku_id: item.customer_id,
-        price: additionalInfoForSku.sku_price, //???
-        price_after_discount: additionalInfoForSku.sku_price_after_discount, //??
-        unit: additionalInfoForSku.sku_unit, //???
+        sku_id: item.sku_id,
+        price: additionalInfoForSku.sku_price,
+        price_after_discount: additionalInfoForSku.sku_price_after_discount,
+        unit: additionalInfoForSku.sku_unit,
         qty_ordered: item.qty_ordered,
         advanced_taste_customization: item.advanced_taste_customization,
         basic_taste_customization: item.basic_taste_customization,

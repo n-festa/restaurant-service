@@ -725,6 +725,9 @@ export class CommonService {
   async getAdditionalInfoForSkus(
     sku_ids: number[],
   ): Promise<AdditionalInfoForSKU[]> {
+    if (sku_ids.length <= 0) {
+      return [];
+    }
     const data: AdditionalInfoForSKU[] = [];
     const skus = await this.entityManager
       .createQueryBuilder(SKU, 'sku')
@@ -788,4 +791,17 @@ export class CommonService {
     );
     return emailRegex.test(email);
   } // end of validateEmail
+
+  async getStandardSkuByMenuItem(menu_item_id: number): Promise<SKU> {
+    if (!menu_item_id) {
+      return null;
+    }
+    const sku = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .where('sku.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere('sku.is_standard = 1')
+      .andWhere('sku.is_active = 1')
+      .getOne();
+    return sku;
+  } // end of getStandardSkuByMenuItem
 }
