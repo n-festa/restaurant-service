@@ -12,6 +12,7 @@ import { CommonService } from '../common/common.service';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { FoodDTO } from 'src/dto/food.dto';
 import { TRUE } from 'src/constant';
+import { Contact } from 'src/entity/contact.entity';
 
 @Injectable()
 export class RestaurantService {
@@ -343,4 +344,21 @@ export class RestaurantService {
       .getMany();
     return data;
   } // getAllMediaByRestaurantId
+
+  async sendContactFormFromEndPoint(
+    email: string,
+    message: string,
+  ): Promise<number> {
+    const result = await this.entityManager
+      .createQueryBuilder()
+      .insert()
+      .into(Contact)
+      .values({
+        email: email,
+        content: message,
+      })
+      .execute();
+
+    return result.identifiers[0]?.contact_id || null;
+  } // end of sendContactFormFromEndPoint
 }
