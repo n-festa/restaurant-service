@@ -6,6 +6,8 @@ import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
 import { GetHotFoodResponse } from './dto/get-hot-food-response.dto';
 import { FoodDTO } from 'src/dto/food.dto';
+import { GetAvailableFoodByRestaurantRequest } from './dto/get-available-food-by-restaurant-request.dto';
+import { GetAvailableFoodByRestaurantResponse } from './dto/get-available-food-by-restaurant-response.dto';
 
 @Controller()
 export class FoodController {
@@ -50,4 +52,41 @@ export class FoodController {
     }
     return res;
   } // end of getHotFood
+
+  @MessagePattern({ cmd: 'get_available_food_by_restaurant' })
+  async getAvailableFoodByRestaurant(
+    data: GetAvailableFoodByRestaurantRequest,
+  ): Promise<GetAvailableFoodByRestaurantResponse> {
+    const res = new GetAvailableFoodByRestaurantResponse(200, '');
+    const { menu_item_id } = data;
+    const timestamp = Date.now();
+    try {
+      if (!menu_item_id) {
+        res.statusCode = 400;
+        res.message = 'Missing menu_item_id';
+        res.data = null;
+        return res;
+      }
+      const foods: FoodDTO[] =
+        await this.foodService.getAvailableFoodByRestaurantFromEndPoint(
+          menu_item_id,
+          timestamp,
+        );
+      res.statusCode = 200;
+      res.message = 'Get available food by restaurant successfully';
+      res.data = foods;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        res.statusCode = error.getStatus();
+        res.message = error.getResponse();
+        res.data = null;
+      } else {
+        res.statusCode = 500;
+        res.message = error.toString();
+        res.data = null;
+      }
+    }
+
+    return res;
+  } // end of getAvailableFoodByRestaurant
 }

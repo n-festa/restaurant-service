@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { EntityManager, Repository } from 'typeorm';
@@ -704,4 +704,71 @@ export class FoodService {
     }
     return foods;
   } // end of getHotFoodFromEndPoint
+
+  async getAvailableFoodByRestaurantFromEndPoint(
+    menu_item_id: number,
+    timestamp: number,
+  ): Promise<FoodDTO[]> {
+    const foods: FoodDTO[] = [];
+
+    // Get main dish detail
+    const mainDish = await this.entityManager
+      .createQueryBuilder(MenuItem, 'menuItem')
+      .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+      .getOne();
+
+    // get list of menu_item_id of the restaurant except for the main dish
+    const menuItemIds = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuItem')
+        .where('menuItem.restaurant_id = :restaurant_id', {
+          restaurant_id: mainDish.restaurant_id,
+        })
+        .andWhere('menuItem.menu_item_id <> :menu_item_id', { menu_item_id })
+        .select('menuItem.menu_item_id')
+        .getMany()
+    ).map((i) => i.menu_item_id);
+
+    //Get data for the side dishes
+    const menuItems = await this.getFoodsWithListOfMenuItem(menuItemIds);
+
+    // Check if there is no side dish for this main dish
+    if (menuItemIds.length === 0) {
+      throw new HttpException('No food found', HttpStatus.NOT_FOUND);
+    }
+
+    //Get main dish schedule
+    const mainDishSchedule = JSON.parse(mainDish?.cooking_schedule || null);
+
+    //get the earlies available dayshift of main dish
+    const restaurantUtcTimeZone = await this.commonService.getUtcTimeZone(
+      mainDish.restaurant_id,
+    );
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+    const earliestDayShift = this.getEarliesAvailabeDayShift(
+      timestamp,
+      timeZoneOffset,
+      mainDishSchedule,
+    );
+
+    //Filter availabe side dishes
+    const availableMenuItems = menuItems.filter((item) => {
+      const sideDishSchedule: DayShift[] = JSON.parse(item.cooking_schedule);
+      const correspondingDayShift = sideDishSchedule.find(
+        (dayShift) =>
+          dayShift.day_id == earliestDayShift.day_id &&
+          dayShift.from == earliestDayShift.from &&
+          dayShift.to == earliestDayShift.to,
+      );
+      return correspondingDayShift.is_available == true;
+    });
+
+    //Convert to DTO
+    for (const availableMenuItem of availableMenuItems) {
+      const food: FoodDTO =
+        await this.commonService.convertIntoFoodDTO(availableMenuItem);
+      foods.push(food);
+    }
+    return foods;
+  } // end of getAvailableFoodByRestaurantFromEndPoint
 }
