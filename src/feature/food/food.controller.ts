@@ -58,20 +58,23 @@ export class FoodController {
     data: GetAvailableFoodByRestaurantRequest,
   ): Promise<GetAvailableFoodByRestaurantResponse> {
     const res = new GetAvailableFoodByRestaurantResponse(200, '');
-    const { restaurant_id, menu_item_id } = data;
+    const { menu_item_id } = data;
+    const timestamp = Date.now();
     try {
-      if (!restaurant_id) {
-        res.statusCode = 400;
-        res.message = 'Missing restaurant_id';
-        res.data = null;
-        return res;
-      }
       if (!menu_item_id) {
         res.statusCode = 400;
         res.message = 'Missing menu_item_id';
         res.data = null;
         return res;
       }
+      const foods: FoodDTO[] =
+        await this.foodService.getAvailableFoodByRestaurantFromEndPoint(
+          menu_item_id,
+          timestamp,
+        );
+      res.statusCode = 200;
+      res.message = 'Get available food by restaurant successfully';
+      res.data = foods;
     } catch (error) {
       if (error instanceof HttpException) {
         res.statusCode = error.getStatus();
@@ -85,5 +88,5 @@ export class FoodController {
     }
 
     return res;
-  }
+  } // end of getAvailableFoodByRestaurant
 }
