@@ -13,6 +13,7 @@ import { SearchModule } from './feature/search/search.module';
 import { CommonModule } from './feature/common/common.module';
 import { CartModule } from './feature/cart/cart.module';
 import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-review.module';
+import { AhamoveModule } from './dependency/ahamove/ahamove.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-re
     CommonModule,
     CartModule,
     RatingAndReviewModule,
+    AhamoveModule,
   ],
   controllers: [AppController],
   providers: [AppService],
