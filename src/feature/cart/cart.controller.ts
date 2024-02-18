@@ -315,9 +315,20 @@ export class CartController {
           lat,
           utc_offset,
         );
-      res.statusCode = 200;
-      res.message = 'Get available delivery time successfully';
-      res.data = timeSlots;
+      if (timeSlots.length > 0) {
+        res.statusCode = 200;
+        res.message = 'Get available delivery time successfully';
+        res.data = timeSlots;
+      } else if (timeSlots.length <= 0) {
+        const menuItems =
+          await this.commonService.getMenuItemByIds(menu_item_ids);
+        res.statusCode = 404;
+        res.message = 'No available delivery time';
+        res.data = await this.commonService.getPlanningDate(
+          menuItems[0].restaurant_id,
+          now,
+        );
+      }
     } catch (error) {
       if (error instanceof HttpException) {
         res.statusCode = error.getStatus();
