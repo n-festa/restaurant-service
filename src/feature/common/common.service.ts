@@ -37,6 +37,7 @@ import { OperationHours } from 'src/entity/operation-hours.entity';
 import { RestaurantDayOff } from 'src/entity/restaurant-day-off.entity';
 import { ManualOpenRestaurant } from 'src/entity/manual-open-restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CommonService {
@@ -44,6 +45,7 @@ export class CommonService {
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly ahamoveService: AhamoveService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getRestaurantExtension(id: number): Promise<RestaurantExt[]> {
@@ -804,4 +806,29 @@ export class CommonService {
       .getOne();
     return sku;
   } // end of getStandardSkuByMenuItem
+
+  async getPlanningDate(
+    restaurant_id: number,
+    now_timestamp: number,
+  ): Promise<number> {
+    const restaurantUtcTimeZone = await this.getUtcTimeZone(restaurant_id);
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+    const adjustedNowTimestamp = now_timestamp + timeZoneOffset;
+    const adjustedNow = new Date(adjustedNowTimestamp);
+
+    //Get the planning day from the config
+    const planningDay = this.configService.get<number>('planningDay');
+    // Calculate the number of days to add to get to Planning Date
+    const daysToPlanningDay = planningDay - (adjustedNow.getUTCDay() + 1);
+
+    // Set the planning date
+    const planningDate = new Date(
+      adjustedNowTimestamp + daysToPlanningDay * 24 * 60 * 60 * 1000,
+    );
+    // Set the time to 23:59:59:999 (UTC timezone)
+    const planningDateTmestamp = planningDate.setUTCHours(23, 59, 59, 999);
+
+    //return data after adjusting with time offset
+    return planningDateTmestamp - timeZoneOffset;
+  } // end of getPlanningDate
 }
