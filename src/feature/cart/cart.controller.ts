@@ -331,7 +331,12 @@ export class CartController {
       }
     } catch (error) {
       if (error instanceof HttpException) {
-        res.statusCode = error.getStatus();
+        if (error.getStatus() == 404) {
+          res.statusCode = 400;
+        } else {
+          res.statusCode = error.getStatus();
+        }
+
         res.message = error.getResponse();
         res.data = null;
       } else {

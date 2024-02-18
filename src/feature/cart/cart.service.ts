@@ -655,7 +655,7 @@ export class CartService {
 
     //Check if menu_item_ids do exist
     if (menuItems.length != menu_item_ids.length) {
-      throw new HttpException('Some of menu items do not exist', 404);
+      throw new HttpException('Some of menu items do not exist', 400);
     }
 
     //Check if menu_item_ids belong to the same restaurant
