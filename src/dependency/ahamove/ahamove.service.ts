@@ -6,8 +6,15 @@ import { Coordinate } from 'src/type';
 import { FlagsmithService } from '../flagsmith/flagsmith.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { AhaMoveRequest, AhamoveOrder, Item, Order, PackageDetail } from './dto/ahamove.dto';
+import { AhaMoveRequest, AhamoveOrder, Item, Order } from './dto/ahamove.dto';
 import orderSchema, { coordinateListSchema } from './schema/ahamove.schema';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Contact } from 'src/entity/contact.entity';
+import { MenuItem } from 'src/entity/menu-item.entity';
+import { FindOptionsWhere, Repository } from 'typeorm';
+import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
+import { AhamoveMapper } from './mapper/ahamove.mapper';
+import { AhamoveOrderHookEntity } from 'src/entity/ahamove-order-hook.entity';
 
 @Injectable()
 export class AhamoveService implements OnModuleInit {
@@ -17,7 +24,7 @@ export class AhamoveService implements OnModuleInit {
   AHA_MOVE_USERNAME: string = '';
   AHA_MOVE_TOKEN: string = '';
   AHA_MOVE_REFRESH_TOKEN: string = '';
-  SERVICE_NAME: string = 'SGN-EXPRESS';
+  SERVICE_NAME: string = 'VNM-PARTNER-2ALL';
   REQUEST_ID: string = 'SGN-EXPRESS-TRANSFER-COD';
   private readonly logger = new Logger(AhamoveService.name);
 
@@ -25,6 +32,8 @@ export class AhamoveService implements OnModuleInit {
     private readonly httpService: HttpService,
     @Inject('FLAGSMITH_SERVICE') private flagService: FlagsmithService,
     private configService: ConfigService,
+    @InjectRepository(AhamoveOrderEntity) private ahamoveOrder: Repository<AhamoveOrderEntity>,
+    @InjectRepository(AhamoveOrderHookEntity) private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
   ) {
     this.AHA_MOVE_BASE_URL = configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com/api';
     this.AHA_MOVE_API_KEY = configService.get('ahamove.apiKey') || '7bbc5c69e7237f267e97f81237a717c387f13bdb';
@@ -175,8 +184,7 @@ export class AhamoveService implements OnModuleInit {
   }
 
   async postAhamoveOrder(order: Order) {
-    const data = await this.#buildAhamoveRequest(order);
-
+    const orderRequest = await this.#buildAhamoveRequest(order);
     let config = {
       method: 'post',
       maxBodyLength: Infinity,
@@ -185,15 +193,30 @@ export class AhamoveService implements OnModuleInit {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.AHA_MOVE_TOKEN}`,
       },
-      data: JSON.stringify(data),
+      data: JSON.stringify(orderRequest),
     };
     try {
-      const response = await axios.request(config);
-      return response.data;
+      const { data } = await axios.request(config);
+      // update order id and response from ahamove
+      orderRequest.order_id = data.order_id;
+      orderRequest.response = data;
+      const result = await this.ahamoveOrder.save(AhamoveMapper.fromDTOtoEntity(orderRequest));
+      this.logger.verbose('created ahamove order', JSON.stringify(result));
+      return data;
     } catch (error) {
       this.logger.error('An error occurred while calling post ahamove order', JSON.stringify(error));
       throw new InternalServerErrorException('An error occurred');
     }
+  }
+
+  async getAhamoveOrderByOrderId(orderId: string): Promise<AhamoveOrderEntity> {
+    const result = await this.ahamoveOrder.findOne({ where: { order_id: orderId } });
+    return result;
+  }
+
+  async saveAhamoveTrackingWebhook(order) {
+    const result = await this.ahamoveOrderHook.save(order);
+    return result;
   }
 
   async #buildAhamoveRequest(order: Order): Promise<AhamoveOrder> {
@@ -218,7 +241,7 @@ export class AhamoveService implements OnModuleInit {
       items: order.items,
       group_service_id: null,
       group_requests: null,
-      package_detail: [order.packageDetails],
+      package_detail: order.packageDetails,
     } as unknown as AhamoveOrder;
   }
 }

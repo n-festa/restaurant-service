@@ -1,4 +1,4 @@
-interface PathLocation {
+export interface PathLocation {
   address: string;
   cod: number;
   por_info: string;

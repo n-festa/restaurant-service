@@ -1,4 +1,4 @@
-export interface Location {
+export interface AhamoveLocation {
   address: string;
   lat: number;
   lng: number;
@@ -34,7 +34,7 @@ export interface PackageDetail {
 
 export interface AhamoveOrder {
   service_id: string;
-  path: Location[];
+  path: AhamoveLocation[];
   requests: AhaMoveRequest[];
   payment_method: string;
   total_pay: number;
@@ -48,11 +48,13 @@ export interface AhamoveOrder {
   package_detail: PackageDetail[];
   group_service_id: null | string;
   group_requests: null | string;
+  order_id?: string;
+  response: string;
 }
 
 export interface Order {
-  startingPoint: Location;
-  destination: Location;
+  startingPoint: AhamoveLocation;
+  destination: AhamoveLocation;
   paymentMethod: string;
   totalPay: number;
   orderTime: number;

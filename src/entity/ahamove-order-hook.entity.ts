@@ -1,7 +1,8 @@
+import { PathLocation } from 'src/dependency/ahamove/dto/ahamove.hook';
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity()
-export class OrderEntity {
+@Entity('Ahamove_Order_Hook')
+export class AhamoveOrderHookEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -9,10 +10,10 @@ export class OrderEntity {
   _id: string;
 
   @Column()
-  accept_time: Date;
+  accept_time: number;
 
   @Column()
-  board_time: Date;
+  board_time: number;
 
   @Column({ default: false })
   cancel_by_user: boolean;
@@ -24,22 +25,22 @@ export class OrderEntity {
   cancel_image_url: string;
 
   @Column()
-  cancel_time: Date;
+  cancel_time: number;
 
   @Column()
   city_id: string;
 
   @Column()
-  complete_time: Date;
+  complete_time: number;
 
   @Column()
-  create_time: Date;
+  create_time: number;
 
   @Column()
   currency: string;
 
   @Column()
-  order_time: Date;
+  order_time: number;
 
   @Column()
   partner: string;
