@@ -6,13 +6,13 @@ export class AhamoveOrderHookEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: true })
   _id: string;
 
-  @Column()
+  @Column({ nullable: true })
   accept_time: number;
 
-  @Column()
+  @Column({ nullable: true })
   board_time: number;
 
   @Column({ default: false })
@@ -24,106 +24,105 @@ export class AhamoveOrderHookEntity {
   @Column({ default: '' })
   cancel_image_url: string;
 
-  @Column()
+  @Column({ nullable: true })
   cancel_time: number;
 
-  @Column()
+  @Column({ nullable: true })
   city_id: string;
 
-  @Column()
+  @Column({ nullable: true })
   complete_time: number;
 
-  @Column()
+  @Column({ nullable: true })
   create_time: number;
 
-  @Column()
+  @Column({ nullable: true })
   currency: string;
 
-  @Column()
+  @Column({ nullable: true })
   order_time: number;
 
-  @Column()
+  @Column({ nullable: true })
   partner: string;
 
   // Map the 'path' property as a JSON column
   @Column('json')
   path: PathLocation[];
 
-  @Column()
+  @Column({ nullable: true })
   payment_method: string;
 
-  @Column()
+  @Column({ nullable: true })
   pickup_time: number;
 
-  @Column()
+  @Column({ nullable: true })
   service_id: string;
 
-  @Column()
+  @Column({ nullable: true })
   status: string;
 
-  @Column()
+  @Column({ nullable: true })
   sub_status: string;
 
-  @Column()
+  @Column({ nullable: true })
   supplier_id: string;
 
-  @Column()
+  @Column({ nullable: true })
   supplier_name: string;
 
-  @Column()
+  @Column({ nullable: true })
   surcharge: number;
 
-  @Column()
+  @Column({ nullable: true })
   user_id: string;
 
-  @Column()
+  @Column({ nullable: true })
   user_name: string;
 
-  @Column()
+  @Column({ nullable: true })
   total_pay: number;
 
-  @Column()
+  @Column({ nullable: true })
   promo_code: string;
 
-  @Column()
   stoppoint_price: number;
 
-  @Column()
+  @Column({ nullable: true })
   special_request_price: number;
 
-  @Column()
+  @Column({ nullable: true })
   vat: number;
 
-  @Column()
+  @Column({ nullable: true })
   distance_price: number;
 
-  @Column()
+  @Column({ nullable: true })
   voucher_discount: number;
 
-  @Column()
+  @Column({ nullable: true })
   subtotal_price: number;
 
-  @Column()
+  @Column({ nullable: true })
   total_price: number;
 
-  @Column()
+  @Column({ nullable: true })
   surge_rate: number;
 
-  @Column()
+  @Column({ nullable: true })
   api_key: string;
 
-  @Column()
+  @Column({ nullable: true })
   shared_link: string;
 
-  @Column()
+  @Column({ nullable: true })
   insurance_portal_url: string;
 
-  @Column()
+  @Column({ nullable: true })
   app: string;
 
-  @Column()
+  @Column({ nullable: true })
   store_id: number;
 
-  @Column()
+  @Column({ nullable: true })
   distance: number;
 }

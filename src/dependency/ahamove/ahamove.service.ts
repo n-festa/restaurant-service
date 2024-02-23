@@ -6,15 +6,14 @@ import { Coordinate } from 'src/type';
 import { FlagsmithService } from '../flagsmith/flagsmith.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { AhaMoveRequest, AhamoveOrder, Item, Order } from './dto/ahamove.dto';
+import { AhamoveOrder, Order } from './dto/ahamove.dto';
 import orderSchema, { coordinateListSchema } from './schema/ahamove.schema';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Contact } from 'src/entity/contact.entity';
-import { MenuItem } from 'src/entity/menu-item.entity';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
 import { AhamoveMapper } from './mapper/ahamove.mapper';
 import { AhamoveOrderHookEntity } from 'src/entity/ahamove-order-hook.entity';
+import { OrderService } from 'src/feature/order/order.service';
 
 @Injectable()
 export class AhamoveService implements OnModuleInit {
@@ -24,7 +23,8 @@ export class AhamoveService implements OnModuleInit {
   AHA_MOVE_USERNAME: string = '';
   AHA_MOVE_TOKEN: string = '';
   AHA_MOVE_REFRESH_TOKEN: string = '';
-  SERVICE_NAME: string = 'VNM-PARTNER-2ALL';
+  TWO_WHEEL_SERVICE_NAME: string = 'VNM-PARTNER-2ALL';
+  SGN_EXPRESS_SERVICE_NAME: string = 'SGN-EXPRESS';
   REQUEST_ID: string = 'SGN-EXPRESS-TRANSFER-COD';
   private readonly logger = new Logger(AhamoveService.name);
 
@@ -34,6 +34,7 @@ export class AhamoveService implements OnModuleInit {
     private configService: ConfigService,
     @InjectRepository(AhamoveOrderEntity) private ahamoveOrder: Repository<AhamoveOrderEntity>,
     @InjectRepository(AhamoveOrderHookEntity) private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
+    private readonly orderService: OrderService,
   ) {
     this.AHA_MOVE_BASE_URL = configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com/api';
     this.AHA_MOVE_API_KEY = configService.get('ahamove.apiKey') || '7bbc5c69e7237f267e97f81237a717c387f13bdb';
@@ -184,7 +185,12 @@ export class AhamoveService implements OnModuleInit {
   }
 
   async postAhamoveOrder(order: Order) {
-    const orderRequest = await this.#buildAhamoveRequest(order);
+    let serviceType = this.SGN_EXPRESS_SERVICE_NAME;
+
+    if (order.serviceType === this.TWO_WHEEL_SERVICE_NAME) {
+      serviceType = this.TWO_WHEEL_SERVICE_NAME;
+    }
+    const orderRequest = await this.#buildAhamoveRequest(order, serviceType);
     let config = {
       method: 'post',
       maxBodyLength: Infinity,
@@ -219,17 +225,16 @@ export class AhamoveService implements OnModuleInit {
     return result;
   }
 
-  async #buildAhamoveRequest(order: Order): Promise<AhamoveOrder> {
+  async #buildAhamoveRequest(order: Order, service_type: string): Promise<AhamoveOrder> {
     try {
       await orderSchema.validate(order);
     } catch (error) {
       this.logger.error('An error occurred ', JSON.stringify(error));
       throw new BadRequestException(error?.message);
     }
-    return {
-      service_id: this.SERVICE_NAME,
+    const result = {
+      service_id: service_type,
       path: [order.startingPoint, order.destination],
-      requests: [{ _id: this.REQUEST_ID }],
       payment_method: order.paymentMethod || 'BALANCE',
       total_pay: order.totalPay || 0,
       order_time: order.orderTime || 0,
@@ -243,5 +248,9 @@ export class AhamoveService implements OnModuleInit {
       group_requests: null,
       package_detail: order.packageDetails,
     } as unknown as AhamoveOrder;
+    if (service_type === this.SGN_EXPRESS_SERVICE_NAME) {
+      result.requests = [{ _id: this.REQUEST_ID }];
+    }
+    return result;
   }
 }

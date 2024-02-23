@@ -41,19 +41,22 @@ function ormConfig(): DataSourceOptions {
     };
   }
 
-  // if (process.env.BACKEND_ENV === 'prod') {
-  //   ormconfig = {
-  //     host: process.env.DB_HOST,
-  //     port: parseInt(process.env.DB_PORT),
-  //     username: process.env.DB_USERNAME,
-  //     password: process.env.DB_PASSWORD,
-  //     name: process.env.DB_NAME,
-  //     entities: [],
-  //     migrations: [],
-  //     migrationsRun: false,
-  //     synchronize: false,
-  //   };
-  // }
+  if (process.env.BACKEND_ENV === 'stage') {
+    ormconfig = {
+      name: 'default',
+      type: 'mysql',
+      database: 'new-2all-dev',
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      logging: false,
+      synchronize: commonConf.SYNCRONIZE,
+      entities: commonConf.ENTITIES,
+      migrations: commonConf.MIGRATIONS,
+      migrationsRun: commonConf.MIGRATIONS_RUN,
+    };
+  }
 
   if (process.env.BACKEND_ENV === 'test') {
     ormconfig = {

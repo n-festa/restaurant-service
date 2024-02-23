@@ -45,6 +45,7 @@ const orderSchema = Joi.object({
   packageDetails: Joi.array().items(packageDetailSchema).required(),
   groupServiceId: Joi.string().allow(null).optional(),
   groupRequests: Joi.string().allow(null).optional(),
+  serviceType: Joi.string().required(),
 });
 
 const coordinateSchema = Joi.object({

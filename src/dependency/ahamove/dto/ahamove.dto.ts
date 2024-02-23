@@ -35,7 +35,7 @@ export interface PackageDetail {
 export interface AhamoveOrder {
   service_id: string;
   path: AhamoveLocation[];
-  requests: AhaMoveRequest[];
+  requests?: AhaMoveRequest[];
   payment_method: string;
   total_pay: number;
   order_time: number;
@@ -67,4 +67,5 @@ export interface Order {
   packageDetails: PackageDetail[];
   groupServiceId: null | string;
   groupRequests: null | string;
+  serviceType: null | string;
 }

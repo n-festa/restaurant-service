@@ -6,9 +6,10 @@ import { AhamoveController } from './ahamove.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
 import { AhamoveOrderHookEntity } from 'src/entity/ahamove-order-hook.entity';
+import { OrderModule } from 'src/feature/order/order.module';
 
 @Module({
-  imports: [HttpModule, ConfigModule, TypeOrmModule.forFeature([AhamoveOrderEntity, AhamoveOrderHookEntity])],
+  imports: [HttpModule, ConfigModule, TypeOrmModule.forFeature([AhamoveOrderEntity, AhamoveOrderHookEntity]), OrderModule],
   providers: [AhamoveService],
   exports: [AhamoveService],
   controllers: [AhamoveController],

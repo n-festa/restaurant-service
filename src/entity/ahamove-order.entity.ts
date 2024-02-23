@@ -16,7 +16,7 @@ export class AhamoveOrderEntity {
   @Column('json')
   path: string;
 
-  @Column('json')
+  @Column('json', { nullable: true })
   requests: string;
 
   @Column()
