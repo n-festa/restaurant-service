@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import e from 'express';
 import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
@@ -20,6 +21,7 @@ export class OrderService {
         const orderData = {
           order_pickup_time: currentOrder.pickup_time,
           is_preorder: currentOrder.is_preorder,
+          ready_time: currentOrder.ready_time,
         };
         const updateData = this.getOrderStatusBaseOnAhahaStatus(orderData, ahavemoveData);
         this.logger.log(`Updating data from webhook to ${orderId} with ${JSON.stringify(updateData)}`);
@@ -33,17 +35,19 @@ export class OrderService {
     }
   }
   private getOrderStatusBaseOnAhahaStatus(
-    { order_pickup_time, is_preorder },
+    { order_pickup_time, is_preorder, ready_time },
     { status, sub_status, path_status, accept_time, cancel_time, pickup_time, complete_time, fail_time, return_time, processing_time },
   ) {
     let data = {};
     switch (status) {
       case 'ASSIGNING':
-        if (is_preorder) {
+        if (!is_preorder) {
           data = {
             order_status_id: OrderStatus.PROCESSING,
             processing_time,
           };
+        } else if (is_preorder) {
+          data = {};
         }
         break;
       case 'ACCEPTED':
@@ -53,23 +57,27 @@ export class OrderService {
         break;
       case 'CANCELLED':
         data = {
-          cancel_time,
+          driver_cancel_time: cancel_time,
         };
         break;
-      case 'CANCELLED':
-        data = {
-          cancel_time,
-        };
-        break;
+      // case 'CANCELLED':
+      //   data = {
+      //     cancel_time,
+      //   };
+      //   break;
       case 'IN PROCESS':
         if (path_status === 'FAILED') {
           data = {};
         } else {
-          data = {
-            order_status_id: OrderStatus.DELIVERING,
-            pickup_time: pickup_time,
-            ready_time: order_pickup_time ? order_pickup_time : pickup_time, // if ready_time is null or equal = 0
-          };
+          if (pickup_time) {
+            data = {
+              order_status_id: OrderStatus.DELIVERING,
+              pickup_time: pickup_time,
+              ready_time: !ready_time ? pickup_time : ready_time, // if ready_time is null or equal = 0
+            };
+          } else if (!pickup_time) {
+            data = {};
+          }
         }
         break;
       case 'COMPLETED':
@@ -88,10 +96,11 @@ export class OrderService {
             completed_time: complete_time,
           };
         } else {
-          data = {
-            order_status_id: OrderStatus.COMPLETED,
-            completed_time: complete_time,
-          };
+          // data = {
+          //   order_status_id: OrderStatus.COMPLETED,
+          //   completed_time: complete_time,
+          // };
+          data = {};
         }
         break;
       default:

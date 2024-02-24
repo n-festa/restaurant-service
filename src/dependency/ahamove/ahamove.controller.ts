@@ -3,7 +3,7 @@ import { Controller, Logger, Body, Post } from '@nestjs/common';
 import { Coordinate } from 'src/type';
 import { AhamoveService } from './ahamove.service';
 import { MessagePattern } from '@nestjs/microservices';
-import { Order } from './dto/ahamove.dto';
+import { PostAhaOrderRequest } from './dto/ahamove.dto';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
 
 @Controller('ahamove')
@@ -28,7 +28,7 @@ export class AhamoveController {
   }
 
   @MessagePattern({ cmd: 'create_ahamove_order' })
-  postAhamoveOrder(@Body() order: Order) {
+  postAhamoveOrder(@Body() order: PostAhaOrderRequest) {
     return this.ahamoveService.postAhamoveOrder(order);
   }
 }
