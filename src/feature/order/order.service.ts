@@ -1,6 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import e from 'express';
 import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
