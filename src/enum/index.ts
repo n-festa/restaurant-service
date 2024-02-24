@@ -29,3 +29,14 @@ export enum FetchMode {
   Some = 'some',
   Full = 'full',
 }
+
+export enum OrderStatus {
+  CANCELLED = 'CANCELLED',
+  COMPLETED = 'COMPLETED',
+  DELIVERING = 'DELIVERING',
+  FAILED = 'FAILED',
+  IDLE = 'IDLE',
+  NEW = 'NEW',
+  PROCESSING = 'PROCESSING',
+  READY = 'READY',
+}
