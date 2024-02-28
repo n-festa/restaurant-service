@@ -48,9 +48,9 @@ export class AhamoveService implements OnModuleInit {
 
   async getAhamoveAccessToken() {
     let data = JSON.stringify({
-      mobile: '84905005248',
-      name: '2ALL Admin',
-      api_key: '7bbc5c69e7237f267e97f81237a717c387f13bdb',
+      mobile: this.AHA_MOVE_MOBILE,
+      name: this.AHA_MOVE_USERNAME,
+      api_key: this.AHA_MOVE_API_KEY,
     });
 
     let config = {

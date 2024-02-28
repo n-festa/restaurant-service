@@ -15,6 +15,7 @@ import { CartModule } from './feature/cart/cart.module';
 import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-review.module';
 import { AhamoveModule } from './dependency/ahamove/ahamove.module';
 import { OrderModule } from './feature/order/order.module';
+import { MomoModule } from './dependency/momo/momo.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { OrderModule } from './feature/order/order.module';
     RatingAndReviewModule,
     AhamoveModule,
     OrderModule,
+    MomoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
