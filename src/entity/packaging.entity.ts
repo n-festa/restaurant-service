@@ -9,20 +9,24 @@ import {
 } from 'typeorm';
 import { MenuItem } from './menu-item.entity';
 import { PackagingExt } from './packaging-ext.entity';
+import { Media } from './media.entity';
 
 @Entity('Packaging')
 export class Packaging {
   @PrimaryGeneratedColumn()
   public packaging_id: number;
 
+  // @Column({ type: 'int', nullable: false, unique: false })
+  // public menu_item_id: number;
+
   @Column({ type: 'int', nullable: false, unique: false })
-  public menu_item_id: number;
+  public restaurant_id: number;
 
   @Column({ type: 'int', nullable: false, unique: false })
   public price: number;
 
-  @Column({ type: 'int', nullable: false, unique: false })
-  public currency: number;
+  // @Column({ type: 'int', nullable: false, unique: false })
+  // public currency: number;
 
   @CreateDateColumn({
     type: 'datetime',
@@ -34,13 +38,16 @@ export class Packaging {
 
   //RELATIONSHIPS
 
-  @ManyToOne(() => MenuItem, (menuItem) => menuItem.packaging_obj)
-  @JoinColumn({
-    name: 'menu_item_id',
-    referencedColumnName: 'menu_item_id',
-  })
-  public menu_item_obj: MenuItem;
+  // @ManyToOne(() => MenuItem, (menuItem) => menuItem.packaging_obj)
+  // @JoinColumn({
+  //   name: 'menu_item_id',
+  //   referencedColumnName: 'menu_item_id',
+  // })
+  // public menu_item_obj: MenuItem;
 
   @OneToMany(() => PackagingExt, (packagingExt) => packagingExt.packaging_obj)
   public packaging_ext_obj: PackagingExt[];
+
+  @OneToMany(() => Media, (media) => media.packaging_obj)
+  public media_obj: Media[];
 }

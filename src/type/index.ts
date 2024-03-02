@@ -173,3 +173,11 @@ export interface PriceUnitByMenuItem {
   menu_item_id: number;
   price_unit: string;
 }
+
+export interface PackagingInfo {
+  image_url: string;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+  currency: string;
+}

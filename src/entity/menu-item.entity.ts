@@ -12,7 +12,7 @@ import { MenuItemExt } from './menu-item-ext.entity';
 import { SKU } from './sku.entity';
 import { Media } from './media.entity';
 import { Recipe } from './recipe.entity';
-import { Packaging } from './packaging.entity';
+import { MenuItemPackaging } from './menuitem-packaging.entity';
 
 @Entity('Menu_Item')
 export class MenuItem {
@@ -113,6 +113,12 @@ export class MenuItem {
   @OneToMany(() => Recipe, (recipe) => recipe.menu_item)
   public recipe: Promise<Recipe[]>;
 
-  @OneToMany(() => Packaging, (packaging) => packaging.menu_item_obj)
-  public packaging_obj: Packaging[];
+  // @OneToMany(() => Packaging, (packaging) => packaging.menu_item_obj)
+  // public packaging_obj: Packaging[];
+
+  @OneToMany(
+    () => MenuItemPackaging,
+    (menuItemPackaging) => menuItemPackaging.menu_item_obj,
+  )
+  public menuItemPackaging_obj: MenuItemPackaging[];
 }

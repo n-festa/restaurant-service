@@ -1,11 +1,4 @@
-import {
-  Entity,
-  CreateDateColumn,
-  PrimaryColumn,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, CreateDateColumn, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Packaging } from './packaging.entity';
 
 @Entity('Packaging_Ext')
@@ -14,6 +7,9 @@ export class PackagingExt {
   public packaging_id: number;
   @PrimaryColumn()
   public ISO_language_code: string;
+
+  @Column({ type: 'varchar', length: 64, nullable: true, unique: false })
+  public name: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public description: string;

@@ -6,6 +6,7 @@ import {
   DayShift,
   Option,
   OptionValue,
+  PackagingInfo,
   PriceRange,
   RatingStatistic,
   Review,
@@ -32,6 +33,7 @@ import { DayName, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
 import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
 import { readFileSync } from 'fs';
+import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
 
 @Injectable()
 export class FoodService {
@@ -213,7 +215,10 @@ export class FoodService {
       units_sold: foods[0].units_sold,
       review_number: ratingStatistic.total_count,
       promotion: foods[0].promotion,
-      packaging_info: await this.generatePackageSentenceByLang(packaging),
+      packaging_info: await this.generatePackagingInfoForMenuItem(
+        packaging,
+        menuItemId,
+      ),
       cutoff_time: foods[0].cutoff_time,
       ingredients: recipe.map((item) => {
         return {
@@ -289,16 +294,6 @@ export class FoodService {
     // Get data from table Media
     // - image profile
     // - other iamge with menu_item_id
-    // - package image with packaging_id
-
-    //Get list of packaging_id
-    const packaging_ids = (
-      await this.entityManager
-        .createQueryBuilder(Packaging, 'packaging')
-        .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
-        .select(['packaging.packaging_id'])
-        .getMany()
-    ).map((item) => item.packaging_id);
 
     //Select medias
     const data = await this.entityManager
@@ -306,16 +301,26 @@ export class FoodService {
       .leftJoin('media.menu_item_obj', 'menuItem')
       .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
       .orWhere('media.menu_item_id = :menu_item_id', { menu_item_id })
-      .orWhere('media.packaging_id IN (:...packaging_ids)', { packaging_ids })
       .getMany();
     return data;
   } // end of getAllMediaByMenuItemId
 
-  async getPackagingByMenuItemId(menu_item_id: number): Promise<Packaging[]> {
+  async getPackagingByMenuItemId(
+    menu_item_id: number,
+  ): Promise<MenuItemPackaging[]> {
+    // const data = await this.entityManager
+    //   .createQueryBuilder(Packaging, 'packaging')
+    //   .leftJoinAndSelect('packaging.packaging_ext_obj', 'ext')
+    //   .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
+    //   .getMany();
+
     const data = await this.entityManager
-      .createQueryBuilder(Packaging, 'packaging')
-      .leftJoinAndSelect('packaging.packaging_ext_obj', 'ext')
-      .where('packaging.menu_item_id = :menu_item_id', { menu_item_id })
+      .createQueryBuilder(MenuItemPackaging, 'menuItemPackaging')
+      .leftJoinAndSelect('menuItemPackaging.image_obj', 'itemImage')
+      .leftJoinAndSelect('menuItemPackaging.packaging_obj', 'packaging')
+      .leftJoinAndSelect('packaging.packaging_ext_obj', 'packageExt')
+      .leftJoinAndSelect('packaging.media_obj', 'media')
+      .where('menuItemPackaging.menu_item_id = :menu_item_id', { menu_item_id })
       .getMany();
     return data;
   } // end of getPackagingByMenuItemId
@@ -344,19 +349,49 @@ export class FoodService {
     return data;
   } // end of getPortionCustomizationByMenuItemId
 
-  async generatePackageSentenceByLang(packageInfo: Packaging[]) {
-    const sentenceByLang: TextByLang[] = [];
-    for (const item of packageInfo) {
-      item.packaging_ext_obj.forEach((element) => {
-        const sentence: TextByLang = {
-          ISO_language_code: element.ISO_language_code,
-          text: `${element.description} (+${item.price})`,
+  async generatePackagingInfoForMenuItem(
+    menuItemPackagings: MenuItemPackaging[],
+    menu_item_id: number,
+  ): Promise<PackagingInfo[]> {
+    const currency = await this.getCurrencyOfMenuItem(menu_item_id);
+    const packagingInfos: PackagingInfo[] = [];
+    for (const menuItemPackaging of menuItemPackagings) {
+      //packaging image
+      let image_url = '';
+      if (menuItemPackaging.image_obj) {
+        image_url = menuItemPackaging.image_obj.url;
+      } else if (menuItemPackaging.packaging_obj.media_obj.length > 0) {
+        image_url = menuItemPackaging.packaging_obj.media_obj[0].url;
+      } else {
+        image_url = null;
+      }
+      //packaging name & description
+      const name = [];
+      const description = [];
+      menuItemPackaging.packaging_obj.packaging_ext_obj.forEach((e) => {
+        const nameExt: TextByLang = {
+          ISO_language_code: e.ISO_language_code,
+          text: e.name,
         };
-        sentenceByLang.push(sentence);
+        name.push(nameExt);
+        const descriptionExt: TextByLang = {
+          ISO_language_code: e.ISO_language_code,
+          text: e.description,
+        };
+        description.push(descriptionExt);
       });
+
+      const packagingInfo: PackagingInfo = {
+        image_url: image_url,
+        name: name,
+        description: description,
+        price: menuItemPackaging.packaging_obj.price,
+        currency: currency.symbol,
+      };
+      packagingInfos.push(packagingInfo);
     }
-    return sentenceByLang;
-  } // end of generatePackageSentenceByLang
+    return packagingInfos;
+  } // end of generatePackagingInfoForMenuItem
 
   async convertPortionCustomization(
     portionCustomization: MenuItemAttribute[],
@@ -771,4 +806,15 @@ export class FoodService {
     }
     return foods;
   } // end of getAvailableFoodByRestaurantFromEndPoint
+
+  async getCurrencyOfMenuItem(menu_item_id: number): Promise<Unit> {
+    const menuItem = await this.entityManager
+      .createQueryBuilder(MenuItem, 'menuItem')
+      .leftJoinAndSelect('menuItem.restaurant', 'restaurant')
+      .leftJoinAndSelect('restaurant.unit_obj', 'unit')
+      .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+      .getOne();
+    return menuItem.restaurant.unit_obj;
+  }
+  //end of getCurrencyOfMenuItem
 }
