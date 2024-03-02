@@ -10,7 +10,7 @@ export class FoodDetailDTO {
   units_sold: number;
   review_number: number;
   promotion: string;
-  packaging_info: TextByLang[];
+  packaging_info: PackagingInfo[];
   cutoff_time: string;
   ingredients: Ingredient[];
   description: TextByLang[];
@@ -30,4 +30,11 @@ class Ingredient {
 class BasicCustomization {
   no_adding_id: string;
   description: TextByLang[];
+}
+interface PackagingInfo {
+  image_url: string;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+  currency: string;
 }

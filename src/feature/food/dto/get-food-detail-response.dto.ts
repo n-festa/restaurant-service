@@ -14,7 +14,7 @@ interface FoodDetail {
   units_sold: number;
   review_number: number;
   promotion: string;
-  packaging_info: TextByLang[];
+  packaging_info: PackagingInfo[];
   cutoff_time: string;
   ingredients: Ingredient[];
   description: TextByLang[];
@@ -63,4 +63,12 @@ interface Review {
 interface TextByLang {
   ISO_language_code: string;
   text: string;
+}
+
+interface PackagingInfo {
+  image_url: string;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+  currency: string;
 }

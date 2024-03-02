@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { MenuItem } from './menu-item.entity';
+import { Packaging } from './packaging.entity';
 
 @Entity('Media')
 export class Media {
@@ -51,4 +54,8 @@ export class Media {
 
   @OneToMany(() => MenuItem, (menuItem) => menuItem.image_obj)
   public menu_item_obj: MenuItem[];
+
+  @ManyToOne(() => Packaging, (packaging) => packaging.media_obj)
+  @JoinColumn({ name: 'packaging_id', referencedColumnName: 'packaging_id' })
+  public packaging_obj: Packaging;
 }
