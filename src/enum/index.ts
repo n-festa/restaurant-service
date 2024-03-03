@@ -40,3 +40,9 @@ export enum OrderStatus {
   PROCESSING = 'PROCESSING',
   READY = 'READY',
 }
+
+export enum InvoiceHistoryStatusEnum {
+  PAID = 'PAID',
+  PENDING = 'PENDING',
+  FAILED = 'FAILED',
+}

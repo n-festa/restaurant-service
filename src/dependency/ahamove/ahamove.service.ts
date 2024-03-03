@@ -13,7 +13,6 @@ import { Repository } from 'typeorm';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
 import { AhamoveMapper } from './mapper/ahamove.mapper';
 import { AhamoveOrderHookEntity } from 'src/entity/ahamove-order-hook.entity';
-import { OrderService } from 'src/feature/order/order.service';
 
 @Injectable()
 export class AhamoveService implements OnModuleInit {
@@ -34,7 +33,6 @@ export class AhamoveService implements OnModuleInit {
     private configService: ConfigService,
     @InjectRepository(AhamoveOrderEntity) private ahamoveOrder: Repository<AhamoveOrderEntity>,
     @InjectRepository(AhamoveOrderHookEntity) private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
-    private readonly orderService: OrderService,
   ) {
     this.AHA_MOVE_BASE_URL = configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com/api';
     this.AHA_MOVE_API_KEY = configService.get('ahamove.apiKey') || '7bbc5c69e7237f267e97f81237a717c387f13bdb';

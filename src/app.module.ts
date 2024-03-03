@@ -14,7 +14,7 @@ import { CommonModule } from './feature/common/common.module';
 import { CartModule } from './feature/cart/cart.module';
 import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-review.module';
 import { AhamoveModule } from './dependency/ahamove/ahamove.module';
-import { OrderModule } from './feature/order/order.module';
+import { InvoiceStatusHistoryModule } from './feature/invoice-status-history/invoice-status-history.module';
 import { MomoModule } from './dependency/momo/momo.module';
 
 @Module({
@@ -50,8 +50,9 @@ import { MomoModule } from './dependency/momo/momo.module';
     CartModule,
     RatingAndReviewModule,
     AhamoveModule,
-    OrderModule,
+    InvoiceStatusHistoryModule,
     MomoModule,
+    InvoiceStatusHistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

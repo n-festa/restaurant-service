@@ -1,12 +1,4 @@
-import {
-  Entity,
-  CreateDateColumn,
-  PrimaryGeneratedColumn,
-  Column,
-  JoinColumn,
-  ManyToOne,
-  OneToOne,
-} from 'typeorm';
+import { Entity, CreateDateColumn, PrimaryGeneratedColumn, Column, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
 import { Unit } from './unit.entity';
 import { SKU } from './sku.entity';
 import { FoodRating } from './food-rating.entity';

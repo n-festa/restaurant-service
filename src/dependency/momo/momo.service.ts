@@ -6,6 +6,11 @@ import { Repository } from 'typeorm';
 import { MomoRequestDTO } from './momo.dto';
 const crypto = require('crypto');
 import axiosRetry from 'axios-retry';
+import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
+import { v4 as uuidv4 } from 'uuid';
+import { InvoiceHistoryStatusEnum, OrderStatus } from 'src/enum';
+import { Invoice } from 'src/entity/invoice.entity';
+import { OrderService } from 'src/feature/order/order.service';
 
 @Injectable()
 export class MomoService {
@@ -20,10 +25,15 @@ export class MomoService {
   MOMO_BASE_URL = 'https://test-payment.momo.vn';
 
   private readonly logger = new Logger(MomoService.name);
-  constructor(@InjectRepository(MomoTransaction) private momoRepo: Repository<MomoTransaction>) {}
+  constructor(
+    @InjectRepository(MomoTransaction) private momoRepo: Repository<MomoTransaction>,
+    @InjectRepository(Invoice) private invoiceRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceStatusHistory) private orderStatusHistoryRepo: Repository<InvoiceStatusHistory>,
+    private readonly orderService: OrderService,
+  ) {}
 
   sendMomoPaymentRequest(request: MomoRequestDTO) {
-    let requestId = this.partnerCode + new Date().getTime();
+    const requestId = this.partnerCode + new Date().getTime();
     const momoSignatureObj = {
       accessKey: this.accessKey,
       amount: request.amount,
@@ -76,18 +86,35 @@ export class MomoService {
       },
       onRetry: (retryCount, error, requestConfig) => {
         this.logger.warn(`Attempt ${retryCount}: Retrying request to ${requestConfig.url}`);
-        console.log('================================================');
       },
     });
 
     return axiosInstance
       .request(options)
       .then(async (response) => {
-        await this.momoRepo.save({ ...response.data });
+        const momoResult = { ...response.data };
+        await this.momoRepo.save(momoResult);
+        if (momoResult.resultCode === 0) {
+          const currentInvoice = await this.invoiceRepo.findOne({ where: { payment_order_id: momoResult.orderId } });
+          const momoInvoiceStatusHistory = new InvoiceStatusHistory();
+          if (currentInvoice) {
+            momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
+            momoInvoiceStatusHistory.status_id = InvoiceHistoryStatusEnum.PENDING;
+            momoInvoiceStatusHistory.note = `update new momo requestt ${momoResult.requestId} for payment`;
+            momoInvoiceStatusHistory.status_history_id = uuidv4();
+            await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
+          } else {
+            momoInvoiceStatusHistory.status_id = InvoiceHistoryStatusEnum.PENDING;
+            momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
+            momoInvoiceStatusHistory.status_history_id = uuidv4();
+            await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
+          }
+        }
         return response.data;
       })
-      .catch((error) => {
+      .catch(async (error) => {
         this.logger.error('An error occurred ', JSON.stringify(error));
+        await this.orderService.candelOrder(request.orderId, { isMomo: true });
         throw new InternalServerErrorException();
       });
   }
