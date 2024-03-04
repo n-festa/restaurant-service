@@ -15,6 +15,7 @@ import { CartModule } from './feature/cart/cart.module';
 import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-review.module';
 import { AhamoveModule } from './dependency/ahamove/ahamove.module';
 import { OrderModule } from './feature/order/order.module';
+import { HealthCheckController } from './healthcheck/health-check.controller';
 
 @Module({
   imports: [
@@ -51,7 +52,7 @@ import { OrderModule } from './feature/order/order.module';
     AhamoveModule,
     OrderModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthCheckController],
   providers: [AppService],
 })
 export class AppModule {}
