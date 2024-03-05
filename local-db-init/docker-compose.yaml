@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  mysql:
+    build:
+      context: .
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql-scripts:/docker-entrypoint-initdb.d

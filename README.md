@@ -1,4 +1,8 @@
 
+## Node version
+
+v20.10.0
+
 ## Description
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
