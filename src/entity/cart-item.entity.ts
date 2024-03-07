@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Packaging } from './packaging.entity';
+import { SKU } from './sku.entity';
 
 @Entity('Cart_Item')
 export class CartItem {
@@ -58,4 +59,8 @@ export class CartItem {
   @ManyToOne(() => Packaging)
   @JoinColumn({ name: 'packaging_id', referencedColumnName: 'packaging_id' })
   public packaging_obj: Packaging;
+
+  @ManyToOne(() => SKU)
+  @JoinColumn({ name: 'sku_id', referencedColumnName: 'sku_id' })
+  public sku_obj: SKU;
 }

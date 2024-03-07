@@ -20,6 +20,7 @@ import { DAY_ID, DAY_NAME } from 'src/constant';
 import { Shift } from 'src/enum';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
+import { MenuItem } from 'src/entity/menu-item.entity';
 
 @Injectable()
 export class CartService {
@@ -259,6 +260,50 @@ export class CartService {
     restaurant_id: number,
     packaging_id: number,
   ): Promise<void> {
+    //A. Check if the updated quantity is more than avaialbe quantity
+    const menuItemId = (
+      await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .where('sku.sku_id = :sku_id', { sku_id })
+        .getOne()
+    ).menu_item_id;
+
+    //A1.Get availble quantity
+    const availableQty = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuIem')
+        .where('menuIem.menu_item_id = :menuItemId', { menuItemId })
+        .getOne()
+    ).quantity_available;
+    console.log('availableQty', availableQty);
+
+    //A2. summary ordered quantity
+    const orderedQuantityFromCurrentCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.customer_id = :customer_id', {
+          customer_id,
+        })
+        .andWhere('sku.menu_item_id = :menuItemId', {
+          menuItemId,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    const summaryOrderedQuantity =
+      orderedQuantityFromCurrentCartIem + qty_ordered;
+    console.log('summaryOrderedQuantity', summaryOrderedQuantity);
+
+    //A3. Compare Ordered Quanty TO Available Quantity
+    if (summaryOrderedQuantity > availableQty) {
+      throw new HttpException(
+        'Cannot insert more than available quantity',
+        400,
+      );
+    }
+
+    //B. Insert database
     await this.entityManager
       .createQueryBuilder()
       .insert()
@@ -293,6 +338,51 @@ export class CartService {
     restaurant_id: number,
     packaging_id: number,
   ): Promise<void> {
+    //A. Check if the updated quantity is more than avaialbe quantity
+    const menuItemId = (
+      await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .where('sku.sku_id = :sku_id', { sku_id })
+        .getOne()
+    ).menu_item_id;
+
+    //A1.Get availble quantity
+    const availableQty = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuIem')
+        .where('menuIem.menu_item_id = :menuItemId', { menuItemId })
+        .getOne()
+    ).quantity_available;
+    console.log('availableQty', availableQty);
+
+    //A2. summary ordered quantity
+    const orderedQuantityFromOtherCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.customer_id = :customer_id', {
+          customer_id,
+        })
+        .andWhere('cart.item_id != :item_id', { item_id })
+        .andWhere('sku.menu_item_id = :menuItemId', {
+          menuItemId,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    const summaryOrderedQuantity =
+      orderedQuantityFromOtherCartIem + qty_ordered;
+    console.log('summaryOrderedQuantity', summaryOrderedQuantity);
+
+    //A3. Compare Ordered Quanty TO Available Quantity
+    if (summaryOrderedQuantity > availableQty) {
+      throw new HttpException(
+        'Cannot insert more than available quantity',
+        400,
+      );
+    }
+
+    //B. Update database
     await this.entityManager
       .createQueryBuilder()
       .update(CartItem)
@@ -344,12 +434,21 @@ export class CartService {
       }
     }
 
-    const advanced_taste_customization_obj_txt = JSON.stringify(
-      advanced_taste_customization_obj,
-    );
-    const basic_taste_customization_obj_txt = JSON.stringify(
-      basic_taste_customization_obj,
-    );
+    const advanced_taste_customization_obj_txt =
+      advanced_taste_customization_obj.length > 0
+        ? JSON.stringify(advanced_taste_customization_obj)
+        : '';
+    const basic_taste_customization_obj_txt =
+      basic_taste_customization_obj.length > 0
+        ? JSON.stringify(basic_taste_customization_obj)
+        : '';
+
+    // const advanced_taste_customization_obj_txt = JSON.stringify(
+    //   advanced_taste_customization_obj,
+    // );
+    // const basic_taste_customization_obj_txt = JSON.stringify(
+    //   basic_taste_customization_obj,
+    // );
 
     //Check if there any new data
     if (
@@ -400,28 +499,33 @@ export class CartService {
       //The item does exist
       // => DELETE the updated item & Update the identical item with the increased quantity
 
-      await this.entityManager.transaction(
-        async (transactionalEntityManager) => {
-          //DELETE the updated item
-          await transactionalEntityManager
-            .createQueryBuilder()
-            .delete()
-            .from(CartItem)
-            .where('item_id = :item_id', { item_id })
-            .execute();
-          // Update the identical item with the increased quantity
-          await transactionalEntityManager
-            .createQueryBuilder()
-            .update(CartItem)
-            .set({
-              qty_ordered: identicalCartItem.qty_ordered + qty_ordered,
-            })
-            .where('item_id = :item_id', {
-              item_id: identicalCartItem.item_id,
-            })
-            .execute();
-        },
+      await this.updateCartWhenIdenticalItemFound(
+        item_id,
+        qty_ordered,
+        identicalCartItem,
       );
+      // await this.entityManager.transaction(
+      //   async (transactionalEntityManager) => {
+      //     //DELETE the updated item
+      //     await transactionalEntityManager
+      //       .createQueryBuilder()
+      //       .delete()
+      //       .from(CartItem)
+      //       .where('item_id = :item_id', { item_id })
+      //       .execute();
+      //     // Update the identical item with the increased quantity
+      //     await transactionalEntityManager
+      //       .createQueryBuilder()
+      //       .update(CartItem)
+      //       .set({
+      //         qty_ordered: identicalCartItem.qty_ordered + qty_ordered,
+      //       })
+      //       .where('item_id = :item_id', {
+      //         item_id: identicalCartItem.item_id,
+      //       })
+      //       .execute();
+      //   },
+      // );
 
       return await this.getCart(customer_id);
     }
@@ -633,6 +737,84 @@ export class CartService {
   async massUpdateCartItemWithQuantity(
     items: QuantityUpdatedItem[],
   ): Promise<void> {
+    //A. Check the updated quantity is more than avaialbe quantity
+
+    const cartItemIds = items.map((i) => i.item_id);
+    const updatingCartItems = await this.entityManager
+      .createQueryBuilder(CartItem, 'cartItem')
+      .leftJoinAndSelect('cartItem.sku_obj', 'sku')
+      .where('cartItem.item_id IN (:...ids)', { ids: cartItemIds })
+      .getMany();
+    const customerIds = updatingCartItems
+      .map((i) => i.customer_id)
+      .filter((value, index, self) => {
+        return self.indexOf(value) === index;
+      });
+
+    //A1. Get the available quantity
+    const updatedMenuItemIds = updatingCartItems
+      .map((i) => i.sku_obj.menu_item_id)
+      .filter((value, index, self) => {
+        return self.indexOf(value) === index;
+      });
+    console.log('updatedMenuItemIds', updatedMenuItemIds);
+
+    const avaialbeQuantity: number = +(
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuItem')
+        .where('menuItem.menu_item_id IN (:...ids)', {
+          ids: updatedMenuItemIds,
+        })
+        .select('SUM(menuItem.quantity_available)', 'sum')
+        .getRawOne()
+    ).sum;
+    console.log('avaialbeQuantity', avaialbeQuantity);
+
+    //A2. Get quatity ordered after updating
+    //A2i. Apart from updating cart item, we get list of cart item
+    //     which belongs to above list of menu item
+    //     Then sum the ordered quantity
+    const orderedQuantityFromOtherCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.item_id NOT IN (:...ids)', {
+          ids: cartItemIds,
+        })
+        .andWhere('cart.customer_id IN (:...customerIds)', {
+          customerIds,
+        })
+        .andWhere('sku.menu_item_id IN (:...updatedMenuItemIds)', {
+          updatedMenuItemIds,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    console.log(
+      'orderedQuantityFromOtherCartIem',
+      orderedQuantityFromOtherCartIem,
+    );
+    //A2ii. Summary the ordered quantity from updating cart item
+    const updatingOrderedQuantity = items
+      .map((i) => i.qty_ordered)
+      .reduce((sum, quantity) => {
+        return sum + quantity;
+      });
+    console.log('orderedQuantity', updatingOrderedQuantity);
+
+    //A2iii. Summary ordered quantity
+    const orderedQuantity =
+      orderedQuantityFromOtherCartIem + updatingOrderedQuantity;
+
+    //A3. Compare ordered quanty TO available quantity
+    if (orderedQuantity > avaialbeQuantity) {
+      throw new HttpException(
+        'The updated quantity is more than available quantity',
+        400,
+      );
+    }
+
+    //B. Update data
     await this.entityManager.transaction(async (transactionalEntityManager) => {
       for (const item of items) {
         await transactionalEntityManager
@@ -646,6 +828,7 @@ export class CartService {
       }
     });
   } //end of massUpdateCartItemWithQuantity
+
   async deleteAllCartItem(customer_id: number) {
     await this.entityManager
       .createQueryBuilder()
@@ -977,5 +1160,77 @@ export class CartService {
     result = record ? true : false;
 
     return result;
-  }
+  } // end of checkIfThePackageBelongsToSKU
+
+  async updateCartWhenIdenticalItemFound(
+    cart_item_id: number,
+    updated_qty: number,
+    idential_item: CartItem,
+  ): Promise<void> {
+    //A. Check if the updated quantity is more than avaialbe quantity
+    const menuItemId = (
+      await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .where('sku.sku_id = :sku_id', { sku_id: idential_item.sku_id })
+        .getOne()
+    ).menu_item_id;
+
+    //A1.Get availble quantity
+    const availableQty = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuIem')
+        .where('menuIem.menu_item_id = :menuItemId', { menuItemId })
+        .getOne()
+    ).quantity_available;
+    console.log('availableQty', availableQty);
+
+    //A2. summary ordered quantity
+    const orderedQuantityFromOtherCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.customer_id = :customer_id', {
+          customer_id: idential_item.customer_id,
+        })
+        .andWhere('cart.item_id != :item_id', { item_id: cart_item_id })
+        .andWhere('sku.menu_item_id = :menuItemId', {
+          menuItemId,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    const summaryOrderedQuantity =
+      orderedQuantityFromOtherCartIem + updated_qty;
+    console.log('summaryOrderedQuantity', summaryOrderedQuantity);
+
+    //A3. Compare Ordered Quanty TO Available Quantity
+    if (summaryOrderedQuantity > availableQty) {
+      throw new HttpException(
+        'Cannot insert more than available quantity',
+        400,
+      );
+    }
+
+    //B. Update Database
+    await this.entityManager.transaction(async (transactionalEntityManager) => {
+      //DELETE the updated item
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .delete()
+        .from(CartItem)
+        .where('item_id = :item_id', { item_id: cart_item_id })
+        .execute();
+      // Update the identical item with the increased quantity
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .update(CartItem)
+        .set({
+          qty_ordered: idential_item.qty_ordered + updated_qty,
+        })
+        .where('item_id = :item_id', {
+          item_id: idential_item.item_id,
+        })
+        .execute();
+    });
+  } //end of updateCartWhenIdenticalItemFound
 }
