@@ -159,6 +159,13 @@ export interface FullCartItem {
   basic_taste_customization_obj: string;
   notes: string;
   restaurant_id: number;
+  packaging_info: CartPackagingInfo;
+}
+
+export interface CartPackagingInfo {
+  packaging_id: number;
+  name: TextByLang[];
+  price: number;
 }
 
 export interface AdditionalInfoForSKU {
@@ -175,9 +182,11 @@ export interface PriceUnitByMenuItem {
 }
 
 export interface PackagingInfo {
+  packaging_id: number;
   image_url: string;
   name: TextByLang[];
   description: TextByLang[];
   price: number;
   currency: string;
+  is_default: boolean;
 }

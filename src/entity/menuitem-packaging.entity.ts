@@ -22,6 +22,9 @@ export class MenuItemPackaging {
   @Column({ type: 'int', nullable: false })
   public image: number;
 
+  @Column({ type: 'tinyint', nullable: false, unique: false })
+  public is_default: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,

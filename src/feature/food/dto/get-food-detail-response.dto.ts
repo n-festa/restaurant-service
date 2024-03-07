@@ -66,9 +66,11 @@ interface TextByLang {
 }
 
 interface PackagingInfo {
+  packaging_id: number;
   image_url: string;
   name: TextByLang[];
   description: TextByLang[];
   price: number;
   currency: string;
+  is_default: boolean;
 }
