@@ -38,6 +38,8 @@ import { RestaurantDayOff } from 'src/entity/restaurant-day-off.entity';
 import { ManualOpenRestaurant } from 'src/entity/manual-open-restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { ConfigService } from '@nestjs/config';
+import { Packaging } from 'src/entity/packaging.entity';
+import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
 
 @Injectable()
 export class CommonService {
@@ -831,4 +833,23 @@ export class CommonService {
     //return data after adjusting with time offset
     return planningDateTmestamp - timeZoneOffset;
   } // end of getPlanningDate
+
+  async getStandardPackagingByMenuItem(
+    menu_item_id: number,
+  ): Promise<Packaging> {
+    const menuItemPackaging = await this.entityManager
+      .createQueryBuilder(MenuItemPackaging, 'menuItemPackaging')
+      .where('menuItemPackaging.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere('menuItemPackaging.is_default = 1')
+      .getOne();
+    if (!menuItemPackaging) {
+      return null;
+    }
+    return await this.entityManager
+      .createQueryBuilder(Packaging, 'packaging')
+      .where('packaging.packaging_id = :packaging_id', {
+        packaging_id: menuItemPackaging.packaging_id,
+      })
+      .getOne();
+  } //end of getStandardPackagingByMenuItem
 }

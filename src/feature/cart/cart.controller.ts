@@ -36,6 +36,8 @@ export class CartController {
       advanced_taste_customization_obj,
       basic_taste_customization_obj,
       notes,
+      lang,
+      packaging_id,
     } = data;
     const res = new AddToCartResponse(200, '');
     try {
@@ -46,6 +48,7 @@ export class CartController {
         advanced_taste_customization_obj,
         basic_taste_customization_obj,
         notes,
+        packaging_id,
       );
 
       let restaurant: RestaurantBasicInfo = {
@@ -138,6 +141,7 @@ export class CartController {
       basic_taste_customization_obj,
       notes,
       lang = 'vie',
+      packaging_id = null,
     } = data;
     const res = new UpdateCartAdvancedResponse(200, '');
     try {
@@ -150,6 +154,7 @@ export class CartController {
           advanced_taste_customization_obj,
           basic_taste_customization_obj,
           notes,
+          packaging_id,
           lang,
         );
       let restaurant: RestaurantBasicInfo = {
@@ -365,6 +370,14 @@ export class CartController {
       return res;
     }
 
+    //Get standard package for menu_item_id
+    let packaging_id = null;
+    const packaging =
+      await this.commonService.getStandardPackagingByMenuItem(menu_item_id);
+    if (packaging) {
+      packaging_id = packaging.packaging_id;
+    }
+
     const qtyOrdered = 1;
 
     try {
@@ -372,6 +385,10 @@ export class CartController {
         customer_id,
         sku.sku_id,
         qtyOrdered,
+        [],
+        [],
+        '',
+        packaging_id,
       );
 
       let restaurant: RestaurantBasicInfo = {

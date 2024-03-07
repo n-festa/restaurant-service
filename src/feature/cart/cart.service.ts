@@ -7,6 +7,7 @@ import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
+  CartPackagingInfo,
   DayShift,
   FullCartItem,
   OptionSelection,
@@ -18,6 +19,7 @@ import {
 import { DAY_ID, DAY_NAME } from 'src/constant';
 import { Shift } from 'src/enum';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
+import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
 
 @Injectable()
 export class CartService {
@@ -34,6 +36,7 @@ export class CartService {
     advanced_taste_customization_obj: OptionSelection[] = [],
     basic_taste_customization_obj: BasicTasteSelection[] = [],
     notes: string = '',
+    packaging_id: number = null,
     lang: string = 'vie',
   ): Promise<FullCartItem[]> {
     const advanced_taste_customization_obj_txt =
@@ -53,6 +56,16 @@ export class CartService {
       .getOne();
     if (!sku) {
       throw new HttpException('SKU does not exist', 404);
+    }
+
+    //Check the package info does belongs to the SKU
+    if (packaging_id) {
+      if (!(await this.checkIfThePackageBelongsToSKU(packaging_id, sku_id))) {
+        throw new HttpException(
+          'The package info does belongs to the SKU',
+          400,
+        );
+      }
     }
 
     // Check if the advanced_taste_customization_obj is all available to this SKU
@@ -120,6 +133,7 @@ export class CartService {
         basic_taste_customization_obj_txt,
         notes,
         sku.menu_item.restaurant_id,
+        packaging_id,
       );
       return await this.getCart(customer_id);
     }
@@ -141,7 +155,8 @@ export class CartService {
         i.advanced_taste_customization_obj ==
           advanced_taste_customization_obj_txt &&
         i.basic_taste_customization_obj == basic_taste_customization_obj_txt &&
-        i.notes == notes,
+        i.notes == notes &&
+        i.packaging_info.packaging_id == packaging_id,
     );
     if (existingItem) {
       //The item does exist => increase the quantity
@@ -157,6 +172,7 @@ export class CartService {
         existingItem.basic_taste_customization_obj,
         existingItem.notes,
         existingItem.restaurant_id,
+        existingItem.packaging_info.packaging_id,
       );
       return await this.getCart(customer_id);
     }
@@ -172,6 +188,7 @@ export class CartService {
       basic_taste_customization_obj_txt,
       notes,
       sku.menu_item.restaurant_id,
+      packaging_id,
     );
     return await this.getCart(customer_id);
   } // end of addCartItem
@@ -180,6 +197,8 @@ export class CartService {
     const fullCart: FullCartItem[] = [];
     const cartItems = await this.entityManager
       .createQueryBuilder(CartItem, 'cart')
+      .leftJoinAndSelect('cart.packaging_obj', 'packaging')
+      .leftJoinAndSelect('packaging.packaging_ext_obj', 'packagingExt')
       .where('cart.customer_id = :customer_id', { customer_id })
       .getMany();
 
@@ -192,6 +211,17 @@ export class CartService {
       const additionalInfoForSku = additionalInfoForSkus.find(
         (i) => i.sku_id == item.sku_id,
       );
+      const packagingInfo: CartPackagingInfo = {
+        packaging_id: item.packaging_id,
+        name: [],
+        price: item.packaging_obj?.price,
+      };
+      item.packaging_obj?.packaging_ext_obj.forEach((ext) => {
+        packagingInfo.name.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+      });
       const fullItem: FullCartItem = {
         item_id: item.item_id,
         item_name: additionalInfoForSku.sku_name,
@@ -209,6 +239,7 @@ export class CartService {
         basic_taste_customization_obj: item.basic_taste_customization_obj,
         notes: item.notes,
         restaurant_id: item.restaurant_id,
+        packaging_info: packagingInfo,
       };
       fullCart.push(fullItem);
     }
@@ -226,6 +257,7 @@ export class CartService {
     basic_taste_customization_obj: string,
     notes: string,
     restaurant_id: number,
+    packaging_id: number,
   ): Promise<void> {
     await this.entityManager
       .createQueryBuilder()
@@ -242,6 +274,7 @@ export class CartService {
         basic_taste_customization_obj: basic_taste_customization_obj,
         notes: notes,
         restaurant_id: restaurant_id,
+        packaging_id: packaging_id,
       })
       .execute();
   } // end of insertCart
@@ -258,6 +291,7 @@ export class CartService {
     basic_taste_customization_obj: string,
     notes: string,
     restaurant_id: number,
+    packaging_id: number,
   ): Promise<void> {
     await this.entityManager
       .createQueryBuilder()
@@ -273,6 +307,7 @@ export class CartService {
         basic_taste_customization_obj: basic_taste_customization_obj,
         notes: notes,
         restaurant_id: restaurant_id,
+        packaging_id: packaging_id,
       })
       .where('item_id = :item_id', { item_id })
       .execute();
@@ -286,6 +321,7 @@ export class CartService {
     advanced_taste_customization_obj: OptionSelection[],
     basic_taste_customization_obj: BasicTasteSelection[],
     notes: string,
+    packaging_id: number,
     lang: string,
   ): Promise<FullCartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
@@ -299,6 +335,13 @@ export class CartService {
         'Cart item does not belong to the customer or not exist',
         404,
       );
+    }
+
+    // Check if the package does belong to SKU
+    if (packaging_id) {
+      if (!(await this.checkIfThePackageBelongsToSKU(packaging_id, sku_id))) {
+        throw new HttpException('The package does not belong to SKU', 400);
+      }
     }
 
     const advanced_taste_customization_obj_txt = JSON.stringify(
@@ -316,7 +359,8 @@ export class CartService {
         mentionedCartItem.advanced_taste_customization_obj &&
       basic_taste_customization_obj_txt ==
         mentionedCartItem.basic_taste_customization_obj &&
-      notes == mentionedCartItem.notes
+      notes == mentionedCartItem.notes &&
+      packaging_id == mentionedCartItem.packaging_id
     ) {
       throw new HttpException('No new data for updating', 400);
     }
@@ -331,7 +375,7 @@ export class CartService {
       throw new HttpException('SKU does not exist', 404);
     }
 
-    // If there is any cart item which is IDENTICAL to the updated item
+    // If there is any other cart item which is IDENTICAL to the updated item
     const identicalCartItem = await this.entityManager
       .createQueryBuilder(CartItem, 'cart')
       .where('cart.customer_id = :customer_id', { customer_id })
@@ -349,6 +393,7 @@ export class CartService {
         { basic_taste_customization_obj: basic_taste_customization_obj_txt },
       )
       .andWhere('cart.notes = :notes', { notes })
+      .andWhere('cart.packaging_id = :packaging_id', { packaging_id })
       .getOne();
 
     if (identicalCartItem) {
@@ -484,6 +529,7 @@ export class CartService {
       basic_taste_customization_obj_txt,
       notes,
       mentionedCartItem.restaurant_id,
+      packaging_id,
     );
 
     return await this.getCart(customer_id);
@@ -913,4 +959,23 @@ export class CartService {
     }
     return timeSlots;
   } // end of getAvailableDeliveryTimeFromEndPoint
+
+  async checkIfThePackageBelongsToSKU(
+    packaging_id: number,
+    sku_id: number,
+  ): Promise<boolean> {
+    let result = false;
+
+    const record = await this.entityManager
+      .createQueryBuilder(MenuItemPackaging, 'packaging')
+      .leftJoinAndSelect('packaging.menu_item_obj', 'menuItem')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
+      .where('packaging.packaging_id = :packaging_id', { packaging_id })
+      .andWhere('sku.sku_id = :sku_id', { sku_id })
+      .getOne();
+
+    result = record ? true : false;
+
+    return result;
+  }
 }
