@@ -21,13 +21,13 @@ interface FoodDTO {
   price: number;
   price_after_discount: number;
   promotion: string;
-  cutoff_time: string;
   preparing_time_s: number;
   cooking_time_s: number;
   quantity_available: number;
   is_vegetarian: boolean;
   cooking_schedule: string;
   units_sold: number;
+  is_advanced_customizable: boolean;
 }
 
 interface TextByLang {

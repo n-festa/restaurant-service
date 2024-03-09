@@ -309,7 +309,14 @@ export class CartController {
     data: GetAvailableDeliveryTimeRequest,
   ): Promise<GetAvailableDeliveryTimeResponse> {
     const res = new GetAvailableDeliveryTimeResponse(200, '');
-    const { menu_item_ids, now, long, lat, utc_offset } = data;
+    const {
+      menu_item_ids,
+      now,
+      long,
+      lat,
+      utc_offset,
+      having_advanced_customization,
+    } = data;
 
     try {
       const timeSlots: TimeSlot[] =
@@ -319,6 +326,7 @@ export class CartController {
           long,
           lat,
           utc_offset,
+          having_advanced_customization,
         );
       if (timeSlots.length > 0) {
         res.statusCode = 200;

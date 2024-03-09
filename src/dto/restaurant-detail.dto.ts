@@ -14,10 +14,11 @@ export class RestaurantDetailDTO {
   specialty: TextByLang[];
   introduction: TextByLang[];
   review_total_count: number;
-  cutoff_time: string[];
+  cutoff_time_m: number;
   having_vegeterian_food: boolean;
   unit: string;
   menu: FoodDTO[];
   distance_km: number;
   delivery_time_s: number;
+  is_advanced_customizable: boolean;
 }

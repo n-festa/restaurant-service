@@ -32,13 +32,13 @@
     "price": 95000,
     "price_after_discount": 65000,
     "promotion": "Ưu đãi đến 50k",
-    "cutoff_time": "09:00:00",
     "preparing_time_s": 600,
     "cooking_time_s": 1200,
     "quantity_available": 5,
     "is_vegetarian": false,
     "cooking_schedule": "[{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":true},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false}]",
-    "units_sold": 0
+    "units_sold": 0,
+    "is_advanced_customizable": false
   },
   {
     "id": 1,
@@ -73,13 +73,13 @@
     "price": 95000,
     "price_after_discount": 65000,
     "promotion": "Ưu đãi đến 50k",
-    "cutoff_time": "09:00:00",
     "preparing_time_s": 600,
     "cooking_time_s": 1200,
     "quantity_available": 5,
     "is_vegetarian": false,
     "cooking_schedule": "[{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":true},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false}]",
-    "units_sold": 0
+    "units_sold": 0,
+    "is_advanced_customizable": true
   },
   {
     "id": 1,
@@ -114,12 +114,12 @@
     "price": 95000,
     "price_after_discount": 65000,
     "promotion": "Ưu đãi đến 50k",
-    "cutoff_time": "09:00:00",
     "preparing_time_s": 600,
     "cooking_time_s": 1200,
     "quantity_available": 5,
     "is_vegetarian": false,
     "cooking_schedule": "[{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":1,\"dayName\":\"Sun\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":2,\"dayName\":\"Mon\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":3,\"dayName\":\"Tue\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":true},{\"dayId\":4,\"dayName\":\"Wed\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":5,\"dayName\":\"Thu\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":true},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":6,\"dayName\":\"Fri\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"06:00:00\",\"to\":\"13:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"14:00:00\",\"to\":\"21:59:59\",\"isAvailable\":false},{\"dayId\":7,\"dayName\":\"Sat\",\"from\":\"22:00:00\",\"to\":\"05:59:59\",\"isAvailable\":false}]",
-    "units_sold": 0
+    "units_sold": 0,
+    "is_advanced_customizable": true
   }
 ]

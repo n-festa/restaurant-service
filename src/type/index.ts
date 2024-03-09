@@ -77,8 +77,8 @@ export interface DayShift {
   from: string;
   to: string;
   is_available?: boolean;
-  cutoff_time?: string;
-  waiting_time_s?: number; // the time a customer has to wait until the food is ready for delivery from the begining of the shift
+  // cutoff_time?: string;
+  // waiting_time_s?: number; // the time a customer has to wait until the food is ready for delivery from the begining of the shift
 }
 
 export interface OptionSelection {
