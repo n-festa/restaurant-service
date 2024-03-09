@@ -5,11 +5,9 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  OneToMany,
 } from 'typeorm';
 import { MenuItemAttribute } from './menu-item-attribute.entity';
 import { Unit } from './unit.entity';
-import { TasteValueExt } from './taste-value-ext.entity';
 import { TasteValue } from './taste-value.entity';
 
 @Entity('Menu_Item_Attribute_Value')

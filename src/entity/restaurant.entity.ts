@@ -108,6 +108,9 @@ export class Restaurant {
   })
   public utc_time_zone: number;
 
+  @Column({ type: 'int', nullable: false, unique: false, default: 0 })
+  public cutoff_time_m: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,

@@ -876,6 +876,7 @@ export class CartService {
     long: number,
     lat: number,
     utc_offset: number,
+    having_advanced_customization: boolean,
     buffer_s = 5 * 60, // 5 mins
   ): Promise<TimeSlot[]> {
     const timeSlots = [];
@@ -917,7 +918,7 @@ export class CartService {
 
     const localTodayId = new Date(now + timeZoneOffset).getUTCDay() + 1; // 1->7: Sunday -> Saturday
 
-    //Find the schedule in which all of the menu items are available
+    //Step1: Find the schedule in which all of the menu items are available
     const overlapSchedule: DayShift[] = [];
     for (let index = localTodayId - 1; index < DAY_ID.length; index++) {
       const localTodayId = DAY_ID[index];
@@ -927,7 +928,6 @@ export class CartService {
         from: Shift.MorningFrom,
         to: Shift.MorningTo,
         is_available: true,
-        waiting_time_s: 0,
       });
       overlapSchedule.push({
         day_id: localTodayId,
@@ -935,7 +935,6 @@ export class CartService {
         from: Shift.AfternoonFrom,
         to: Shift.AfternoonTo,
         is_available: true,
-        waiting_time_s: 0,
       });
       overlapSchedule.push({
         day_id: localTodayId,
@@ -943,10 +942,10 @@ export class CartService {
         from: Shift.NightFrom,
         to: Shift.NightTo,
         is_available: true,
-        waiting_time_s: 0,
       });
     }
     for (const menuItem of menuItems) {
+      //Get the cooking schedule of menu_item_ids
       const menuItemSchedule: DayShift[] = JSON.parse(
         menuItem.cooking_schedule,
       );
@@ -960,19 +959,6 @@ export class CartService {
         }
         if (dayShift.is_available == false) {
           overlapSchedule[index].is_available = false;
-        } else if (
-          dayShift.is_available == true &&
-          overlapSchedule[index].is_available == true
-        ) {
-          if (dayShift.cutoff_time) {
-            const waiting_time_s =
-              this.commonService.convertTimeToSeconds(dayShift.cutoff_time) +
-              menuItem.cooking_time_s -
-              this.commonService.convertTimeToSeconds(dayShift.from);
-            if (waiting_time_s > overlapSchedule[index].waiting_time_s) {
-              overlapSchedule[index].waiting_time_s = waiting_time_s;
-            }
-          }
         }
       }
     }
@@ -1019,11 +1005,12 @@ export class CartService {
           );
       }
       menuItemAvailableTimeRanges.push({
-        from: from + dayShift.waiting_time_s * 1000,
+        from: from,
         to: to,
       });
     }
 
+    // Step 2: Get time ranges in which the restaurant is available
     // Get operation data of the restaurant
     const fromTomorrowOpsHours = (
       await this.commonService.getRestaurantOperationHours(restaurantId)
@@ -1034,7 +1021,7 @@ export class CartService {
       restaurantId,
       now,
     );
-    //Only keep the day off for this week
+    //ONLY KEEP THE DAY OFF FOR THIS WEEK
     if (dayOffs.length > 0) {
       const thisSaturday = this.commonService.getThisDate(
         now,
@@ -1079,6 +1066,7 @@ export class CartService {
       });
     }
 
+    //Get todayOperationTimeRange
     const todayOperationTimeRange = await this.commonService.getTodayOpsTime(
       restaurantId,
       now,
@@ -1105,32 +1093,97 @@ export class CartService {
       }
     }
 
-    //get the longest prepraring time for all the menu items
-    const listOfPreparingTime = menuItems.map((i) => i.preparing_time_s);
-    const longestPreparingTime = Math.max(...listOfPreparingTime);
+    // //get the longest prepraring time for all the menu items
+    // const listOfPreparingTime = menuItems.map((i) => i.preparing_time_s);
+    // const longestPreparingTime = Math.max(...listOfPreparingTime);
 
     //buil the AvailableDeliveryTime
-    //adjust the time ranges with
-    // - delivery time
-    // - preparing_time (the longest preparing time of all menu items)
-    // - buffer (5 mins)
-    // - now
     const availableDeliveryTime: TimeRange[] = [];
-    foodAvailabeTimeRanges.forEach((foodTimeRange) => {
-      let from = 0;
-      if (foodTimeRange.from < now) {
-        from = now;
-      } else if (foodTimeRange.from >= now) {
-        from = foodTimeRange.from;
+
+    if (having_advanced_customization == false) {
+      //THIS IS A NORMAL ORDER
+      foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+        let from = 0;
+        if (foodTimeRange.from < now) {
+          if (foodTimeRange.to < now) {
+            return;
+          } else if (foodTimeRange.to >= now) {
+            from = now;
+          }
+        } else if (foodTimeRange.from >= now) {
+          from = foodTimeRange.from;
+        }
+        const timeRange: TimeRange = {
+          from: from + (delivery_time_s + buffer_s) * 1000,
+          to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+        };
+        availableDeliveryTime.push(timeRange);
+      });
+    } else if (having_advanced_customization == true) {
+      //THIS IS A PREORDER
+
+      //get cutoff time in timestamp format (milliseconds)
+      const cutoffTimePoint = await this.commonService.getCutoffTimePoint(
+        now,
+        restaurantId,
+      );
+
+      if (cutoffTimePoint >= now) {
+        // foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+        //   const timeRange: TimeRange = {
+        //     from: foodTimeRange.from + (delivery_time_s + buffer_s) * 1000,
+        //     to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+        //   };
+        //   availableDeliveryTime.push(timeRange);
+        // });
+        foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+          let from = 0;
+          if (foodTimeRange.from < now) {
+            if (foodTimeRange.to < now) {
+              return;
+            } else if (foodTimeRange.to >= now) {
+              from = now;
+            }
+          } else if (foodTimeRange.from >= now) {
+            from = foodTimeRange.from;
+          }
+          const timeRange: TimeRange = {
+            from: from + (delivery_time_s + buffer_s) * 1000,
+            to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+          };
+          availableDeliveryTime.push(timeRange);
+        });
+      } else if (cutoffTimePoint < now) {
+        const localToday = new Date(now + timeZoneOffset);
+        localToday.setUTCHours(23, 59, 59, 999);
+        const tomorrowBegining = localToday.getTime() + 1 - timeZoneOffset;
+        const startTimeForAvailableDelivery =
+          tomorrowBegining +
+          Math.floor((now - cutoffTimePoint) / 86400000) * 86400000;
+        console.log(
+          'startTimeForAvailableDelivery',
+          startTimeForAvailableDelivery,
+        );
+        //filter time range after the start time for delivery available
+        foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+          let from = 0;
+          if (foodTimeRange.from < startTimeForAvailableDelivery) {
+            if (foodTimeRange.to < startTimeForAvailableDelivery) {
+              return;
+            } else if (foodTimeRange.to >= startTimeForAvailableDelivery) {
+              from = startTimeForAvailableDelivery;
+            }
+          } else if (foodTimeRange.from >= startTimeForAvailableDelivery) {
+            from = foodTimeRange.from;
+          }
+          const timeRange: TimeRange = {
+            from: from + (delivery_time_s + buffer_s) * 1000,
+            to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+          };
+          availableDeliveryTime.push(timeRange);
+        });
       }
-      const timeRange: TimeRange = {
-        from: from + (longestPreparingTime + delivery_time_s + buffer_s) * 1000,
-        to:
-          foodTimeRange.to +
-          (longestPreparingTime + delivery_time_s + buffer_s) * 1000,
-      };
-      availableDeliveryTime.push(timeRange);
-    });
+    }
 
     //convert time ranges to time slots
     for (const timeRange of availableDeliveryTime) {

@@ -15,13 +15,14 @@ interface FoodDetail {
   review_number: number;
   promotion: string;
   packaging_info: PackagingInfo[];
-  cutoff_time: string;
+  cutoff_time_m: number;
   ingredients: Ingredient[];
   description: TextByLang[];
   portion_customization: Option[];
   taste_customization: Option[];
   other_customizaton: BasicCustomization[];
   reviews: Review[];
+  is_advanced_customizable: boolean;
 }
 
 interface Ingredient {

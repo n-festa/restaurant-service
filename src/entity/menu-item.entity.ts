@@ -13,6 +13,7 @@ import { SKU } from './sku.entity';
 import { Media } from './media.entity';
 import { Recipe } from './recipe.entity';
 import { MenuItemPackaging } from './menuitem-packaging.entity';
+import { MenuItemAttribute } from './menu-item-attribute.entity';
 
 @Entity('Menu_Item')
 export class MenuItem {
@@ -28,8 +29,8 @@ export class MenuItem {
   @Column({ type: 'int', nullable: true, unique: false })
   public cooking_time_s: number;
 
-  @Column({ type: 'time', nullable: true, unique: false })
-  public cutoff_time: string;
+  // @Column({ type: 'time', nullable: true, unique: false })
+  // public cutoff_time: string;
 
   @Column({ type: 'int', nullable: true, unique: false })
   public quantity_available: number;
@@ -113,12 +114,12 @@ export class MenuItem {
   @OneToMany(() => Recipe, (recipe) => recipe.menu_item)
   public recipe: Promise<Recipe[]>;
 
-  // @OneToMany(() => Packaging, (packaging) => packaging.menu_item_obj)
-  // public packaging_obj: Packaging[];
-
   @OneToMany(
     () => MenuItemPackaging,
     (menuItemPackaging) => menuItemPackaging.menu_item_obj,
   )
   public menuItemPackaging_obj: MenuItemPackaging[];
+
+  @OneToMany(() => MenuItemAttribute, (att) => att.menu_item_obj)
+  public attribute_obj: MenuItemAttribute[];
 }

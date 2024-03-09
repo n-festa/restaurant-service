@@ -144,7 +144,7 @@ export class RestaurantService {
 
   async convertIntoRestaurantDTO(
     restaurant: DeliveryRestaurant,
-    priceRange: PriceRange,
+    priceRange: PriceRange = { max: null, min: null },
   ): Promise<RestaurantDTO> {
     const restaurantDTO = new RestaurantDTO();
     const menuItems = await restaurant.menu_items;
@@ -177,11 +177,14 @@ export class RestaurantService {
     restaurantDTO.specialty = specialty;
     restaurantDTO.top_food = restaurant.top_food;
     restaurantDTO.promotion = restaurant.promotion;
-    restaurantDTO.cutoff_time = menuItems.map((item) => item.cutoff_time);
     restaurantDTO.having_vegeterian_food = having_vegeterian_food;
     restaurantDTO.max_price = priceRange.max;
     restaurantDTO.min_price = priceRange.min;
     restaurantDTO.unit = restaurant.unit_obj.symbol;
+    restaurantDTO.is_advanced_customizable =
+      await this.commonService.checkIfRestaurantHasAdvancedCustomizableFood(
+        restaurant.restaurant_id,
+      );
 
     return restaurantDTO;
   } // convertIntoRestaurantDTO
@@ -201,6 +204,7 @@ export class RestaurantService {
       .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
       .leftJoinAndSelect('menuItem.image_obj', 'image')
       .leftJoinAndSelect('menuItem.skus', 'sku')
+      .leftJoinAndSelect('menuItem.attribute_obj', 'attribute')
       .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
       .andWhere('restaurant.is_active = 1')
       .andWhere('sku.is_standard = :standard', {
@@ -232,21 +236,31 @@ export class RestaurantService {
     const menuItems = await restaurant.menu_items;
     const convertedMenuItems: FoodDTO[] = [];
     let having_vegeterian_food: boolean = false;
-    const cutoff_time = [];
+    let isAdvancedCustomizable: boolean = false;
+    const cutoff_time_m = restaurant.cutoff_time_m;
     for (const menuItem of menuItems) {
       //Check if having vegeterian food
       if (menuItem.is_vegetarian === 1) {
         having_vegeterian_food = true;
       }
 
-      //push cutoff time
-      cutoff_time.push(menuItem.cutoff_time);
+      //check if having advanced customization
+      if (isAdvancedCustomizable == false && !!menuItem.attribute_obj) {
+        if (
+          menuItem.attribute_obj.filter((i) => i.type_id == 'taste').length > 0
+        ) {
+          isAdvancedCustomizable = true;
+        }
+      }
+
+      // //push cutoff time
+      // cutoff_time.push(menuItem.cutoff_time);
 
       //Convert to FoodDTO
       const foodDTO = await this.commonService.convertIntoFoodDTO(menuItem);
       convertedMenuItems.push(foodDTO);
     }
-    cutoff_time.sort();
+    // cutoff_time.sort();
 
     //Calculate distance and time delivery
     const timeAnhDistance = await this.ahamoveService.estimateTimeAndDistance(
@@ -287,12 +301,13 @@ export class RestaurantService {
       specialty: restaurant_ext.specialty,
       introduction: restaurant_ext.introduction,
       review_total_count: restaurant.review_total_count,
-      cutoff_time: cutoff_time,
+      cutoff_time_m: cutoff_time_m,
       having_vegeterian_food: having_vegeterian_food,
       unit: restaurant.unit_obj.symbol,
       menu: convertedMenuItems,
       distance_km: timeAnhDistance.distance_km,
       delivery_time_s: timeAnhDistance.duration_s,
+      is_advanced_customizable: isAdvancedCustomizable,
     };
 
     return data;
