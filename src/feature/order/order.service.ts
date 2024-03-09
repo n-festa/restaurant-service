@@ -1,5 +1,4 @@
 import {
-  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -9,8 +8,6 @@ import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
-import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
-import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderService {

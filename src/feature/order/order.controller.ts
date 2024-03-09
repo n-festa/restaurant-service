@@ -1,13 +1,11 @@
-import { Controller, HttpException, UseFilters } from '@nestjs/common';
-import { MessagePattern, RpcException } from '@nestjs/microservices';
+import { Controller, UseFilters } from '@nestjs/common';
+import { MessagePattern } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { Repository } from 'typeorm';
 import { OrderService } from './order.service';
 import { GetApplicationFeeRequest } from './dto/get-application-fee-request.dto';
-import { GeneralServiceResponse } from 'src/dto/general-service-response.dto';
 import { CustomRpcExceptionFilter } from 'src/filters/custom-rpc-exception.filter';
-import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 
 @Controller('order')
