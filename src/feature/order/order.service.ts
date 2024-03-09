@@ -1,41 +1,100 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
+import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
+import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
   constructor(@InjectRepository(Order) private orderRepo: Repository<Order>) {}
 
-  async updateOrderStatusFromAhamoveWebhook(orderId, webhookData): Promise<any> {
+  async updateOrderStatusFromAhamoveWebhook(
+    orderId,
+    webhookData,
+  ): Promise<any> {
     try {
-      this.logger.log(`receiving data from webhook to ${orderId} with ${webhookData.status}`);
-      const currentOrder = await this.orderRepo.findOne({ where: { delivery_order_id: orderId } });
+      this.logger.log(
+        `receiving data from webhook to ${orderId} with ${webhookData.status}`,
+      );
+      const currentOrder = await this.orderRepo.findOne({
+        where: { delivery_order_id: orderId },
+      });
       if (currentOrder) {
-        const { status, cancel_time, sub_status, pickup_time, complete_time, fail_time, return_time, processing_time, accept_time } = webhookData;
-        const ahavemoveData = { status, accept_time, cancel_time, pickup_time, complete_time, fail_time, return_time, sub_status, processing_time, path_status: '' };
+        const {
+          status,
+          cancel_time,
+          sub_status,
+          pickup_time,
+          complete_time,
+          fail_time,
+          return_time,
+          processing_time,
+          accept_time,
+        } = webhookData;
+        const ahavemoveData = {
+          status,
+          accept_time,
+          cancel_time,
+          pickup_time,
+          complete_time,
+          fail_time,
+          return_time,
+          sub_status,
+          processing_time,
+          path_status: '',
+        };
         ahavemoveData.path_status = webhookData?.path?.status;
         const orderData = {
           order_pickup_time: currentOrder.pickup_time,
           is_preorder: currentOrder.is_preorder,
           ready_time: currentOrder.ready_time,
         };
-        const updateData = this.getOrderStatusBaseOnAhahaStatus(orderData, ahavemoveData);
-        this.logger.log(`Updating data from webhook to ${orderId} with ${JSON.stringify(updateData)}`);
-        await this.orderRepo.update(currentOrder.order_id, { ...currentOrder, ...updateData });
+        const updateData = this.getOrderStatusBaseOnAhahaStatus(
+          orderData,
+          ahavemoveData,
+        );
+        this.logger.log(
+          `Updating data from webhook to ${orderId} with ${JSON.stringify(
+            updateData,
+          )}`,
+        );
+        await this.orderRepo.update(currentOrder.order_id, {
+          ...currentOrder,
+          ...updateData,
+        });
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };
     } catch (error) {
-      this.logger.error(`An error occurred while updating order: ${error.message}`);
+      this.logger.error(
+        `An error occurred while updating order: ${error.message}`,
+      );
       throw new InternalServerErrorException();
     }
   }
   private getOrderStatusBaseOnAhahaStatus(
     { order_pickup_time, is_preorder, ready_time },
-    { status, sub_status, path_status, accept_time, cancel_time, pickup_time, complete_time, fail_time, return_time, processing_time },
+    {
+      status,
+      sub_status,
+      path_status,
+      accept_time,
+      cancel_time,
+      pickup_time,
+      complete_time,
+      fail_time,
+      return_time,
+      processing_time,
+    },
   ) {
     let data = {};
     switch (status) {
@@ -107,5 +166,31 @@ export class OrderService {
         break;
     }
     return data;
+  }
+
+  async getApplicationFeeFromEndPoint(
+    items_total: number,
+    exchange_rate: number, //Exchange rate to VND
+  ): Promise<GetApplicationFeeResponse> {
+    const FEE_RATE = 0.03;
+    const MAXIMUM_FEE = 75000; //VND
+    const MINIMUM_FEE = 1000; //VND
+
+    const preApplicationFee = items_total * FEE_RATE;
+    let applicationFee = 0;
+    if (preApplicationFee >= MAXIMUM_FEE) {
+      applicationFee = MAXIMUM_FEE / exchange_rate;
+    } else if (preApplicationFee <= MINIMUM_FEE) {
+      applicationFee = MINIMUM_FEE / exchange_rate;
+    } else if (
+      preApplicationFee < MAXIMUM_FEE &&
+      preApplicationFee > MINIMUM_FEE
+    ) {
+      applicationFee = preApplicationFee / exchange_rate;
+    }
+
+    return {
+      application_fee: applicationFee,
+    };
   }
 }
