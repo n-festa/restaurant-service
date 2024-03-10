@@ -7,9 +7,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
 import { AhamoveOrderHookEntity } from 'src/entity/ahamove-order-hook.entity';
 import { InvoiceStatusHistoryModule } from 'src/feature/invoice-status-history/invoice-status-history.module';
+import { OrderModule } from 'src/feature/order/order.module';
 
 @Module({
-  imports: [HttpModule, ConfigModule, TypeOrmModule.forFeature([AhamoveOrderEntity, AhamoveOrderHookEntity]), InvoiceStatusHistoryModule],
+  imports: [
+    HttpModule,
+    ConfigModule,
+    TypeOrmModule.forFeature([AhamoveOrderEntity, AhamoveOrderHookEntity]),
+    InvoiceStatusHistoryModule,
+    OrderModule,
+  ],
   providers: [AhamoveService],
   exports: [AhamoveService],
   controllers: [AhamoveController],

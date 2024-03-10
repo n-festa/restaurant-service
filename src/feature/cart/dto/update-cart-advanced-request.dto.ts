@@ -7,6 +7,7 @@ export class UpdateCartAdvancedRequest {
   basic_taste_customization_obj: BasicTasteSelection[];
   notes: string;
   lang?: string;
+  packaging_id?: number;
 }
 
 interface OptionSelection {

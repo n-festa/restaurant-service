@@ -4,4 +4,5 @@ export class GetAvailableDeliveryTimeRequest {
   long: number;
   lat: number;
   utc_offset: number;
+  having_advanced_customization: boolean;
 }

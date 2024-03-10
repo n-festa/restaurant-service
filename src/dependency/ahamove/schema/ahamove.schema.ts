@@ -30,7 +30,7 @@ const packageDetailSchema = Joi.object({
   description: Joi.string().optional(),
 });
 
-const orderSchema = Joi.object({
+const postAhaOrderRequestSchema = Joi.object({
   startingPoint: locationSchema.required(),
   destination: locationSchema.required(),
   paymentMethod: Joi.string().required(),
@@ -53,5 +53,7 @@ const coordinateSchema = Joi.object({
   long: Joi.number().required(),
 });
 
-export const coordinateListSchema = Joi.array().items(coordinateSchema).required();
-export default orderSchema;
+export const coordinateListSchema = Joi.array()
+  .items(coordinateSchema)
+  .required();
+export default postAhaOrderRequestSchema;

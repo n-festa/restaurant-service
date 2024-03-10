@@ -36,6 +36,8 @@ export class CartController {
       advanced_taste_customization_obj,
       basic_taste_customization_obj,
       notes,
+      lang,
+      packaging_id,
     } = data;
     const res = new AddToCartResponse(200, '');
     try {
@@ -46,6 +48,7 @@ export class CartController {
         advanced_taste_customization_obj,
         basic_taste_customization_obj,
         notes,
+        packaging_id,
       );
 
       let restaurant: RestaurantBasicInfo = {
@@ -138,6 +141,7 @@ export class CartController {
       basic_taste_customization_obj,
       notes,
       lang = 'vie',
+      packaging_id = null,
     } = data;
     const res = new UpdateCartAdvancedResponse(200, '');
     try {
@@ -150,6 +154,7 @@ export class CartController {
           advanced_taste_customization_obj,
           basic_taste_customization_obj,
           notes,
+          packaging_id,
           lang,
         );
       let restaurant: RestaurantBasicInfo = {
@@ -304,7 +309,14 @@ export class CartController {
     data: GetAvailableDeliveryTimeRequest,
   ): Promise<GetAvailableDeliveryTimeResponse> {
     const res = new GetAvailableDeliveryTimeResponse(200, '');
-    const { menu_item_ids, now, long, lat, utc_offset } = data;
+    const {
+      menu_item_ids,
+      now,
+      long,
+      lat,
+      utc_offset,
+      having_advanced_customization,
+    } = data;
 
     try {
       const timeSlots: TimeSlot[] =
@@ -314,13 +326,30 @@ export class CartController {
           long,
           lat,
           utc_offset,
+          having_advanced_customization,
         );
-      res.statusCode = 200;
-      res.message = 'Get available delivery time successfully';
-      res.data = timeSlots;
+      if (timeSlots.length > 0) {
+        res.statusCode = 200;
+        res.message = 'Get available delivery time successfully';
+        res.data = timeSlots;
+      } else if (timeSlots.length <= 0) {
+        const menuItems =
+          await this.commonService.getMenuItemByIds(menu_item_ids);
+        res.statusCode = 404;
+        res.message = 'No available delivery time';
+        res.data = await this.commonService.getPlanningDate(
+          menuItems[0].restaurant_id,
+          now,
+        );
+      }
     } catch (error) {
       if (error instanceof HttpException) {
-        res.statusCode = error.getStatus();
+        if (error.getStatus() == 404) {
+          res.statusCode = 400;
+        } else {
+          res.statusCode = error.getStatus();
+        }
+
         res.message = error.getResponse();
         res.data = null;
       } else {
@@ -349,6 +378,14 @@ export class CartController {
       return res;
     }
 
+    //Get standard package for menu_item_id
+    let packaging_id = null;
+    const packaging =
+      await this.commonService.getStandardPackagingByMenuItem(menu_item_id);
+    if (packaging) {
+      packaging_id = packaging.packaging_id;
+    }
+
     const qtyOrdered = 1;
 
     try {
@@ -356,6 +393,10 @@ export class CartController {
         customer_id,
         sku.sku_id,
         qtyOrdered,
+        [],
+        [],
+        '',
+        packaging_id,
       );
 
       let restaurant: RestaurantBasicInfo = {

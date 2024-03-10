@@ -7,6 +7,7 @@ import { CommonService } from '../common/common.service';
 import { SKU } from 'src/entity/sku.entity';
 import {
   BasicTasteSelection,
+  CartPackagingInfo,
   DayShift,
   FullCartItem,
   OptionSelection,
@@ -18,6 +19,8 @@ import {
 import { DAY_ID, DAY_NAME } from 'src/constant';
 import { Shift } from 'src/enum';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
+import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
+import { MenuItem } from 'src/entity/menu-item.entity';
 
 @Injectable()
 export class CartService {
@@ -34,6 +37,7 @@ export class CartService {
     advanced_taste_customization_obj: OptionSelection[] = [],
     basic_taste_customization_obj: BasicTasteSelection[] = [],
     notes: string = '',
+    packaging_id: number = null,
     lang: string = 'vie',
   ): Promise<FullCartItem[]> {
     const advanced_taste_customization_obj_txt =
@@ -53,6 +57,16 @@ export class CartService {
       .getOne();
     if (!sku) {
       throw new HttpException('SKU does not exist', 404);
+    }
+
+    //Check the package info does belongs to the SKU
+    if (packaging_id) {
+      if (!(await this.checkIfThePackageBelongsToSKU(packaging_id, sku_id))) {
+        throw new HttpException(
+          'The package info does belongs to the SKU',
+          400,
+        );
+      }
     }
 
     // Check if the advanced_taste_customization_obj is all available to this SKU
@@ -120,6 +134,7 @@ export class CartService {
         basic_taste_customization_obj_txt,
         notes,
         sku.menu_item.restaurant_id,
+        packaging_id,
       );
       return await this.getCart(customer_id);
     }
@@ -141,7 +156,8 @@ export class CartService {
         i.advanced_taste_customization_obj ==
           advanced_taste_customization_obj_txt &&
         i.basic_taste_customization_obj == basic_taste_customization_obj_txt &&
-        i.notes == notes,
+        i.notes == notes &&
+        i.packaging_info.packaging_id == packaging_id,
     );
     if (existingItem) {
       //The item does exist => increase the quantity
@@ -157,6 +173,7 @@ export class CartService {
         existingItem.basic_taste_customization_obj,
         existingItem.notes,
         existingItem.restaurant_id,
+        existingItem.packaging_info.packaging_id,
       );
       return await this.getCart(customer_id);
     }
@@ -172,6 +189,7 @@ export class CartService {
       basic_taste_customization_obj_txt,
       notes,
       sku.menu_item.restaurant_id,
+      packaging_id,
     );
     return await this.getCart(customer_id);
   } // end of addCartItem
@@ -180,6 +198,8 @@ export class CartService {
     const fullCart: FullCartItem[] = [];
     const cartItems = await this.entityManager
       .createQueryBuilder(CartItem, 'cart')
+      .leftJoinAndSelect('cart.packaging_obj', 'packaging')
+      .leftJoinAndSelect('packaging.packaging_ext_obj', 'packagingExt')
       .where('cart.customer_id = :customer_id', { customer_id })
       .getMany();
 
@@ -192,6 +212,17 @@ export class CartService {
       const additionalInfoForSku = additionalInfoForSkus.find(
         (i) => i.sku_id == item.sku_id,
       );
+      const packagingInfo: CartPackagingInfo = {
+        packaging_id: item.packaging_id,
+        name: [],
+        price: item.packaging_obj?.price,
+      };
+      item.packaging_obj?.packaging_ext_obj.forEach((ext) => {
+        packagingInfo.name.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+      });
       const fullItem: FullCartItem = {
         item_id: item.item_id,
         item_name: additionalInfoForSku.sku_name,
@@ -209,6 +240,7 @@ export class CartService {
         basic_taste_customization_obj: item.basic_taste_customization_obj,
         notes: item.notes,
         restaurant_id: item.restaurant_id,
+        packaging_info: packagingInfo,
       };
       fullCart.push(fullItem);
     }
@@ -226,7 +258,52 @@ export class CartService {
     basic_taste_customization_obj: string,
     notes: string,
     restaurant_id: number,
+    packaging_id: number,
   ): Promise<void> {
+    //A. Check if the updated quantity is more than avaialbe quantity
+    const menuItemId = (
+      await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .where('sku.sku_id = :sku_id', { sku_id })
+        .getOne()
+    ).menu_item_id;
+
+    //A1.Get availble quantity
+    const availableQty = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuIem')
+        .where('menuIem.menu_item_id = :menuItemId', { menuItemId })
+        .getOne()
+    ).quantity_available;
+    console.log('availableQty', availableQty);
+
+    //A2. summary ordered quantity
+    const orderedQuantityFromCurrentCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.customer_id = :customer_id', {
+          customer_id,
+        })
+        .andWhere('sku.menu_item_id = :menuItemId', {
+          menuItemId,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    const summaryOrderedQuantity =
+      orderedQuantityFromCurrentCartIem + qty_ordered;
+    console.log('summaryOrderedQuantity', summaryOrderedQuantity);
+
+    //A3. Compare Ordered Quanty TO Available Quantity
+    if (summaryOrderedQuantity > availableQty) {
+      throw new HttpException(
+        'Cannot insert more than available quantity',
+        400,
+      );
+    }
+
+    //B. Insert database
     await this.entityManager
       .createQueryBuilder()
       .insert()
@@ -242,6 +319,7 @@ export class CartService {
         basic_taste_customization_obj: basic_taste_customization_obj,
         notes: notes,
         restaurant_id: restaurant_id,
+        packaging_id: packaging_id,
       })
       .execute();
   } // end of insertCart
@@ -258,7 +336,53 @@ export class CartService {
     basic_taste_customization_obj: string,
     notes: string,
     restaurant_id: number,
+    packaging_id: number,
   ): Promise<void> {
+    //A. Check if the updated quantity is more than avaialbe quantity
+    const menuItemId = (
+      await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .where('sku.sku_id = :sku_id', { sku_id })
+        .getOne()
+    ).menu_item_id;
+
+    //A1.Get availble quantity
+    const availableQty = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuIem')
+        .where('menuIem.menu_item_id = :menuItemId', { menuItemId })
+        .getOne()
+    ).quantity_available;
+    console.log('availableQty', availableQty);
+
+    //A2. summary ordered quantity
+    const orderedQuantityFromOtherCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.customer_id = :customer_id', {
+          customer_id,
+        })
+        .andWhere('cart.item_id != :item_id', { item_id })
+        .andWhere('sku.menu_item_id = :menuItemId', {
+          menuItemId,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    const summaryOrderedQuantity =
+      orderedQuantityFromOtherCartIem + qty_ordered;
+    console.log('summaryOrderedQuantity', summaryOrderedQuantity);
+
+    //A3. Compare Ordered Quanty TO Available Quantity
+    if (summaryOrderedQuantity > availableQty) {
+      throw new HttpException(
+        'Cannot insert more than available quantity',
+        400,
+      );
+    }
+
+    //B. Update database
     await this.entityManager
       .createQueryBuilder()
       .update(CartItem)
@@ -273,6 +397,7 @@ export class CartService {
         basic_taste_customization_obj: basic_taste_customization_obj,
         notes: notes,
         restaurant_id: restaurant_id,
+        packaging_id: packaging_id,
       })
       .where('item_id = :item_id', { item_id })
       .execute();
@@ -286,6 +411,7 @@ export class CartService {
     advanced_taste_customization_obj: OptionSelection[],
     basic_taste_customization_obj: BasicTasteSelection[],
     notes: string,
+    packaging_id: number,
     lang: string,
   ): Promise<FullCartItem[]> {
     // https://n-festa.atlassian.net/browse/FES-28
@@ -301,12 +427,28 @@ export class CartService {
       );
     }
 
-    const advanced_taste_customization_obj_txt = JSON.stringify(
-      advanced_taste_customization_obj,
-    );
-    const basic_taste_customization_obj_txt = JSON.stringify(
-      basic_taste_customization_obj,
-    );
+    // Check if the package does belong to SKU
+    if (packaging_id) {
+      if (!(await this.checkIfThePackageBelongsToSKU(packaging_id, sku_id))) {
+        throw new HttpException('The package does not belong to SKU', 400);
+      }
+    }
+
+    const advanced_taste_customization_obj_txt =
+      advanced_taste_customization_obj.length > 0
+        ? JSON.stringify(advanced_taste_customization_obj)
+        : '';
+    const basic_taste_customization_obj_txt =
+      basic_taste_customization_obj.length > 0
+        ? JSON.stringify(basic_taste_customization_obj)
+        : '';
+
+    // const advanced_taste_customization_obj_txt = JSON.stringify(
+    //   advanced_taste_customization_obj,
+    // );
+    // const basic_taste_customization_obj_txt = JSON.stringify(
+    //   basic_taste_customization_obj,
+    // );
 
     //Check if there any new data
     if (
@@ -316,7 +458,8 @@ export class CartService {
         mentionedCartItem.advanced_taste_customization_obj &&
       basic_taste_customization_obj_txt ==
         mentionedCartItem.basic_taste_customization_obj &&
-      notes == mentionedCartItem.notes
+      notes == mentionedCartItem.notes &&
+      packaging_id == mentionedCartItem.packaging_id
     ) {
       throw new HttpException('No new data for updating', 400);
     }
@@ -331,7 +474,7 @@ export class CartService {
       throw new HttpException('SKU does not exist', 404);
     }
 
-    // If there is any cart item which is IDENTICAL to the updated item
+    // If there is any other cart item which is IDENTICAL to the updated item
     const identicalCartItem = await this.entityManager
       .createQueryBuilder(CartItem, 'cart')
       .where('cart.customer_id = :customer_id', { customer_id })
@@ -349,34 +492,40 @@ export class CartService {
         { basic_taste_customization_obj: basic_taste_customization_obj_txt },
       )
       .andWhere('cart.notes = :notes', { notes })
+      .andWhere('cart.packaging_id = :packaging_id', { packaging_id })
       .getOne();
 
     if (identicalCartItem) {
       //The item does exist
       // => DELETE the updated item & Update the identical item with the increased quantity
 
-      await this.entityManager.transaction(
-        async (transactionalEntityManager) => {
-          //DELETE the updated item
-          await transactionalEntityManager
-            .createQueryBuilder()
-            .delete()
-            .from(CartItem)
-            .where('item_id = :item_id', { item_id })
-            .execute();
-          // Update the identical item with the increased quantity
-          await transactionalEntityManager
-            .createQueryBuilder()
-            .update(CartItem)
-            .set({
-              qty_ordered: identicalCartItem.qty_ordered + qty_ordered,
-            })
-            .where('item_id = :item_id', {
-              item_id: identicalCartItem.item_id,
-            })
-            .execute();
-        },
+      await this.updateCartWhenIdenticalItemFound(
+        item_id,
+        qty_ordered,
+        identicalCartItem,
       );
+      // await this.entityManager.transaction(
+      //   async (transactionalEntityManager) => {
+      //     //DELETE the updated item
+      //     await transactionalEntityManager
+      //       .createQueryBuilder()
+      //       .delete()
+      //       .from(CartItem)
+      //       .where('item_id = :item_id', { item_id })
+      //       .execute();
+      //     // Update the identical item with the increased quantity
+      //     await transactionalEntityManager
+      //       .createQueryBuilder()
+      //       .update(CartItem)
+      //       .set({
+      //         qty_ordered: identicalCartItem.qty_ordered + qty_ordered,
+      //       })
+      //       .where('item_id = :item_id', {
+      //         item_id: identicalCartItem.item_id,
+      //       })
+      //       .execute();
+      //   },
+      // );
 
       return await this.getCart(customer_id);
     }
@@ -484,6 +633,7 @@ export class CartService {
       basic_taste_customization_obj_txt,
       notes,
       mentionedCartItem.restaurant_id,
+      packaging_id,
     );
 
     return await this.getCart(customer_id);
@@ -587,6 +737,84 @@ export class CartService {
   async massUpdateCartItemWithQuantity(
     items: QuantityUpdatedItem[],
   ): Promise<void> {
+    //A. Check the updated quantity is more than avaialbe quantity
+
+    const cartItemIds = items.map((i) => i.item_id);
+    const updatingCartItems = await this.entityManager
+      .createQueryBuilder(CartItem, 'cartItem')
+      .leftJoinAndSelect('cartItem.sku_obj', 'sku')
+      .where('cartItem.item_id IN (:...ids)', { ids: cartItemIds })
+      .getMany();
+    const customerIds = updatingCartItems
+      .map((i) => i.customer_id)
+      .filter((value, index, self) => {
+        return self.indexOf(value) === index;
+      });
+
+    //A1. Get the available quantity
+    const updatedMenuItemIds = updatingCartItems
+      .map((i) => i.sku_obj.menu_item_id)
+      .filter((value, index, self) => {
+        return self.indexOf(value) === index;
+      });
+    console.log('updatedMenuItemIds', updatedMenuItemIds);
+
+    const avaialbeQuantity: number = +(
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuItem')
+        .where('menuItem.menu_item_id IN (:...ids)', {
+          ids: updatedMenuItemIds,
+        })
+        .select('SUM(menuItem.quantity_available)', 'sum')
+        .getRawOne()
+    ).sum;
+    console.log('avaialbeQuantity', avaialbeQuantity);
+
+    //A2. Get quatity ordered after updating
+    //A2i. Apart from updating cart item, we get list of cart item
+    //     which belongs to above list of menu item
+    //     Then sum the ordered quantity
+    const orderedQuantityFromOtherCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.item_id NOT IN (:...ids)', {
+          ids: cartItemIds,
+        })
+        .andWhere('cart.customer_id IN (:...customerIds)', {
+          customerIds,
+        })
+        .andWhere('sku.menu_item_id IN (:...updatedMenuItemIds)', {
+          updatedMenuItemIds,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    console.log(
+      'orderedQuantityFromOtherCartIem',
+      orderedQuantityFromOtherCartIem,
+    );
+    //A2ii. Summary the ordered quantity from updating cart item
+    const updatingOrderedQuantity = items
+      .map((i) => i.qty_ordered)
+      .reduce((sum, quantity) => {
+        return sum + quantity;
+      });
+    console.log('orderedQuantity', updatingOrderedQuantity);
+
+    //A2iii. Summary ordered quantity
+    const orderedQuantity =
+      orderedQuantityFromOtherCartIem + updatingOrderedQuantity;
+
+    //A3. Compare ordered quanty TO available quantity
+    if (orderedQuantity > avaialbeQuantity) {
+      throw new HttpException(
+        'The updated quantity is more than available quantity',
+        400,
+      );
+    }
+
+    //B. Update data
     await this.entityManager.transaction(async (transactionalEntityManager) => {
       for (const item of items) {
         await transactionalEntityManager
@@ -600,6 +828,7 @@ export class CartService {
       }
     });
   } //end of massUpdateCartItemWithQuantity
+
   async deleteAllCartItem(customer_id: number) {
     await this.entityManager
       .createQueryBuilder()
@@ -647,6 +876,7 @@ export class CartService {
     long: number,
     lat: number,
     utc_offset: number,
+    having_advanced_customization: boolean,
     buffer_s = 5 * 60, // 5 mins
   ): Promise<TimeSlot[]> {
     const timeSlots = [];
@@ -655,7 +885,7 @@ export class CartService {
 
     //Check if menu_item_ids do exist
     if (menuItems.length != menu_item_ids.length) {
-      throw new HttpException('Some of menu items do not exist', 404);
+      throw new HttpException('Some of menu items do not exist', 400);
     }
 
     //Check if menu_item_ids belong to the same restaurant
@@ -688,7 +918,7 @@ export class CartService {
 
     const localTodayId = new Date(now + timeZoneOffset).getUTCDay() + 1; // 1->7: Sunday -> Saturday
 
-    //Find the schedule in which all of the menu items are available
+    //Step1: Find the schedule in which all of the menu items are available
     const overlapSchedule: DayShift[] = [];
     for (let index = localTodayId - 1; index < DAY_ID.length; index++) {
       const localTodayId = DAY_ID[index];
@@ -698,7 +928,6 @@ export class CartService {
         from: Shift.MorningFrom,
         to: Shift.MorningTo,
         is_available: true,
-        waiting_time_s: 0,
       });
       overlapSchedule.push({
         day_id: localTodayId,
@@ -706,7 +935,6 @@ export class CartService {
         from: Shift.AfternoonFrom,
         to: Shift.AfternoonTo,
         is_available: true,
-        waiting_time_s: 0,
       });
       overlapSchedule.push({
         day_id: localTodayId,
@@ -714,10 +942,10 @@ export class CartService {
         from: Shift.NightFrom,
         to: Shift.NightTo,
         is_available: true,
-        waiting_time_s: 0,
       });
     }
     for (const menuItem of menuItems) {
+      //Get the cooking schedule of menu_item_ids
       const menuItemSchedule: DayShift[] = JSON.parse(
         menuItem.cooking_schedule,
       );
@@ -731,19 +959,6 @@ export class CartService {
         }
         if (dayShift.is_available == false) {
           overlapSchedule[index].is_available = false;
-        } else if (
-          dayShift.is_available == true &&
-          overlapSchedule[index].is_available == true
-        ) {
-          if (dayShift.cutoff_time) {
-            const waiting_time_s =
-              this.commonService.convertTimeToSeconds(dayShift.cutoff_time) +
-              menuItem.cooking_time_s -
-              this.commonService.convertTimeToSeconds(dayShift.from);
-            if (waiting_time_s > overlapSchedule[index].waiting_time_s) {
-              overlapSchedule[index].waiting_time_s = waiting_time_s;
-            }
-          }
         }
       }
     }
@@ -790,11 +1005,12 @@ export class CartService {
           );
       }
       menuItemAvailableTimeRanges.push({
-        from: from + dayShift.waiting_time_s * 1000,
+        from: from,
         to: to,
       });
     }
 
+    // Step 2: Get time ranges in which the restaurant is available
     // Get operation data of the restaurant
     const fromTomorrowOpsHours = (
       await this.commonService.getRestaurantOperationHours(restaurantId)
@@ -805,7 +1021,7 @@ export class CartService {
       restaurantId,
       now,
     );
-    //Only keep the day off for this week
+    //ONLY KEEP THE DAY OFF FOR THIS WEEK
     if (dayOffs.length > 0) {
       const thisSaturday = this.commonService.getThisDate(
         now,
@@ -850,6 +1066,7 @@ export class CartService {
       });
     }
 
+    //Get todayOperationTimeRange
     const todayOperationTimeRange = await this.commonService.getTodayOpsTime(
       restaurantId,
       now,
@@ -876,32 +1093,97 @@ export class CartService {
       }
     }
 
-    //get the longest prepraring time for all the menu items
-    const listOfPreparingTime = menuItems.map((i) => i.preparing_time_s);
-    const longestPreparingTime = Math.max(...listOfPreparingTime);
+    // //get the longest prepraring time for all the menu items
+    // const listOfPreparingTime = menuItems.map((i) => i.preparing_time_s);
+    // const longestPreparingTime = Math.max(...listOfPreparingTime);
 
     //buil the AvailableDeliveryTime
-    //adjust the time ranges with
-    // - delivery time
-    // - preparing_time (the longest preparing time of all menu items)
-    // - buffer (5 mins)
-    // - now
     const availableDeliveryTime: TimeRange[] = [];
-    foodAvailabeTimeRanges.forEach((foodTimeRange) => {
-      let from = 0;
-      if (foodTimeRange.from < now) {
-        from = now;
-      } else if (foodTimeRange.from >= now) {
-        from = foodTimeRange.from;
+
+    if (having_advanced_customization == false) {
+      //THIS IS A NORMAL ORDER
+      foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+        let from = 0;
+        if (foodTimeRange.from < now) {
+          if (foodTimeRange.to < now) {
+            return;
+          } else if (foodTimeRange.to >= now) {
+            from = now;
+          }
+        } else if (foodTimeRange.from >= now) {
+          from = foodTimeRange.from;
+        }
+        const timeRange: TimeRange = {
+          from: from + (delivery_time_s + buffer_s) * 1000,
+          to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+        };
+        availableDeliveryTime.push(timeRange);
+      });
+    } else if (having_advanced_customization == true) {
+      //THIS IS A PREORDER
+
+      //get cutoff time in timestamp format (milliseconds)
+      const cutoffTimePoint = await this.commonService.getCutoffTimePoint(
+        now,
+        restaurantId,
+      );
+
+      if (cutoffTimePoint >= now) {
+        // foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+        //   const timeRange: TimeRange = {
+        //     from: foodTimeRange.from + (delivery_time_s + buffer_s) * 1000,
+        //     to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+        //   };
+        //   availableDeliveryTime.push(timeRange);
+        // });
+        foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+          let from = 0;
+          if (foodTimeRange.from < now) {
+            if (foodTimeRange.to < now) {
+              return;
+            } else if (foodTimeRange.to >= now) {
+              from = now;
+            }
+          } else if (foodTimeRange.from >= now) {
+            from = foodTimeRange.from;
+          }
+          const timeRange: TimeRange = {
+            from: from + (delivery_time_s + buffer_s) * 1000,
+            to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+          };
+          availableDeliveryTime.push(timeRange);
+        });
+      } else if (cutoffTimePoint < now) {
+        const localToday = new Date(now + timeZoneOffset);
+        localToday.setUTCHours(23, 59, 59, 999);
+        const tomorrowBegining = localToday.getTime() + 1 - timeZoneOffset;
+        const startTimeForAvailableDelivery =
+          tomorrowBegining +
+          Math.floor((now - cutoffTimePoint) / 86400000) * 86400000;
+        console.log(
+          'startTimeForAvailableDelivery',
+          startTimeForAvailableDelivery,
+        );
+        //filter time range after the start time for delivery available
+        foodAvailabeTimeRanges.forEach((foodTimeRange) => {
+          let from = 0;
+          if (foodTimeRange.from < startTimeForAvailableDelivery) {
+            if (foodTimeRange.to < startTimeForAvailableDelivery) {
+              return;
+            } else if (foodTimeRange.to >= startTimeForAvailableDelivery) {
+              from = startTimeForAvailableDelivery;
+            }
+          } else if (foodTimeRange.from >= startTimeForAvailableDelivery) {
+            from = foodTimeRange.from;
+          }
+          const timeRange: TimeRange = {
+            from: from + (delivery_time_s + buffer_s) * 1000,
+            to: foodTimeRange.to + (delivery_time_s + buffer_s) * 1000,
+          };
+          availableDeliveryTime.push(timeRange);
+        });
       }
-      const timeRange: TimeRange = {
-        from: from + (longestPreparingTime + delivery_time_s + buffer_s) * 1000,
-        to:
-          foodTimeRange.to +
-          (longestPreparingTime + delivery_time_s + buffer_s) * 1000,
-      };
-      availableDeliveryTime.push(timeRange);
-    });
+    }
 
     //convert time ranges to time slots
     for (const timeRange of availableDeliveryTime) {
@@ -913,4 +1195,95 @@ export class CartService {
     }
     return timeSlots;
   } // end of getAvailableDeliveryTimeFromEndPoint
+
+  async checkIfThePackageBelongsToSKU(
+    packaging_id: number,
+    sku_id: number,
+  ): Promise<boolean> {
+    let result = false;
+
+    const record = await this.entityManager
+      .createQueryBuilder(MenuItemPackaging, 'packaging')
+      .leftJoinAndSelect('packaging.menu_item_obj', 'menuItem')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
+      .where('packaging.packaging_id = :packaging_id', { packaging_id })
+      .andWhere('sku.sku_id = :sku_id', { sku_id })
+      .getOne();
+
+    result = record ? true : false;
+
+    return result;
+  } // end of checkIfThePackageBelongsToSKU
+
+  async updateCartWhenIdenticalItemFound(
+    cart_item_id: number,
+    updated_qty: number,
+    idential_item: CartItem,
+  ): Promise<void> {
+    //A. Check if the updated quantity is more than avaialbe quantity
+    const menuItemId = (
+      await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .where('sku.sku_id = :sku_id', { sku_id: idential_item.sku_id })
+        .getOne()
+    ).menu_item_id;
+
+    //A1.Get availble quantity
+    const availableQty = (
+      await this.entityManager
+        .createQueryBuilder(MenuItem, 'menuIem')
+        .where('menuIem.menu_item_id = :menuItemId', { menuItemId })
+        .getOne()
+    ).quantity_available;
+    console.log('availableQty', availableQty);
+
+    //A2. summary ordered quantity
+    const orderedQuantityFromOtherCartIem = +(
+      await this.entityManager
+        .createQueryBuilder(CartItem, 'cart')
+        .leftJoinAndSelect('cart.sku_obj', 'sku')
+        .where('cart.customer_id = :customer_id', {
+          customer_id: idential_item.customer_id,
+        })
+        .andWhere('cart.item_id != :item_id', { item_id: cart_item_id })
+        .andWhere('sku.menu_item_id = :menuItemId', {
+          menuItemId,
+        })
+        .select('SUM(cart.qty_ordered)', 'sum')
+        .getRawOne()
+    ).sum;
+    const summaryOrderedQuantity =
+      orderedQuantityFromOtherCartIem + updated_qty;
+    console.log('summaryOrderedQuantity', summaryOrderedQuantity);
+
+    //A3. Compare Ordered Quanty TO Available Quantity
+    if (summaryOrderedQuantity > availableQty) {
+      throw new HttpException(
+        'Cannot insert more than available quantity',
+        400,
+      );
+    }
+
+    //B. Update Database
+    await this.entityManager.transaction(async (transactionalEntityManager) => {
+      //DELETE the updated item
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .delete()
+        .from(CartItem)
+        .where('item_id = :item_id', { item_id: cart_item_id })
+        .execute();
+      // Update the identical item with the increased quantity
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .update(CartItem)
+        .set({
+          qty_ordered: idential_item.qty_ordered + updated_qty,
+        })
+        .where('item_id = :item_id', {
+          item_id: idential_item.item_id,
+        })
+        .execute();
+    });
+  } //end of updateCartWhenIdenticalItemFound
 }

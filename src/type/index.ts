@@ -77,8 +77,8 @@ export interface DayShift {
   from: string;
   to: string;
   is_available?: boolean;
-  cutoff_time?: string;
-  waiting_time_s?: number; // the time a customer has to wait until the food is ready for delivery from the begining of the shift
+  // cutoff_time?: string;
+  // waiting_time_s?: number; // the time a customer has to wait until the food is ready for delivery from the begining of the shift
 }
 
 export interface OptionSelection {
@@ -159,6 +159,13 @@ export interface FullCartItem {
   basic_taste_customization_obj: string;
   notes: string;
   restaurant_id: number;
+  packaging_info: CartPackagingInfo;
+}
+
+export interface CartPackagingInfo {
+  packaging_id: number;
+  name: TextByLang[];
+  price: number;
 }
 
 export interface AdditionalInfoForSKU {
@@ -172,4 +179,14 @@ export interface AdditionalInfoForSKU {
 export interface PriceUnitByMenuItem {
   menu_item_id: number;
   price_unit: string;
+}
+
+export interface PackagingInfo {
+  packaging_id: number;
+  image_url: string;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+  currency: string;
+  is_default: boolean;
 }

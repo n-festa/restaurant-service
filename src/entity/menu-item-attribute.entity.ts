@@ -4,10 +4,13 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { MenuItemAttributeExt } from './menu-item-attribute-ext.entity';
 import { MenuItemAttributeValue } from './menu-item-attribute-value.entity';
 import { TasteExt } from './taste-ext.entity';
+import { MenuItem } from './menu-item.entity';
 
 @Entity('Menu_Item_Attribute')
 export class MenuItemAttribute {
@@ -40,4 +43,11 @@ export class MenuItemAttribute {
 
   @OneToMany(() => TasteExt, (tasteExt) => tasteExt.taste)
   public taste_ext: TasteExt[];
+
+  @ManyToOne(() => MenuItem, (menuItem) => menuItem.attribute_obj)
+  @JoinColumn({
+    name: 'menu_item_id',
+    referencedColumnName: 'menu_item_id',
+  })
+  public menu_item_obj: MenuItem;
 }

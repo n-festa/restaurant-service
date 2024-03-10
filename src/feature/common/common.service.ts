@@ -37,6 +37,10 @@ import { OperationHours } from 'src/entity/operation-hours.entity';
 import { RestaurantDayOff } from 'src/entity/restaurant-day-off.entity';
 import { ManualOpenRestaurant } from 'src/entity/manual-open-restaurant.entity';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
+import { ConfigService } from '@nestjs/config';
+import { Packaging } from 'src/entity/packaging.entity';
+import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
+import { ManualCutoffTime } from 'src/entity/manual-cutoff-time.entity';
 
 @Injectable()
 export class CommonService {
@@ -44,6 +48,7 @@ export class CommonService {
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly ahamoveService: AhamoveService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getRestaurantExtension(id: number): Promise<RestaurantExt[]> {
@@ -159,6 +164,14 @@ export class CommonService {
         };
       }) || null;
 
+    let isAdvancedCustomizable: boolean = false;
+    if (!!menuItem.attribute_obj) {
+      if (
+        menuItem.attribute_obj.filter((i) => i.type_id == 'taste').length > 0
+      ) {
+        isAdvancedCustomizable = true;
+      }
+    }
     return {
       id: menuItem.menu_item_id,
       image: menuItem.image_obj.url,
@@ -179,13 +192,13 @@ export class CommonService {
         menuItem.skus[0],
       ),
       promotion: menuItem.promotion,
-      cutoff_time: menuItem.cutoff_time,
       preparing_time_s: menuItem.preparing_time_s,
       cooking_time_s: menuItem.cooking_time_s,
       quantity_available: menuItem.quantity_available,
       is_vegetarian: Boolean(menuItem.is_vegetarian),
       cooking_schedule: menuItem.cooking_schedule,
       units_sold: menuItem.units_sold,
+      is_advanced_customizable: isAdvancedCustomizable,
     };
   } // end of convertIntoFoodDTO
 
@@ -804,4 +817,117 @@ export class CommonService {
       .getOne();
     return sku;
   } // end of getStandardSkuByMenuItem
+
+  async getPlanningDate(
+    restaurant_id: number,
+    now_timestamp: number,
+  ): Promise<number> {
+    const restaurantUtcTimeZone = await this.getUtcTimeZone(restaurant_id);
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+    const adjustedNowTimestamp = now_timestamp + timeZoneOffset;
+    const adjustedNow = new Date(adjustedNowTimestamp);
+
+    //Get the planning day from the config
+    const planningDay = this.configService.get<number>('planningDay');
+    // Calculate the number of days to add to get to Planning Date
+    const daysToPlanningDay = planningDay - (adjustedNow.getUTCDay() + 1);
+
+    // Set the planning date
+    const planningDate = new Date(
+      adjustedNowTimestamp + daysToPlanningDay * 24 * 60 * 60 * 1000,
+    );
+    // Set the time to 23:59:59:999 (UTC timezone)
+    const planningDateTmestamp = planningDate.setUTCHours(23, 59, 59, 999);
+
+    //return data after adjusting with time offset
+    return planningDateTmestamp - timeZoneOffset;
+  } // end of getPlanningDate
+
+  async getStandardPackagingByMenuItem(
+    menu_item_id: number,
+  ): Promise<Packaging> {
+    const menuItemPackaging = await this.entityManager
+      .createQueryBuilder(MenuItemPackaging, 'menuItemPackaging')
+      .where('menuItemPackaging.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere('menuItemPackaging.is_default = 1')
+      .getOne();
+    if (!menuItemPackaging) {
+      return null;
+    }
+    return await this.entityManager
+      .createQueryBuilder(Packaging, 'packaging')
+      .where('packaging.packaging_id = :packaging_id', {
+        packaging_id: menuItemPackaging.packaging_id,
+      })
+      .getOne();
+  } //end of getStandardPackagingByMenuItem
+
+  async checkIfFoodIsAdvancedCustomizable(
+    menu_item_id: number,
+  ): Promise<boolean> {
+    let resutl: boolean = false;
+
+    const advancedCustomization = await this.entityManager
+      .createQueryBuilder(MenuItemAttribute, 'attribute')
+      .where('attribute.menu_item_id = :menu_item_id', { menu_item_id })
+      .andWhere("attribute.type_id = 'taste'")
+      .getMany();
+
+    resutl = advancedCustomization.length > 0 ? true : false;
+    return resutl;
+  } //end of checkIfFoodIsAdvancedCustomizable
+
+  async getRestaurantById(restaurant_id: number): Promise<Restaurant> {
+    const restaurant = await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+    return restaurant;
+  } //end of getRestaurantById
+
+  async checkIfRestaurantHasAdvancedCustomizableFood(
+    restaurant_id: number,
+  ): Promise<boolean> {
+    let resutl: boolean = false;
+
+    const advancedCustomization = await this.entityManager
+      .createQueryBuilder(MenuItemAttribute, 'attribute')
+      .leftJoinAndSelect('attribute.menu_item_obj', 'menuItem')
+      .where('menuItem.restaurant_id = :restaurant_id', { restaurant_id })
+      .andWhere("attribute.type_id = 'taste'")
+      .getMany();
+
+    resutl = advancedCustomization.length > 0 ? true : false;
+    return resutl;
+  } //end of checkIfFoodIsAdvancedCustomizable
+
+  async getCutoffTimePoint(
+    now: number,
+    restaurant_id: number,
+  ): Promise<number> {
+    const restaurantUtcTimeZone = await this.getUtcTimeZone(restaurant_id);
+    const timeZoneOffset = restaurantUtcTimeZone * 60 * 60 * 1000; // Offset in milliseconds for EST
+
+    let cutoffTimeConfig: number = 0;
+    //get MANUAL cutoff time config from Manual_Cutoff_Time
+    const query = `SELECT * FROM Manual_Cutoff_Time where date = date(FROM_UNIXTIME(${
+      (now + timeZoneOffset) / 1000
+    })) ORDER BY logged_at DESC LIMIT 0,1`;
+    const data: ManualCutoffTime[] = await this.entityManager.query(query);
+    if (data.length > 0) {
+      cutoffTimeConfig = data[0].cutoff_time_m;
+    } else if (data.length <= 0) {
+      //get cutoff time config from restaurant
+      const restaurant = await this.getRestaurantById(restaurant_id);
+      cutoffTimeConfig = restaurant.cutoff_time_m;
+    }
+
+    //Get starting point for local today
+    const localToday = new Date(now + timeZoneOffset);
+    localToday.setUTCHours(0, 0, 0, 0);
+    const startingPointOfLocalToday = localToday.getTime() - timeZoneOffset;
+
+    //return data after adjusting with time offset and cutoff time config
+    return startingPointOfLocalToday + cutoffTimeConfig * 60 * 1000;
+  }
 }

@@ -6,13 +6,14 @@ import { Coordinate } from 'src/type';
 import { FlagsmithService } from '../flagsmith/flagsmith.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { AhamoveOrder, Order } from './dto/ahamove.dto';
-import orderSchema, { coordinateListSchema } from './schema/ahamove.schema';
+import { AhamoveOrder, Order, PostAhaOrderRequest } from './dto/ahamove.dto';
+import postAhaOrderRequestSchema, { coordinateListSchema } from './schema/ahamove.schema';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
 import { AhamoveMapper } from './mapper/ahamove.mapper';
 import { AhamoveOrderHookEntity } from 'src/entity/ahamove-order-hook.entity';
+import { OrderService } from 'src/feature/order/order.service';
 
 @Injectable()
 export class AhamoveService implements OnModuleInit {
@@ -22,7 +23,7 @@ export class AhamoveService implements OnModuleInit {
   AHA_MOVE_USERNAME: string = '';
   AHA_MOVE_TOKEN: string = '';
   AHA_MOVE_REFRESH_TOKEN: string = '';
-  TWO_WHEEL_SERVICE_NAME: string = 'VNM-PARTNER-2ALL';
+  ON_WHEEL_SERVICE_NAME: string = 'VNM-PARTNER-2ALL';
   SGN_EXPRESS_SERVICE_NAME: string = 'SGN-EXPRESS';
   REQUEST_ID: string = 'SGN-EXPRESS-TRANSFER-COD';
   private readonly logger = new Logger(AhamoveService.name);
@@ -33,6 +34,7 @@ export class AhamoveService implements OnModuleInit {
     private configService: ConfigService,
     @InjectRepository(AhamoveOrderEntity) private ahamoveOrder: Repository<AhamoveOrderEntity>,
     @InjectRepository(AhamoveOrderHookEntity) private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
+    private readonly orderService: OrderService,
   ) {
     this.AHA_MOVE_BASE_URL = configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com/api';
     this.AHA_MOVE_API_KEY = configService.get('ahamove.apiKey') || '7bbc5c69e7237f267e97f81237a717c387f13bdb';
@@ -182,11 +184,11 @@ export class AhamoveService implements OnModuleInit {
     }
   }
 
-  async postAhamoveOrder(order: Order) {
+  async postAhamoveOrder(order: PostAhaOrderRequest) {
     let serviceType = this.SGN_EXPRESS_SERVICE_NAME;
 
-    if (order.serviceType === this.TWO_WHEEL_SERVICE_NAME) {
-      serviceType = this.TWO_WHEEL_SERVICE_NAME;
+    if (order.serviceType === this.ON_WHEEL_SERVICE_NAME) {
+      serviceType = this.ON_WHEEL_SERVICE_NAME;
     }
     const orderRequest = await this.#buildAhamoveRequest(order, serviceType);
     let config = {
@@ -223,9 +225,9 @@ export class AhamoveService implements OnModuleInit {
     return result;
   }
 
-  async #buildAhamoveRequest(order: Order, service_type: string): Promise<AhamoveOrder> {
+  async #buildAhamoveRequest(order: PostAhaOrderRequest, service_type: string): Promise<AhamoveOrder> {
     try {
-      await orderSchema.validate(order);
+      await postAhaOrderRequestSchema.validate(order);
     } catch (error) {
       this.logger.error('An error occurred ', JSON.stringify(error));
       throw new BadRequestException(error?.message);

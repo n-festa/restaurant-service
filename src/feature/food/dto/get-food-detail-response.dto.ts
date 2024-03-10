@@ -14,14 +14,15 @@ interface FoodDetail {
   units_sold: number;
   review_number: number;
   promotion: string;
-  packaging_info: TextByLang[];
-  cutoff_time: string;
+  packaging_info: PackagingInfo[];
+  cutoff_time_m: number;
   ingredients: Ingredient[];
   description: TextByLang[];
   portion_customization: Option[];
   taste_customization: Option[];
   other_customizaton: BasicCustomization[];
   reviews: Review[];
+  is_advanced_customizable: boolean;
 }
 
 interface Ingredient {
@@ -63,4 +64,14 @@ interface Review {
 interface TextByLang {
   ISO_language_code: string;
   text: string;
+}
+
+interface PackagingInfo {
+  packaging_id: number;
+  image_url: string;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+  currency: string;
+  is_default: boolean;
 }

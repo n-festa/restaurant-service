@@ -30,4 +30,11 @@ interface FullCartItem {
   basic_taste_customization_obj: string;
   notes: string;
   restaurant_id: number;
+  packaging_info: CartPackagingInfo;
+}
+
+interface CartPackagingInfo {
+  packaging_id: number;
+  name: TextByLang[];
+  price: number;
 }

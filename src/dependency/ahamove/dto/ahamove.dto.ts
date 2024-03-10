@@ -52,7 +52,7 @@ export interface AhamoveOrder {
   response: string;
 }
 
-export interface Order {
+export interface PostAhaOrderRequest {
   startingPoint: AhamoveLocation;
   destination: AhamoveLocation;
   paymentMethod: string;

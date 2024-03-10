@@ -16,6 +16,8 @@ import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-re
 import { AhamoveModule } from './dependency/ahamove/ahamove.module';
 import { InvoiceStatusHistoryModule } from './feature/invoice-status-history/invoice-status-history.module';
 import { MomoModule } from './dependency/momo/momo.module';
+import { OrderModule } from './feature/order/order.module';
+import { HealthCheckController } from './healthcheck/health-check.controller';
 
 @Module({
   imports: [
@@ -53,8 +55,9 @@ import { MomoModule } from './dependency/momo/momo.module';
     InvoiceStatusHistoryModule,
     MomoModule,
     InvoiceStatusHistoryModule,
+    OrderModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthCheckController],
   providers: [AppService],
 })
 export class AppModule {}
