@@ -45,10 +45,9 @@ export class AhamoveService implements OnModuleInit {
     private ahamoveOrder: Repository<AhamoveOrderEntity>,
     @InjectRepository(AhamoveOrderHookEntity)
     private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
-    private readonly orderService: OrderService,
   ) {
     this.AHA_MOVE_BASE_URL =
-      configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com/api';
+      configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com';
     this.AHA_MOVE_API_KEY =
       configService.get('ahamove.apiKey') ||
       '7bbc5c69e7237f267e97f81237a717c387f13bdb';
@@ -70,7 +69,7 @@ export class AhamoveService implements OnModuleInit {
 
     let config = {
       method: 'post',
-      url: `${this.AHA_MOVE_BASE_URL}/v3/partner/account/register`,
+      url: `${this.AHA_MOVE_BASE_URL}/api/v3/partner/account/register`,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -188,7 +187,7 @@ export class AhamoveService implements OnModuleInit {
     const config: AxiosRequestConfig = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `${this.AHA_MOVE_BASE_URL}/v3/partner/order/estimate`,
+      url: `${this.AHA_MOVE_BASE_URL}/api/v3/partner/order/estimate`,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.AHA_MOVE_TOKEN}`,
@@ -216,7 +215,7 @@ export class AhamoveService implements OnModuleInit {
     let config = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `${this.AHA_MOVE_BASE_URL}/v3/partner/order/create`,
+      url: `${this.AHA_MOVE_BASE_URL}/api/v3/partner/order/create`,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.AHA_MOVE_TOKEN}`,
@@ -284,5 +283,25 @@ export class AhamoveService implements OnModuleInit {
       result.requests = [{ _id: this.REQUEST_ID }];
     }
     return result;
+  }
+
+  async cancelAhamoveOrder(orderId, cancelReasonMessage) {
+    cancelReasonMessage =
+      cancelReasonMessage || 'supplier_sender_ask_to_return_the_package';
+    let config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: `${this.AHA_MOVE_BASE_URL}/v1/order/cancel?token=${this.AHA_MOVE_TOKEN}&order_id=${orderId}&comment=${cancelReasonMessage}`,
+      headers: {
+        'cache-control': 'no-cache',
+      },
+    };
+    try {
+      const result = await axios.request(config);
+      return result;
+    } catch (error) {
+      this.logger.error('An error occurred ', JSON.stringify(error));
+      throw new InternalServerErrorException(error?.message);
+    }
   }
 }

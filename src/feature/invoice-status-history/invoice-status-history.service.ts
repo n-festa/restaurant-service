@@ -10,6 +10,7 @@ import { Order } from 'src/entity/order.entity';
 import { InvoiceHistoryStatusEnum, OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { OrderService } from '../order/order.service';
 
 @Injectable()
 export class InvoiceStatusHistoryService {
@@ -18,13 +19,16 @@ export class InvoiceStatusHistoryService {
     @InjectRepository(Invoice) private invoiceRepo: Repository<Invoice>,
     @InjectRepository(InvoiceStatusHistory)
     private invoiceHistoryStatusRepo: Repository<InvoiceStatusHistory>,
+    private readonly orderService: OrderService,
   ) {}
 
   async updateInvoiceHistoryFromMomoWebhook(webhookData): Promise<any> {
     try {
       const requestId = webhookData.requestId;
       this.logger.log(
-        `receiving data from webhook to ${requestId} with ${webhookData}`,
+        `receiving data from webhook to ${requestId} with ${JSON.stringify(
+          webhookData,
+        )}`,
       );
       const currentInvoice = await this.invoiceRepo.findOne({
         where: { payment_order_id: requestId },
@@ -51,6 +55,11 @@ export class InvoiceStatusHistoryService {
         momoInvoiceStatusHistory.note = updateData.note;
         momoInvoiceStatusHistory.status_history_id = uuidv4();
         await this.invoiceHistoryStatusRepo.save(momoInvoiceStatusHistory);
+        if (updateData.status_id === InvoiceHistoryStatusEnum.FAILED) {
+          await this.orderService.cancelOrder(currentInvoice.order_id, {
+            isMomo: true,
+          });
+        }
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };

@@ -1,7 +1,9 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,6 +12,7 @@ import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
+import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 
 @Injectable()
 export class OrderService {
@@ -18,6 +21,7 @@ export class OrderService {
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     @InjectRepository(InvoiceStatusHistory)
     private orderStatusHistoryRepo: Repository<InvoiceStatusHistory>,
+    private ahamoveService: AhamoveService,
   ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
@@ -177,7 +181,7 @@ export class OrderService {
       where: { order_id: order_id },
     });
     const isMomo = source?.isMomo;
-    this.logger.debug('??????????????? cancelOrder', currentOrder);
+    this.logger.debug('canceling Order', currentOrder);
     if (!currentOrder) {
       this.logger.warn('The order status is not existed');
       return;
@@ -188,16 +192,28 @@ export class OrderService {
         // currentOrder.order_status_id === OrderStatus.IDLE
         true
       ) {
-        if (currentOrder.delivery_order_id) {
-          //TODO: cancel delivery
+        try {
+          if (currentOrder.delivery_order_id) {
+            //TODO: cancel delivery
+            await this.ahamoveService.cancelAhamoveOrder(
+              currentOrder.delivery_order_id,
+              'momo payment request failed',
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            'An error occurred while cancel delivery',
+            JSON.stringify(error),
+          );
+        } finally {
+          // insert
+          const momoInvoiceStatusHistory = new InvoiceStatusHistory();
+          momoInvoiceStatusHistory.invoice_id = order_id;
+          momoInvoiceStatusHistory.status_id = OrderStatus.CANCELLED;
+          momoInvoiceStatusHistory.note = 'momo payment has been failed';
+          momoInvoiceStatusHistory.status_history_id = uuidv4();
+          await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
         }
-        // insert
-        const momoInvoiceStatusHistory = new InvoiceStatusHistory();
-        momoInvoiceStatusHistory.invoice_id = order_id;
-        momoInvoiceStatusHistory.status_id = OrderStatus.CANCELLED;
-        momoInvoiceStatusHistory.note = 'momo payment has been failed';
-        momoInvoiceStatusHistory.status_history_id = uuidv4();
-        await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
       } else {
         this.logger.warn('The order status is not valid to cancel');
       }

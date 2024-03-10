@@ -15,7 +15,6 @@ import { OrderModule } from 'src/feature/order/order.module';
     ConfigModule,
     TypeOrmModule.forFeature([AhamoveOrderEntity, AhamoveOrderHookEntity]),
     InvoiceStatusHistoryModule,
-    OrderModule,
   ],
   providers: [AhamoveService],
   exports: [AhamoveService],
