@@ -8,14 +8,17 @@ export default () => ({
     name: process.env.DB_NAME,
   },
   momo: {
-    partnerCode: '',
-    accessKey: '',
-    secretkey: '',
-    redirectHost: 'https://c072-203-210-239-36.ngrok-free.app',
-    redirectUrl: 'https://www.2all.com.vn/order/detail',
-    requestType: 'captureWallet',
-    baseUrl: 'https://test-payment.momo.vn',
-    maximumRetry: 1,
+    partnerCode: process.env.MOMO_PARTNER_CODE || '',
+    accessKey: process.env.MOMO_ACCESS_KEY || '',
+    secretkey: process.env.MOMO_SECRETKEY || '',
+    redirectHost:
+      process.env.MOMO_REDIRECT_HOST ||
+      'https://c072-203-210-239-36.ngrok-free.app',
+    redirectUrl:
+      process.env.MOMO_REDIRECT_URL || 'https://www.2all.com.vn/order/detail',
+    requestType: process.env.MOMO_REQUEST_TYPE || 'captureWallet',
+    baseUrl: process.env.MOMO_BASE_URL || 'https://test-payment.momo.vn',
+    maximumRetry: process.env.MOMO_MAX_RETRIES || 1,
   },
   featureFlag: process.env.FEATURE_FLAG || '',
   ahamoveToken: process.env.AHAMOVE_TOKEN,
