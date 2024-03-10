@@ -5,14 +5,15 @@ import {
   Logger,
   forwardRef,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
+import { PaymentOption } from 'src/entity/payment-option.entity';
 
 @Injectable()
 export class OrderService {
@@ -22,6 +23,7 @@ export class OrderService {
     @InjectRepository(InvoiceStatusHistory)
     private orderStatusHistoryRepo: Repository<InvoiceStatusHistory>,
     private ahamoveService: AhamoveService,
+    @InjectEntityManager() private entityManager: EntityManager,
   ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
@@ -244,5 +246,12 @@ export class OrderService {
     return {
       application_fee: applicationFee,
     };
+  }
+
+  async getPaymentOptions(): Promise<PaymentOption[]> {
+    return await this.entityManager
+      .createQueryBuilder(PaymentOption, 'payment')
+      .where('payment.is_active = 1')
+      .getMany();
   }
 }
