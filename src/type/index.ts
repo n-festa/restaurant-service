@@ -190,3 +190,5 @@ export interface PackagingInfo {
   currency: string;
   is_default: boolean;
 }
+
+export type NumbericBoolean = 0 | 1;

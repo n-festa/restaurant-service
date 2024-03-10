@@ -7,6 +7,7 @@ import { OrderService } from './order.service';
 import { GetApplicationFeeRequest } from './dto/get-application-fee-request.dto';
 import { CustomRpcExceptionFilter } from 'src/filters/custom-rpc-exception.filter';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
+import { GetPaymentMethodResponse } from './dto/get-payment-method-response.dto';
 
 @Controller('order')
 export class OrderController {
@@ -37,5 +38,22 @@ export class OrderController {
       items_total,
       exchange_rate,
     );
+  }
+
+  @MessagePattern({ cmd: 'get_payment_method' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getPaymentMethod(): Promise<GetPaymentMethodResponse> {
+    const result: GetPaymentMethodResponse = {
+      data: [],
+    };
+
+    const paymentOption = await this.orderService.getPaymentOptions();
+    paymentOption.forEach((item) => {
+      result.data.push({
+        payment_id: item.option_id,
+        name: item.name,
+      });
+    });
+    return result;
   }
 }

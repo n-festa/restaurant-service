@@ -3,16 +3,20 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { OrderStatus } from 'src/enum';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
+import { PaymentOption } from 'src/entity/payment-option.entity';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
-  constructor(@InjectRepository(Order) private orderRepo: Repository<Order>) {}
+  constructor(
+    @InjectRepository(Order) private orderRepo: Repository<Order>,
+    @InjectEntityManager() private entityManager: EntityManager,
+  ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
     orderId,
@@ -189,5 +193,12 @@ export class OrderService {
     return {
       application_fee: applicationFee,
     };
+  }
+
+  async getPaymentOptions(): Promise<PaymentOption[]> {
+    return await this.entityManager
+      .createQueryBuilder(PaymentOption, 'payment')
+      .where('payment.is_active = 1')
+      .getMany();
   }
 }
