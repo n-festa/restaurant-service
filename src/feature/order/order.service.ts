@@ -57,9 +57,10 @@ export class OrderService {
         };
         ahavemoveData.path_status = webhookData?.path?.status;
         const orderData = {
-          order_pickup_time: currentOrder.pickup_time,
+          // order_pickup_time: currentOrder.pickup_time,
           is_preorder: currentOrder.is_preorder,
-          ready_time: currentOrder.ready_time,
+          // ready_time: currentOrder.ready_time,
+          ready_time: '',
         };
         const updateData = this.getOrderStatusBaseOnAhahaStatus(
           orderData,
@@ -85,7 +86,7 @@ export class OrderService {
     }
   }
   private getOrderStatusBaseOnAhahaStatus(
-    { order_pickup_time, is_preorder, ready_time },
+    { is_preorder, ready_time },
     {
       status,
       sub_status,
@@ -171,13 +172,21 @@ export class OrderService {
     return data;
   }
 
-  async candelOrder(order_id, source) {
-    const currentOrder = await this.orderRepo.findOne({ where: { order_id } });
+  async cancelOrder(order_id, source) {
+    const currentOrder = await this.orderRepo.findOne({
+      where: { order_id: order_id },
+    });
     const isMomo = source?.isMomo;
+    this.logger.debug('??????????????? cancelOrder', currentOrder);
+    if (!currentOrder) {
+      this.logger.warn('The order status is not existed');
+      return;
+    }
     if (isMomo) {
       if (
-        currentOrder.order_status_id === OrderStatus.NEW ||
-        currentOrder.order_status_id === OrderStatus.IDLE
+        // currentOrder.order_status_id === OrderStatus.NEW ||
+        // currentOrder.order_status_id === OrderStatus.IDLE
+        true
       ) {
         if (currentOrder.delivery_order_id) {
           //TODO: cancel delivery

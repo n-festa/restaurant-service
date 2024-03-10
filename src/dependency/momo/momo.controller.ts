@@ -13,4 +13,9 @@ export class MomoController {
   async sendMomoPaymentRequest(payload: MomoRequestDTO) {
     return this.momoService.sendMomoPaymentRequest(payload);
   }
+
+  @MessagePattern({ cmd: 'momo_payment_ipn_callback' })
+  async handleMomoCallback(payload: any) {
+    return this.momoService.handleMoMoIpnCallBack(payload);
+  }
 }

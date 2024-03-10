@@ -1,4 +1,11 @@
-import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { Invoice } from './invoice.entity';
 
 @Entity('Invoice_Status_History')
@@ -20,11 +27,6 @@ export class InvoiceStatusHistory {
     nullable: true,
   })
   status_id: string | null;
-
-  @Column({
-    type: 'int',
-  })
-  status: number;
 
   @Column({
     type: 'text',

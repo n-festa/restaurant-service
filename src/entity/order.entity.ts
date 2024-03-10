@@ -54,52 +54,44 @@ export class Order {
   @Column({ type: 'tinyint', nullable: false, default: '0' })
   is_preorder: boolean;
 
-  @Column({ type: 'int', nullable: false })
-  payment_method: number;
-
   @Column({ type: 'bigint', nullable: true })
   expected_arrival_time: number;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   delivery_order_id: string;
 
-  //TODO Add other relations...
-  @Column({
-    type: 'enum',
-    enum: OrderStatus,
-    default: OrderStatus.NEW,
-  })
-  order_status_id: OrderStatus;
+  // @Column({ type: 'bigint', nullable: true })
+  // confirm_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  confirm_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // processing_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  processing_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // driver_accept_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  driver_accept_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // driver_cancel_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  driver_cancel_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // ready_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  ready_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // pickup_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  pickup_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // completed_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  completed_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // fail_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  fail_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // return_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  return_time: number;
+  // @Column({ type: 'bigint', nullable: true })
+  // cancel_time: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  cancel_time: number;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  driver_note: string;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;

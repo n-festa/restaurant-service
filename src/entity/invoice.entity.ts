@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Order } from './order.entity';
 
 @Entity('Invoice')
@@ -10,11 +17,6 @@ export class Invoice {
     type: 'int',
   })
   payment_method: number;
-
-  @Column({
-    type: 'int',
-  })
-  paymentOption: number;
 
   @Column({
     type: 'int',
@@ -43,19 +45,18 @@ export class Invoice {
   })
   order_id: number;
 
-  @ManyToOne(() => Order)
-  @JoinColumn({ name: 'order_id' })
-  order: Order;
+  // @ManyToOne(() => Order)
+  // @JoinColumn({ name: 'order_id' })
 
   @Column({
     type: 'int',
   })
   currency: number;
 
-  @Column({
-    type: 'int',
-  })
-  unit: number;
+  // @Column({
+  //   type: 'int',
+  // })
+  // unit: number;
 
   @Column({
     type: 'varchar',

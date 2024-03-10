@@ -1,33 +1,65 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
 import { Invoice } from 'src/entity/invoice.entity';
 import { Order } from 'src/entity/order.entity';
 import { InvoiceHistoryStatusEnum, OrderStatus } from 'src/enum';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class InvoiceStatusHistoryService {
   private readonly logger = new Logger(InvoiceStatusHistoryService.name);
   constructor(
     @InjectRepository(Invoice) private invoiceRepo: Repository<Invoice>,
-    @InjectRepository(InvoiceStatusHistory) private invoiceHistoryStatusRepo: Repository<InvoiceStatusHistory>,
+    @InjectRepository(InvoiceStatusHistory)
+    private invoiceHistoryStatusRepo: Repository<InvoiceStatusHistory>,
   ) {}
 
-  async updateInvoiceHistoryFromMomoWebhook(orderId, webhookData): Promise<any> {
+  async updateInvoiceHistoryFromMomoWebhook(webhookData): Promise<any> {
     try {
-      this.logger.log(`receiving data from webhook to ${orderId} with ${webhookData.status}`);
-      const currentInvoice = await this.invoiceRepo.findOne({ where: { payment_order_id: orderId } });
+      const requestId = webhookData.requestId;
+      this.logger.log(
+        `receiving data from webhook to ${requestId} with ${webhookData}`,
+      );
+      const currentInvoice = await this.invoiceRepo.findOne({
+        where: { payment_order_id: requestId },
+      });
+      console.log('????', currentInvoice);
+
       if (currentInvoice) {
-        const updateData = this.convertMomoResultCode(webhookData.resultCode, webhookData.message);
-        this.logger.log(`Updating data from webhook to ${orderId} with ${JSON.stringify(updateData)}`);
-        const invoiceHistoryStatus = {};
-        await this.invoiceHistoryStatusRepo.update(currentInvoice.order_id, { ...currentInvoice, ...updateData });
+        const updateData = this.convertMomoResultCode(
+          webhookData.resultCode,
+          webhookData.message,
+        );
+        this.logger.log(
+          `Updating data from webhook to ${requestId} with ${JSON.stringify(
+            updateData,
+          )}`,
+        );
+        console.log('=====', {
+          invoice_id: currentInvoice.invoice_id,
+          ...updateData,
+        });
+        const momoInvoiceStatusHistory = new InvoiceStatusHistory();
+        momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
+        momoInvoiceStatusHistory.status_id = updateData.status_id;
+        momoInvoiceStatusHistory.note = updateData.note;
+        momoInvoiceStatusHistory.status_history_id = uuidv4();
+        await this.invoiceHistoryStatusRepo.save(momoInvoiceStatusHistory);
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };
     } catch (error) {
-      this.logger.error(`An error occurred while updating order: ${error.message}`);
+      console.log('???sdfsdfsd???', error);
+
+      this.logger.error(
+        `An error occurred while updating momo callback: ${error.message}`,
+      );
       throw new InternalServerErrorException();
     }
   }

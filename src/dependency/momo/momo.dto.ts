@@ -1,7 +1,8 @@
 export interface MomoRequestDTO {
   amount: string;
   extraData: string;
-  orderId: string;
+  orderId: number;
+  momoOrderId: string;
   orderInfo: string;
 }
 
