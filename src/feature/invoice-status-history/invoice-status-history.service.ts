@@ -45,10 +45,6 @@ export class InvoiceStatusHistoryService {
             updateData,
           )}`,
         );
-        console.log('=====', {
-          invoice_id: currentInvoice.invoice_id,
-          ...updateData,
-        });
         const momoInvoiceStatusHistory = new InvoiceStatusHistory();
         momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
         momoInvoiceStatusHistory.status_id = updateData.status_id;
@@ -56,16 +52,18 @@ export class InvoiceStatusHistoryService {
         momoInvoiceStatusHistory.status_history_id = uuidv4();
         await this.invoiceHistoryStatusRepo.save(momoInvoiceStatusHistory);
         if (updateData.status_id === InvoiceHistoryStatusEnum.FAILED) {
-          await this.orderService.cancelOrder(currentInvoice.order_id, {
-            isMomo: true,
-          });
+          await this.orderService.cancelOrder(
+            currentInvoice.order_id,
+            currentInvoice.invoice_id,
+            {
+              isMomo: true,
+            },
+          );
         }
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };
     } catch (error) {
-      console.log('???sdfsdfsd???', error);
-
       this.logger.error(
         `An error occurred while updating momo callback: ${error.message}`,
       );

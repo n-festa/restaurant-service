@@ -178,12 +178,12 @@ export class OrderService {
     return data;
   }
 
-  async cancelOrder(order_id, source) {
+  async cancelOrder(order_id, invoice_id, source) {
     const currentOrder = await this.orderRepo.findOne({
       where: { order_id: order_id },
     });
     const isMomo = source?.isMomo;
-    this.logger.debug('canceling Order', currentOrder);
+    this.logger.debug('canceling Order', JSON.stringify(currentOrder));
     if (!currentOrder) {
       this.logger.warn('The order status is not existed');
       return;
@@ -210,7 +210,7 @@ export class OrderService {
         } finally {
           // insert
           const momoInvoiceStatusHistory = new InvoiceStatusHistory();
-          momoInvoiceStatusHistory.invoice_id = order_id;
+          momoInvoiceStatusHistory.invoice_id = invoice_id || -1;
           momoInvoiceStatusHistory.status_id = OrderStatus.CANCELLED;
           momoInvoiceStatusHistory.note = 'momo payment has been failed';
           momoInvoiceStatusHistory.status_history_id = uuidv4();

@@ -52,7 +52,7 @@ export class MomoService {
     this.maximumRetry = configService.get('momo.maximumRetry');
   }
 
-  sendMomoPaymentRequest(request: MomoRequestDTO) {
+  async sendMomoPaymentRequest(request: MomoRequestDTO) {
     const requestId = request.momoOrderId || uuidv4();
     const orderId = uuidv4();
     const momoSignatureObj = {
@@ -114,7 +114,10 @@ export class MomoService {
         );
       },
     });
-
+    const currentInvoice = await this.invoiceRepo.findOne({
+      where: { order_id: request.orderId },
+    });
+    this.logger.log('currentInvoice for momo payment order: ', currentInvoice);
     return axiosInstance
       .request(options)
       .then(async (response) => {
@@ -139,13 +142,6 @@ export class MomoService {
           };
           await this.momoRepo.save(momoResult);
           if (momoResult.resultCode === 0) {
-            const currentInvoice = await this.invoiceRepo.findOne({
-              where: { order_id: request.orderId },
-            });
-            this.logger.log(
-              'currentInvoice for momo payment order: ',
-              currentInvoice,
-            );
             if (currentInvoice) {
               // Update field payment_order_id of table Invoice with requestId
               await this.invoiceRepo.update(currentInvoice.invoice_id, {
@@ -175,7 +171,11 @@ export class MomoService {
           'An error occurred when create momo request',
           JSON.stringify(error),
         );
-        await this.orderService.cancelOrder(request.orderId, { isMomo: true });
+        await this.orderService.cancelOrder(
+          request.orderId,
+          currentInvoice?.invoice_id,
+          { isMomo: true },
+        );
         throw new InternalServerErrorException();
       });
   }
