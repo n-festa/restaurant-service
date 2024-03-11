@@ -34,9 +34,6 @@ export class InvoiceStatusHistory {
   })
   note: string | null;
 
-  @CreateDateColumn({
-    type: 'datetime',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  created_at: Date;
+  @Column({ type: 'bigint', nullable: false })
+  created_at: number;
 }

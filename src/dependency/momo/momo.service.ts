@@ -23,13 +23,12 @@ export class MomoService {
   partnerCode = '';
   accessKey = '';
   secretkey = '';
-  redirectHost = 'https://c072-203-210-239-36.ngrok-free.app';
-  redirectUrl = 'https://www.2all.com.vn/order/detail';
-  ipnUrl = `${this.redirectHost}/momo/momo-ipn-callback`;
-  //  ipnUrl = redirectUrl = "https://webhook.site/454e7b77-f177-4ece-8236-ddf1c26ba7f8";
-  requestType = 'captureWallet';
-  baseUrl = 'https://test-payment.momo.vn';
-  maximumRetry = 1;
+  redirectHost = '';
+  redirectUrl = '';
+  ipnUrl = '';
+  requestType = '';
+  baseUrl = '';
+  maximumRetry = 0;
 
   private readonly logger = new Logger(MomoService.name);
   constructor(
@@ -50,6 +49,7 @@ export class MomoService {
     this.requestType = configService.get('momo.requestType');
     this.baseUrl = configService.get('momo.baseUrl');
     this.maximumRetry = configService.get('momo.maximumRetry');
+    this.ipnUrl = `${this.redirectHost}/momo/momo-ipn-callback`;
   }
 
   async sendMomoPaymentRequest(request: MomoRequestDTO) {
@@ -117,6 +117,9 @@ export class MomoService {
     const currentInvoice = await this.invoiceRepo.findOne({
       where: { order_id: request.orderId },
     });
+    if (!currentInvoice) {
+      throw new InternalServerErrorException('Invoice not found');
+    }
     this.logger.log('currentInvoice for momo payment order: ', currentInvoice);
     return axiosInstance
       .request(options)
@@ -142,24 +145,27 @@ export class MomoService {
           };
           await this.momoRepo.save(momoResult);
           if (momoResult.resultCode === 0) {
-            if (currentInvoice) {
-              // Update field payment_order_id of table Invoice with requestId
-              await this.invoiceRepo.update(currentInvoice.invoice_id, {
-                payment_order_id: requestId,
-              });
-            }
+            const isPaymentOrderIdExist =
+              !currentInvoice.payment_order_id ||
+              currentInvoice.payment_order_id == ''
+                ? false
+                : true;
+
+            // Update field payment_order_id of table Invoice with requestId
+            await this.invoiceRepo.update(currentInvoice.invoice_id, {
+              payment_order_id: requestId,
+            });
+
             //Insert a record into table 'Invoice_Status_History'
             const momoInvoiceStatusHistory = new InvoiceStatusHistory();
             momoInvoiceStatusHistory.status_id =
               InvoiceHistoryStatusEnum.PENDING;
             momoInvoiceStatusHistory.status_history_id = uuidv4();
-
-            if (currentInvoice) {
-              momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
-              momoInvoiceStatusHistory.note = `update new momo requestt ${momoResult.requestId} for payment`;
-            } else {
-              momoInvoiceStatusHistory.invoice_id = request.orderId;
+            momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
+            if (!isPaymentOrderIdExist) {
               momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
+            } else {
+              momoInvoiceStatusHistory.note = `update new momo request ${momoResult.requestId} for payment`;
             }
             await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
           }

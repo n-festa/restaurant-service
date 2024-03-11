@@ -3,10 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
-import { Order } from './order.entity';
 
 @Entity('Invoice')
 export class Invoice {
@@ -45,18 +42,10 @@ export class Invoice {
   })
   order_id: number;
 
-  // @ManyToOne(() => Order)
-  // @JoinColumn({ name: 'order_id' })
-
   @Column({
     type: 'int',
   })
   currency: number;
-
-  // @Column({
-  //   type: 'int',
-  // })
-  // unit: number;
 
   @Column({
     type: 'varchar',

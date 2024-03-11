@@ -11,9 +11,7 @@ export default () => ({
     partnerCode: process.env.MOMO_PARTNER_CODE || '',
     accessKey: process.env.MOMO_ACCESS_KEY || '',
     secretkey: process.env.MOMO_SECRETKEY || '',
-    redirectHost:
-      process.env.MOMO_REDIRECT_HOST ||
-      'https://c072-203-210-239-36.ngrok-free.app',
+    redirectHost: process.env.MOMO_REDIRECT_HOST || 'https://api.2all.com.vn',
     redirectUrl:
       process.env.MOMO_REDIRECT_URL || 'https://www.2all.com.vn/order/detail',
     requestType: process.env.MOMO_REQUEST_TYPE || 'captureWallet',

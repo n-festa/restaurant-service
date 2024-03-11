@@ -45,4 +45,8 @@ export enum InvoiceHistoryStatusEnum {
   PAID = 'PAID',
   PENDING = 'PENDING',
   FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+  COMPLETED = 'COMPLETED',
+  REFUNDED = 'REFUNDED',
+  STARTED = 'STARTED',
 }

@@ -1,11 +1,8 @@
 import {
-  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
-  forwardRef,
 } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
@@ -208,13 +205,13 @@ export class OrderService {
             JSON.stringify(error),
           );
         } finally {
-          // insert
-          const momoInvoiceStatusHistory = new InvoiceStatusHistory();
-          momoInvoiceStatusHistory.invoice_id = invoice_id || -1;
-          momoInvoiceStatusHistory.status_id = OrderStatus.CANCELLED;
-          momoInvoiceStatusHistory.note = 'momo payment has been failed';
-          momoInvoiceStatusHistory.status_history_id = uuidv4();
-          await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
+          // UPDATE ORDER STATUS
+          // const momoInvoiceStatusHistory = new InvoiceStatusHistory();
+          // momoInvoiceStatusHistory.invoice_id = invoice_id || -1;
+          // momoInvoiceStatusHistory.status_id = OrderStatus.CANCELLED;
+          // momoInvoiceStatusHistory.note = 'momo payment has been failed';
+          // momoInvoiceStatusHistory.status_history_id = uuidv4();
+          // await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
         }
       } else {
         this.logger.warn('The order status is not valid to cancel');

@@ -54,7 +54,6 @@ import { HealthCheckController } from './healthcheck/health-check.controller';
     AhamoveModule,
     InvoiceStatusHistoryModule,
     MomoModule,
-    InvoiceStatusHistoryModule,
     OrderModule,
   ],
   controllers: [AppController, HealthCheckController],
