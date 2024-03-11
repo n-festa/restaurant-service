@@ -37,6 +37,8 @@ export class MomoService {
     @InjectRepository(Invoice) private invoiceRepo: Repository<Invoice>,
     @InjectRepository(InvoiceStatusHistory)
     private orderStatusHistoryRepo: Repository<InvoiceStatusHistory>,
+    @InjectRepository(InvoiceStatusHistory)
+    private invoiceHistoryStatusRepo: Repository<InvoiceStatusHistory>,
     private readonly orderService: OrderService,
     private readonly invoiceStatusHistoryService: InvoiceStatusHistoryService,
     private configService: ConfigService,
@@ -120,70 +122,106 @@ export class MomoService {
     if (!currentInvoice) {
       throw new InternalServerErrorException('Invoice not found');
     }
-    this.logger.log('currentInvoice for momo payment order: ', currentInvoice);
-    return axiosInstance
-      .request(options)
-      .then(async (response) => {
-        const momoOrderResult = response.data;
-        if (
-          momoOrderResult.resultCode === 0 ||
-          momoOrderResult.resultCode === 9000
-        ) {
-          const momoResult = {
-            ...momoOrderResult,
-            requestId: requestId,
-            partnerCode: this.partnerCode,
-            extraData: request.extraData,
-            ipnUrl: this.ipnUrl,
-            orderId: orderId,
-            orderInfo: request.orderInfo,
-            redirectUrl: this.redirectUrl,
-            requestType: this.requestType,
-            signature: signature,
-            type: 'request',
-            lang: 'en',
-          };
-          await this.momoRepo.save(momoResult);
-          if (momoResult.resultCode === 0) {
-            const isPaymentOrderIdExist =
-              !currentInvoice.payment_order_id ||
-              currentInvoice.payment_order_id == ''
-                ? false
-                : true;
+    const latestInvoiceStatus = await this.invoiceHistoryStatusRepo.findOne({
+      where: { invoice_id: currentInvoice.invoice_id },
+      order: { created_at: 'DESC' },
+    });
+    if (
+      latestInvoiceStatus &&
+      latestInvoiceStatus.status_id === 'NEW' &&
+      !currentInvoice.payment_order_id
+    ) {
+      this.logger.log(
+        'currentInvoice for momo payment order: ',
+        currentInvoice,
+      );
+      return axiosInstance
+        .request(options)
+        .then(async (response) => {
+          const momoOrderResult = response.data;
+          if (
+            momoOrderResult.resultCode === 0 ||
+            momoOrderResult.resultCode === 9000
+          ) {
+            const momoResult = {
+              ...momoOrderResult,
+              requestId: requestId,
+              partnerCode: this.partnerCode,
+              extraData: request.extraData,
+              ipnUrl: this.ipnUrl,
+              orderId: orderId,
+              orderInfo: request.orderInfo,
+              redirectUrl: this.redirectUrl,
+              requestType: this.requestType,
+              signature: signature,
+              type: 'request',
+              lang: 'en',
+            };
+            await this.momoRepo.save(momoResult);
+            if (momoResult.resultCode === 0) {
+              const isPaymentOrderIdExist =
+                !currentInvoice.payment_order_id ||
+                currentInvoice.payment_order_id == ''
+                  ? false
+                  : true;
 
-            // Update field payment_order_id of table Invoice with requestId
-            await this.invoiceRepo.update(currentInvoice.invoice_id, {
-              payment_order_id: requestId,
-            });
+              // Update field payment_order_id of table Invoice with requestId
+              await this.invoiceRepo.update(currentInvoice.invoice_id, {
+                payment_order_id: requestId,
+              });
 
-            //Insert a record into table 'Invoice_Status_History'
-            const momoInvoiceStatusHistory = new InvoiceStatusHistory();
-            momoInvoiceStatusHistory.status_id =
-              InvoiceHistoryStatusEnum.PENDING;
-            momoInvoiceStatusHistory.status_history_id = uuidv4();
-            momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
-            if (!isPaymentOrderIdExist) {
-              momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
-            } else {
-              momoInvoiceStatusHistory.note = `update new momo request ${momoResult.requestId} for payment`;
+              //Insert a record into table 'Invoice_Status_History'
+              const momoInvoiceStatusHistory = new InvoiceStatusHistory();
+              momoInvoiceStatusHistory.status_id =
+                InvoiceHistoryStatusEnum.PENDING;
+              momoInvoiceStatusHistory.status_history_id = uuidv4();
+              momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
+              if (!isPaymentOrderIdExist) {
+                momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
+              } else {
+                momoInvoiceStatusHistory.note = `update new momo request ${momoResult.requestId} for payment`;
+              }
+              await this.orderStatusHistoryRepo.insert(
+                momoInvoiceStatusHistory,
+              );
             }
-            await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
           }
-        }
-        return momoOrderResult;
-      })
-      .catch(async (error) => {
-        this.logger.error(
-          'An error occurred when create momo request',
-          JSON.stringify(error),
-        );
-        await this.orderService.cancelOrder(
-          request.orderId,
-          currentInvoice?.invoice_id,
-          { isMomo: true },
-        );
-        throw new InternalServerErrorException();
+          return momoOrderResult;
+        })
+        .catch(async (error) => {
+          this.logger.error(
+            'An error occurred when create momo request',
+            JSON.stringify(error),
+          );
+          await this.orderService.cancelOrder(
+            request.orderId,
+            currentInvoice?.invoice_id,
+            { isMomo: true },
+          );
+          throw new InternalServerErrorException();
+        });
+    } else if (
+      latestInvoiceStatus &&
+      latestInvoiceStatus.status_id === 'PENDING' &&
+      currentInvoice.payment_order_id
+    ) {
+      const currentMomoTransaction = await this.momoRepo.findOne({
+        where: { requestId: currentInvoice.payment_order_id },
       });
+      return {
+        orderId: currentMomoTransaction?.orderId,
+        requestId: currentMomoTransaction?.requestId,
+        amount: currentMomoTransaction.amount,
+        responseTime: currentMomoTransaction.responseTime,
+        message: currentMomoTransaction.message,
+        resultCode: currentMomoTransaction.resultCode,
+        payUrl: currentMomoTransaction.payUrl,
+      };
+    } else {
+      throw new InternalServerErrorException(
+        'cannot create momo payment order with the invoice',
+      );
+    }
   }
 
   async handleMoMoIpnCallBack(payload) {

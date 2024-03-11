@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity('momo-transactions')
+@Entity('MomoTransaction')
 export class MomoTransaction {
   @PrimaryGeneratedColumn()
   id: number;
@@ -46,6 +46,12 @@ export class MomoTransaction {
 
   @Column({ length: 255, nullable: true })
   signature: string;
+
+  @Column('text', { nullable: true })
+  payUrl: string;
+
+  @Column('text', { nullable: true })
+  message: string;
 
   @Column({ default: 'en', nullable: true })
   lang: string;

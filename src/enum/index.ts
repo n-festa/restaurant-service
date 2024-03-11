@@ -39,6 +39,7 @@ export enum OrderStatus {
   NEW = 'NEW',
   PROCESSING = 'PROCESSING',
   READY = 'READY',
+  STUCK = 'STUCK',
 }
 
 export enum InvoiceHistoryStatusEnum {
