@@ -13,9 +13,14 @@ export class UrgentActionNeeded {
   @Column('text', { nullable: true })
   description: string | null;
 
-  @Column({ length: 128, nullable: true })
+  @Column({ type: 'varchar', length: 128, nullable: true })
   solved_by: string | null;
 
-  @CreateDateColumn({ nullable: true })
-  created_at: Date | null;
+  @CreateDateColumn({
+    type: 'datetime',
+    nullable: false,
+    unique: false,
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  public created_at: Date;
 }

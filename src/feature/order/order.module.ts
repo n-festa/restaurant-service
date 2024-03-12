@@ -8,6 +8,7 @@ import { AhamoveModule } from 'src/dependency/ahamove/ahamove.module';
 import { OrderStatusLog } from 'src/entity/order-status-log.entity';
 import { DriverStatusLog } from 'src/entity/driver-status-log.entity';
 import { UrgentActionNeeded } from 'src/entity/urgent-action-needed.entity';
+import { Driver } from 'src/entity/driver.entity';
 
 @Module({
   providers: [OrderService],
@@ -18,6 +19,7 @@ import { UrgentActionNeeded } from 'src/entity/urgent-action-needed.entity';
       OrderStatusLog,
       DriverStatusLog,
       UrgentActionNeeded,
+      Driver,
     ]),
     forwardRef(() => AhamoveModule),
   ],

@@ -159,11 +159,11 @@ export class MomoService {
             };
             await this.momoRepo.save(momoResult);
             if (momoResult.resultCode === 0) {
-              const isPaymentOrderIdExist =
-                !currentInvoice.payment_order_id ||
-                currentInvoice.payment_order_id == ''
-                  ? false
-                  : true;
+              // const isPaymentOrderIdExist =
+              //   !currentInvoice.payment_order_id ||
+              //   currentInvoice.payment_order_id == ''
+              //     ? false
+              //     : true;
 
               // Update field payment_order_id of table Invoice with requestId
               await this.invoiceRepo.update(currentInvoice.invoice_id, {
@@ -176,17 +176,22 @@ export class MomoService {
                 InvoiceHistoryStatusEnum.PENDING;
               momoInvoiceStatusHistory.status_history_id = uuidv4();
               momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
-              if (!isPaymentOrderIdExist) {
-                momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
-              } else {
-                momoInvoiceStatusHistory.note = `update new momo request ${momoResult.requestId} for payment`;
-              }
+              // if (!isPaymentOrderIdExist) {
+              momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
+              // } else {
+              //   momoInvoiceStatusHistory.note = `update new momo request ${momoResult.requestId} for payment`;
+              // }
               await this.orderStatusHistoryRepo.insert(
                 momoInvoiceStatusHistory,
               );
             }
           }
-          return momoOrderResult;
+          // return momoOrderResult;
+          return {
+            invoiceId: currentInvoice.invoice_id,
+            amount: momoOrderResult.amount,
+            payUrl: momoOrderResult.payUrl,
+          };
         })
         .catch(async (error) => {
           this.logger.error(
@@ -206,15 +211,16 @@ export class MomoService {
       currentInvoice.payment_order_id
     ) {
       const currentMomoTransaction = await this.momoRepo.findOne({
-        where: { requestId: currentInvoice.payment_order_id },
+        where: { requestId: currentInvoice.payment_order_id, type: 'request' },
       });
       return {
-        orderId: currentMomoTransaction?.orderId,
-        requestId: currentMomoTransaction?.requestId,
+        // orderId: currentMomoTransaction?.orderId,
+        // requestId: currentMomoTransaction?.requestId,
+        invoiceId: currentInvoice.invoice_id,
         amount: currentMomoTransaction.amount,
-        responseTime: currentMomoTransaction.responseTime,
-        message: currentMomoTransaction.message,
-        resultCode: currentMomoTransaction.resultCode,
+        // responseTime: currentMomoTransaction.responseTime,
+        // message: currentMomoTransaction.message,
+        // resultCode: currentMomoTransaction.resultCode,
         payUrl: currentMomoTransaction.payUrl,
       };
     } else {

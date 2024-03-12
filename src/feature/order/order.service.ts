@@ -55,7 +55,7 @@ export class OrderService {
         order: { logged_at: 'DESC' },
       });
       if (currentOrder) {
-        await this.handleOrferFlowBaseOnAhahaStatus(
+        await this.handleOrderFlowBaseOnAhahaStatus(
           currentOrder,
           latestOrderStatus?.order_status_id,
           latestDriverStatus?.driver_id,
@@ -71,10 +71,10 @@ export class OrderService {
       throw new InternalServerErrorException();
     }
   }
-  private async handleOrferFlowBaseOnAhahaStatus(
+  private async handleOrderFlowBaseOnAhahaStatus(
     order: Order,
     latestOrderStatus: OrderStatus,
-    latestDriverStatus,
+    latestDriverId,
     webhookData,
   ) {
     const PATH_STATUS = webhookData?.path?.status;
@@ -84,63 +84,81 @@ export class OrderService {
     orderStatusLog.order_id = order.order_id;
     switch (webhookData.status) {
       case 'ASSIGNING':
-        if (!webhookData.rebroadcast_comment) {
-          if (!order.is_preorder) {
-            if (latestOrderStatus === OrderStatus.IDLE) {
-              //Order_Status_Log with orderid and order_status_id = PROCESSING
-              orderStatusLog.order_status_id = OrderStatus.PROCESSING;
-              await this.orderStatusLogRepo.save(orderStatusLog);
-            }
-          }
-        } else {
-          if (order.driver_id && latestOrderStatus === OrderStatus.PROCESSING) {
+        if (
+          latestOrderStatus !== OrderStatus.PROCESSING &&
+          latestOrderStatus !== OrderStatus.READY
+        ) {
+          const action = new UrgentActionNeeded();
+          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
+          await this.urgentActionNeededRepo.save(action);
+          break;
+        }
+
+        if (webhookData.rebroadcast_comment) {
+          if (latestDriverId) {
             //Driver_Status_Log
             const driverStatusLog = new DriverStatusLog();
-            driverStatusLog.driver_id = order.driver_id;
+            driverStatusLog.driver_id = latestDriverId;
             driverStatusLog.order_id = order.order_id;
             driverStatusLog.note = webhookData.rebroadcast_comment;
             await this.driverStatusLogRepo.save(driverStatusLog);
+          } else {
+            this.logger.error(
+              `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is rebroadcasting but the order didnot have any driver infomation before`,
+            );
           }
+        } else {
+          //do nothing
         }
         break;
       case 'ACCEPTED':
         if (
-          latestDriverStatus &&
-          latestOrderStatus === OrderStatus.PROCESSING
+          latestOrderStatus !== OrderStatus.PROCESSING &&
+          latestOrderStatus !== OrderStatus.READY
         ) {
-          const driverType =
-            webhookData.service_id === 'VNM-PARTNER-2ALL'
-              ? 'ONWHEEL'
-              : 'AHAMOVE';
-          const currentDriver = await this.driverRepo.findOne({
-            where: { reference_id: webhookData.supplier_id, type: driverType },
-          });
-          let driverId = currentDriver.driver_id;
-          if (currentDriver) {
-            currentDriver.license_plates = webhookData.supplier_plate_number;
-            currentDriver.phone_number = webhookData.supplier_id;
-            currentDriver.name = webhookData.supplier_name;
-            await this.driverRepo.save(currentDriver);
-          } else {
-            const newDriver = new Driver();
-            newDriver.license_plates = webhookData.supplier_plate_number;
-            newDriver.phone_number = webhookData.supplier_id;
-            newDriver.name = webhookData.supplier_name;
-            newDriver.type = driverType;
-            newDriver.reference_id = webhookData.supplier_id;
-            const result = await this.driverRepo.save(newDriver);
-            driverId = result.driver_id;
-          }
-          const driverStatusLog = new DriverStatusLog();
-          driverStatusLog.driver_id = driverId;
-          driverStatusLog.order_id = order.order_id;
-          await this.driverStatusLogRepo.save(driverStatusLog);
+          const action = new UrgentActionNeeded();
+          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
+          await this.urgentActionNeededRepo.save(action);
+          break;
         }
+
+        if (latestDriverId) {
+          this.logger.error(
+            `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
+          );
+        }
+
+        const driverType =
+          webhookData.service_id === 'VNM-PARTNER-2ALL' ? 'ONWHEEL' : 'AHAMOVE';
+        const currentDriver = await this.driverRepo.findOne({
+          where: { reference_id: webhookData.supplier_id, type: driverType },
+        });
+        let driverId = currentDriver.driver_id;
+        if (currentDriver) {
+          currentDriver.license_plates = webhookData.supplier_plate_number;
+          currentDriver.phone_number = webhookData.supplier_id;
+          currentDriver.name = webhookData.supplier_name;
+          await this.driverRepo.save(currentDriver);
+        } else {
+          const newDriver = new Driver();
+          newDriver.license_plates = webhookData.supplier_plate_number;
+          newDriver.phone_number = webhookData.supplier_id;
+          newDriver.name = webhookData.supplier_name;
+          newDriver.type = driverType;
+          newDriver.reference_id = webhookData.supplier_id;
+          const result = await this.driverRepo.save(newDriver);
+          driverId = result.driver_id;
+        }
+        const driverStatusLog = new DriverStatusLog();
+        driverStatusLog.driver_id = driverId;
+        driverStatusLog.order_id = order.order_id;
+        await this.driverStatusLogRepo.save(driverStatusLog);
+
         break;
       case 'CANCELLED':
-        //Order_Status_Log with status STUCK
-        orderStatusLog.order_status_id = OrderStatus.STUCK;
-        await this.orderStatusLogRepo.save(orderStatusLog);
+        // //Order_Status_Log with status STUCK
+        // orderStatusLog.order_status_id = OrderStatus.STUCK;
+        // await this.orderStatusLogRepo.save(orderStatusLog);
         //Urgent_Action_Needed
         const action = new UrgentActionNeeded();
         action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> got cancel with comment '<${webhookData.cancel_comment}>'. Need action from admin !!!`;
@@ -163,26 +181,31 @@ export class OrderService {
           // Order_Status_Log with DELIVERING
           orderStatusLog.order_status_id = OrderStatus.COMPLETED;
           await this.orderStatusLogRepo.save(orderStatusLog);
+        } else {
+          //Urgent_Action_Needed
+          const action = new UrgentActionNeeded();
+          action.description = `Order <${order.order_id}>: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
+          await this.urgentActionNeededRepo.save(action);
         }
         break;
       case 'COMPLETED':
         if (SUB_STATUS === 'RETURNED') {
           break;
         }
+        if (latestOrderStatus !== OrderStatus.DELIVERING) {
+          const action = new UrgentActionNeeded();
+          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is completed but the order status is not DELIVERING'. Need action from admin !!!`;
+          await this.urgentActionNeededRepo.save(action);
+          break;
+        }
         if (PATH_STATUS === 'FAILED') {
-          // order_status == PROCESSING
           // Order_Status_Log with FAILED
-          if (latestOrderStatus === OrderStatus.DELIVERING) {
-            orderStatusLog.order_status_id = OrderStatus.FAILED;
-            await this.orderStatusLogRepo.save(orderStatusLog);
-          }
+          orderStatusLog.order_status_id = OrderStatus.FAILED;
+          await this.orderStatusLogRepo.save(orderStatusLog);
         } else if (PATH_STATUS === 'COMPLETED') {
-          // order_status == PROCESSING
           // Order_Status_Log with COMPLETED
-          if (latestOrderStatus === OrderStatus.DELIVERING) {
-            orderStatusLog.order_status_id = OrderStatus.COMPLETED;
-            await this.orderStatusLogRepo.save(orderStatusLog);
-          }
+          orderStatusLog.order_status_id = OrderStatus.COMPLETED;
+          await this.orderStatusLogRepo.save(orderStatusLog);
         }
         break;
       default:

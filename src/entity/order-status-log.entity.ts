@@ -6,10 +6,10 @@ export class OrderStatusLog {
   @PrimaryGeneratedColumn('uuid')
   log_id: string;
 
-  @Column()
+  @Column({ type: 'int' })
   order_id: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 64 })
   order_status_id: OrderStatus;
 
   @Column('text', { nullable: true })

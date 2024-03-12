@@ -35,9 +35,14 @@ export class Driver {
   @Column({ length: 255, nullable: true })
   reference_id: string;
 
-  @Column({ nullable: true })
-  profile_image: string;
+  @Column({ type: 'int', nullable: true })
+  profile_image: number;
 
-  @CreateDateColumn()
-  created_at: Date;
+  @CreateDateColumn({
+    type: 'datetime',
+    nullable: false,
+    unique: false,
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  public created_at: Date;
 }
