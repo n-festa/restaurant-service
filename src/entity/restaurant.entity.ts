@@ -111,6 +111,9 @@ export class Restaurant {
   @Column({ type: 'int', nullable: false, unique: false, default: 0 })
   public cutoff_time_m: number;
 
+  @Column({ type: 'int', nullable: true, unique: false })
+  public cutlery_price: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,

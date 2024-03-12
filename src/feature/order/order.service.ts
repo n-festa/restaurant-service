@@ -9,6 +9,9 @@ import { OrderStatus } from 'src/enum';
 import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { PaymentOption } from 'src/entity/payment-option.entity';
+import { MoneyType } from 'src/type';
+import { Restaurant } from 'src/entity/restaurant.entity';
+import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 
 @Injectable()
 export class OrderService {
@@ -200,5 +203,30 @@ export class OrderService {
       .createQueryBuilder(PaymentOption, 'payment')
       .where('payment.is_active = 1')
       .getMany();
+  }
+
+  async getCutleryFee(
+    restaurant_id: number,
+    quantity: number,
+  ): Promise<MoneyType> {
+    const restaurant = await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.unit_obj', 'unit')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+
+    if (!restaurant) {
+      throw new CustomRpcException(2, 'Restaurant doesnot exist');
+    }
+    if (!restaurant.cutlery_price) {
+      return {
+        amount: 0,
+        currency: restaurant.unit_obj.symbol,
+      };
+    }
+    return {
+      amount: restaurant.cutlery_price * quantity,
+      currency: restaurant.unit_obj.symbol,
+    };
   }
 }

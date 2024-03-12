@@ -1,4 +1,4 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller, Get, UseFilters } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
@@ -8,12 +8,17 @@ import { GetApplicationFeeRequest } from './dto/get-application-fee-request.dto'
 import { CustomRpcExceptionFilter } from 'src/filters/custom-rpc-exception.filter';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { GetPaymentMethodResponse } from './dto/get-payment-method-response.dto';
+import { GetCutleryFeeRequest } from './dto/get-cutlery-fee-request.dto';
+import { GetCutleryFeeResponse } from './dto/get-cutlery-fee-response.dto';
+import { CommonService } from '../common/common.service';
+import { MoneyType } from 'src/type';
 
 @Controller('order')
 export class OrderController {
   constructor(
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     private readonly orderService: OrderService,
+    private readonly commonService: CommonService,
   ) {}
   @MessagePattern({ cmd: 'get_order_by_id' })
   async getOrderByOrderId(order_id) {
@@ -54,6 +59,26 @@ export class OrderController {
         name: item.name,
       });
     });
+    return result;
+  }
+
+  @MessagePattern({ cmd: 'get_cutlery_fee' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getCutleryFee(
+    data: GetCutleryFeeRequest,
+  ): Promise<GetCutleryFeeResponse> {
+    const result = new GetCutleryFeeResponse();
+
+    const { restaurant_id, item_quantity } = data;
+
+    const fee: MoneyType = await this.orderService.getCutleryFee(
+      restaurant_id,
+      item_quantity,
+    );
+
+    result.cutlery_fee = fee.amount;
+    result.currency = fee.currency;
+
     return result;
   }
 }
