@@ -192,3 +192,8 @@ export interface PackagingInfo {
 }
 
 export type NumbericBoolean = 0 | 1;
+
+export interface MoneyType {
+  amount: number;
+  currency: string;
+}
