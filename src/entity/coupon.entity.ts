@@ -1,4 +1,9 @@
-import { CouponCreatorType, CouponFilterType, CouponType } from 'src/enum';
+import {
+  CalculationType,
+  CouponCreatorType,
+  CouponFilterType,
+  CouponType,
+} from 'src/enum';
 import {
   Column,
   Entity,
@@ -38,8 +43,16 @@ export class Coupon {
   @Column({ type: 'int', nullable: false, unique: false })
   public discount_value: number;
 
-  @Column({ type: 'int', nullable: false, unique: false })
-  public discount_unit: number;
+  // @Column({ type: 'int', nullable: false, unique: false })
+  // public discount_unit: number;
+
+  @Column({
+    type: 'enum',
+    enum: CalculationType,
+    nullable: false,
+    unique: false,
+  })
+  public calculation_type: CalculationType;
 
   @Column({ type: 'tinyint', nullable: false, unique: false })
   public is_active: number;

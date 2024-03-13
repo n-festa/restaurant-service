@@ -16,6 +16,8 @@ import { GetCouponInfoRequest } from './dto/get-coupon-info-request.dto';
 import { GetCouponInfoResponse } from './dto/get-coupon-info-response.dto';
 import { Coupon } from 'src/entity/coupon.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
+import { ApplyPromotionCodeRequest } from './dto/apply-promotion-code-request.dto';
+import { ApplyPromotionCodeResponse } from './dto/apply-promotion-code-response.dto';
 
 @Controller('order')
 export class OrderController {
@@ -139,6 +141,60 @@ export class OrderController {
         description: i.description,
       });
     });
+
+    return result;
+  }
+
+  @MessagePattern({ cmd: 'apply_promotion_code' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async applyPromotionCode(
+    data: ApplyPromotionCodeRequest,
+  ): Promise<ApplyPromotionCodeResponse> {
+    const { coupon_code, restaurant_id, items } = data;
+    const result = new ApplyPromotionCodeResponse();
+    const skuIds = items.map((i) => i.sku_id);
+    //Validate restaurant exist
+    const restaurant =
+      await this.commonService.getRestaurantById(restaurant_id);
+    if (!restaurant) {
+      throw new CustomRpcException(2, 'Restaurant doesnot exist');
+    }
+
+    //Validate SKU list belongs to the restaurant
+    if (items.length > 0) {
+      const isValidSkuList =
+        await this.commonService.validateSkuListBelongsToRestaurant(
+          restaurant_id,
+          skuIds,
+        );
+      if (!isValidSkuList) {
+        throw new CustomRpcException(
+          3,
+          'item list does not belong to the resturant',
+        );
+      }
+    }
+    const validCoupon = await this.orderService.validateApplyingCouponCode(
+      coupon_code,
+      restaurant_id,
+      skuIds,
+    );
+    if (!validCoupon) {
+      throw new CustomRpcException(4, 'Coupon code is invalid');
+    }
+
+    const discountAmount: number = this.orderService.calculateDiscountAmount(
+      validCoupon,
+      items,
+    );
+
+    const unit = await this.orderService.getUnitById(restaurant.unit);
+
+    result.discount_amount = discountAmount;
+    result.currency = unit.symbol;
+    result.coupon_code = coupon_code;
+    result.restaurant_id = restaurant_id;
+    result.items = items;
 
     return result;
   }
