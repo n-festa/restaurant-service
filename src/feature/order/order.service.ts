@@ -5,13 +5,14 @@ import {
 } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
-import { OrderStatus } from 'src/enum';
+import { CouponFilterType, CouponType, OrderStatus } from 'src/enum';
 import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { PaymentOption } from 'src/entity/payment-option.entity';
 import { MoneyType } from 'src/type';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
+import { Coupon } from 'src/entity/coupon.entity';
 
 @Injectable()
 export class OrderService {
@@ -228,5 +229,92 @@ export class OrderService {
       amount: restaurant.cutlery_price * quantity,
       currency: restaurant.unit_obj.symbol,
     };
+  }
+
+  async getCouponInfoWithRestaurntIds(
+    restaurnt_ids: number[],
+  ): Promise<Coupon[]> {
+    const now = Date.now();
+
+    //get valid coupon list from table Coupon
+    const validCoupons = await this.entityManager
+      .createQueryBuilder(Coupon, 'coupon')
+      .where('coupon.is_active = 1')
+      .leftJoinAndSelect('coupon.restaurant_coupon_obj', 'resCoup')
+      .andWhere('coupon.valid_from <= :now', { now })
+      .andWhere('coupon.valid_until >= :now', { now })
+      .andWhere('coupon.out_of_budget = 0')
+      .andWhere('coupon.coupon_type = :type', { type: CouponType.RESTAURANT })
+      .getMany();
+
+    if (restaurnt_ids.length == 0) {
+      return validCoupons;
+    }
+
+    //filter it with the table Restaurant_Coupon based on the filter_type
+    const uniqueResaurantIds = [...new Set(restaurnt_ids)];
+    const filteredCoupons = [];
+    for (const coupon of validCoupons) {
+      const couponRestarantIds = coupon.restaurant_coupon_obj.map(
+        (i) => i.restaurant_id,
+      );
+      const overlapRestarantIds = couponRestarantIds.filter((i) =>
+        uniqueResaurantIds.includes(i),
+      );
+      if (coupon.filter_type === CouponFilterType.INCLUDED) {
+        if (overlapRestarantIds.length > 0) {
+          //only one item in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      } else if (coupon.filter_type === CouponFilterType.EXCLUDED) {
+        if (overlapRestarantIds.length < uniqueResaurantIds.length) {
+          //only one item is NOT in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      }
+    }
+    return filteredCoupons;
+  }
+
+  async getCouponInfoWithSkus(sku_ids: number[]): Promise<Coupon[]> {
+    const now = Date.now();
+
+    //get valid coupon list from table Coupon
+    const validCoupons = await this.entityManager
+      .createQueryBuilder(Coupon, 'coupon')
+      .where('coupon.is_active = 1')
+      .leftJoinAndSelect('coupon.skus_coupon_obj', 'skuCoup')
+      .andWhere('coupon.valid_from <= :now', { now })
+      .andWhere('coupon.valid_until >= :now', { now })
+      .andWhere('coupon.out_of_budget = 0')
+      .andWhere('coupon.coupon_type = :type', { type: CouponType.SKU })
+      .getMany();
+
+    if (sku_ids.length == 0) {
+      return validCoupons;
+    }
+
+    //filter it with the table SKUs_coupon based on the filter_type
+    const uniqueSkuIds = [...new Set(sku_ids)];
+    const filteredCoupons = [];
+    for (const coupon of validCoupons) {
+      const couponSkuIds = coupon.skus_coupon_obj.map((i) => i.sku_id);
+      const overlapSkuIds = couponSkuIds.filter((i) =>
+        uniqueSkuIds.includes(i),
+      );
+      if (coupon.filter_type === CouponFilterType.INCLUDED) {
+        if (overlapSkuIds.length > 0) {
+          //only one item in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      } else if (coupon.filter_type === CouponFilterType.EXCLUDED) {
+        if (overlapSkuIds.length < uniqueSkuIds.length) {
+          //only one item is NOT in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      }
+    }
+
+    return filteredCoupons;
   }
 }

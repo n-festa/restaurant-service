@@ -40,3 +40,19 @@ export enum OrderStatus {
   PROCESSING = 'PROCESSING',
   READY = 'READY',
 }
+
+export enum CouponCreatorType {
+  ADMIN = 'Admin',
+  RESTAURANT = 'Restaurant',
+}
+
+export enum CouponType {
+  RESTAURANT = 'restaurant',
+  SYS_CATEGORY = 'system_category',
+  SKU = 'sku',
+}
+
+export enum CouponFilterType {
+  INCLUDED = 'included',
+  EXCLUDED = 'excluded',
+}
