@@ -56,3 +56,8 @@ export enum CouponFilterType {
   INCLUDED = 'included',
   EXCLUDED = 'excluded',
 }
+
+export enum CalculationType {
+  PERCENTAGE = 'percentage',
+  FIXED = 'fixed',
+}

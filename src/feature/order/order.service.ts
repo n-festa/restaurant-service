@@ -5,14 +5,20 @@ import {
 } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
-import { CouponFilterType, CouponType, OrderStatus } from 'src/enum';
+import {
+  CalculationType,
+  CouponFilterType,
+  CouponType,
+  OrderStatus,
+} from 'src/enum';
 import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { PaymentOption } from 'src/entity/payment-option.entity';
-import { MoneyType } from 'src/type';
+import { CouponAppliedItem, MoneyType } from 'src/type';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 import { Coupon } from 'src/entity/coupon.entity';
+import { Unit } from 'src/entity/unit.entity';
 
 @Injectable()
 export class OrderService {
@@ -316,5 +322,64 @@ export class OrderService {
     }
 
     return filteredCoupons;
+  }
+
+  async validateApplyingCouponCode(
+    coupon_code: string,
+    restaurant_id: number,
+    sku_ids: number[],
+  ): Promise<Coupon | undefined> {
+    let validCoupon: Coupon;
+    //Get restaurant coupon
+    const restaurantCoupons: Coupon[] =
+      await this.getCouponInfoWithRestaurntIds([restaurant_id]);
+    validCoupon = restaurantCoupons.find((i) => i.coupon_code == coupon_code);
+    if (validCoupon) {
+      return validCoupon;
+    }
+    //get sku coupon
+    const skuCoupons: Coupon[] = await this.getCouponInfoWithSkus(sku_ids);
+
+    validCoupon = skuCoupons.find((i) => i.coupon_code == coupon_code);
+    if (validCoupon) {
+      return validCoupon;
+    }
+
+    return validCoupon;
+  }
+
+  calculateDiscountAmount(coupon: Coupon, items: CouponAppliedItem[]): number {
+    let discountAmount: number = 0;
+    //calculate the amount base to apply promotion code
+    let amount_base: number = 0;
+    for (const item of items) {
+      amount_base +=
+        (item.price_after_discount + item.packaging_price) * item.qty_ordered;
+    }
+
+    // check if the amount base is greater than minimum_order_value
+    if (amount_base < coupon.mininum_order_value) {
+      //the order does not reach the minimum order value
+      throw new CustomRpcException(5, {
+        minium_order_value: coupon.mininum_order_value,
+      });
+    }
+
+    //calculate the discount amount
+    if (coupon.calculation_type === CalculationType.PERCENTAGE) {
+      discountAmount = amount_base * (coupon.discount_value / 100);
+      discountAmount = Math.min(discountAmount, coupon.maximum_discount_amount);
+    } else if (coupon.calculation_type === CalculationType.FIXED) {
+      discountAmount = coupon.discount_value;
+    }
+
+    return discountAmount;
+  }
+
+  async getUnitById(unit_id: number): Promise<Unit> {
+    return await this.entityManager
+      .createQueryBuilder(Unit, 'unit')
+      .where('unit.unit_id = :unit_id', { unit_id })
+      .getOne();
   }
 }
