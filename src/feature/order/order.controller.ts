@@ -12,6 +12,10 @@ import { GetCutleryFeeRequest } from './dto/get-cutlery-fee-request.dto';
 import { GetCutleryFeeResponse } from './dto/get-cutlery-fee-response.dto';
 import { CommonService } from '../common/common.service';
 import { MoneyType } from 'src/type';
+import { GetCouponInfoRequest } from './dto/get-coupon-info-request.dto';
+import { GetCouponInfoResponse } from './dto/get-coupon-info-response.dto';
+import { Coupon } from 'src/entity/coupon.entity';
+import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 
 @Controller('order')
 export class OrderController {
@@ -78,6 +82,63 @@ export class OrderController {
 
     result.cutlery_fee = fee.amount;
     result.currency = fee.currency;
+
+    return result;
+  }
+
+  @MessagePattern({ cmd: 'get_coupon_info' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getCouponInfo(
+    data: GetCouponInfoRequest,
+  ): Promise<GetCouponInfoResponse> {
+    const { restaurant_id, sku_ids } = data;
+    const result: GetCouponInfoResponse = { coupons: [] };
+
+    //Validate restaurant exist
+    const restaurant =
+      await this.commonService.getRestaurantById(restaurant_id);
+    if (!restaurant) {
+      throw new CustomRpcException(2, 'Restaurant doesnot exist');
+    }
+
+    //Validate SKU list belongs to the restaurant
+    if (sku_ids.length > 0) {
+      const isValidSkuList =
+        await this.commonService.validateSkuListBelongsToRestaurant(
+          restaurant_id,
+          sku_ids,
+        );
+      if (!isValidSkuList) {
+        throw new CustomRpcException(
+          3,
+          'SKU list doesnot belong to the restaurant',
+        );
+      }
+    }
+
+    //Get restaurant coupon
+    const restaurantCoupons: Coupon[] =
+      await this.orderService.getCouponInfoWithRestaurntIds([restaurant_id]);
+
+    restaurantCoupons.forEach((i) => {
+      result.coupons.push({
+        coupon_code: i.coupon_code,
+        name: i.name,
+        description: i.description,
+      });
+    });
+
+    //get sku coupon
+    const skuCoupons: Coupon[] =
+      await this.orderService.getCouponInfoWithSkus(sku_ids);
+
+    skuCoupons.forEach((i) => {
+      result.coupons.push({
+        coupon_code: i.coupon_code,
+        name: i.name,
+        description: i.description,
+      });
+    });
 
     return result;
   }
