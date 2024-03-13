@@ -248,12 +248,11 @@ export class OrderService {
           );
         } finally {
           // UPDATE ORDER STATUS
-          // const momoInvoiceStatusHistory = new InvoiceStatusHistory();
-          // momoInvoiceStatusHistory.invoice_id = invoice_id || -1;
-          // momoInvoiceStatusHistory.status_id = OrderStatus.CANCELLED;
-          // momoInvoiceStatusHistory.note = 'momo payment has been failed';
-          // momoInvoiceStatusHistory.status_history_id = uuidv4();
-          // await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
+          const orderStatusLog = new OrderStatusLog();
+          orderStatusLog.logged_at = new Date().getTime();
+          orderStatusLog.order_status_id = OrderStatus.CANCELLED;
+          orderStatusLog.note = 'momo payment has been failed';
+          await this.orderStatusLogRepo.save(orderStatusLog);
         }
       } else {
         this.logger.warn('The order status is not valid to cancel');
