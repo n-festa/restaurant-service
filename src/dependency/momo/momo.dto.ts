@@ -1,9 +1,5 @@
 export interface MomoRequestDTO {
-  amount: string;
-  extraData: string;
-  orderId: number;
-  momoOrderId: string;
-  orderInfo: string;
+  invoiceId: number;
 }
 
 export interface MomoRequest {

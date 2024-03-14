@@ -1,4 +1,4 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { MomoService } from './momo.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { MomoRequestDTO } from './momo.dto';
