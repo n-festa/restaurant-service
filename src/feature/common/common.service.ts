@@ -771,6 +771,8 @@ export class CommonService {
         sku_price: item.price,
         sku_price_after_discount: await this.getAvailableDiscountPrice(item),
         sku_unit: priceUnit?.price_unit || null,
+        menu_item_id: item.menu_item_id,
+        quantity_available: item.menu_item.quantity_available,
       };
       data.push(additionalInfoForSKU);
     }
