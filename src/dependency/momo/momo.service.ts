@@ -56,7 +56,7 @@ export class MomoService {
 
   async sendMomoPaymentRequest(request: MomoRequestDTO) {
     const currentInvoice = await this.invoiceRepo.findOne({
-      where: { order_id: request.orderId },
+      where: { invoice_id: request.invoiceId },
     });
     if (!currentInvoice) {
       throw new InternalServerErrorException('Invoice not found');
@@ -75,8 +75,8 @@ export class MomoService {
       requestId: requestId,
       requestType: this.requestType,
     };
-    var rawSignature = this.createSignature(momoSignatureObj);
-    var signature = crypto
+    const rawSignature = this.createSignature(momoSignatureObj);
+    const signature = crypto
       .createHmac('sha256', this.secretkey)
       .update(rawSignature)
       .digest('hex');
@@ -199,11 +199,9 @@ export class MomoService {
             'An error occurred when create momo request',
             JSON.stringify(error),
           );
-          await this.orderService.cancelOrder(
-            request.orderId,
-            currentInvoice?.invoice_id,
-            { isMomo: true },
-          );
+          await this.orderService.cancelOrder(currentInvoice.order_id, {
+            isMomo: true,
+          });
           throw new InternalServerErrorException();
         });
     } else if (

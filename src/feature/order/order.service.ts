@@ -214,7 +214,7 @@ export class OrderService {
     }
   }
 
-  async cancelOrder(order_id, invoice_id, source) {
+  async cancelOrder(order_id, source) {
     const currentOrder = await this.orderRepo.findOne({
       where: { order_id: order_id },
     });

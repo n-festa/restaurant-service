@@ -10,5 +10,7 @@ export class AddMomoTransactions1709005940772 implements MigrationInterface {
         ADD COLUMN \`message\` TEXT NULL AFTER \`payUrl\`;`);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {}
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE \`MomoTransaction\``);
+  }
 }
