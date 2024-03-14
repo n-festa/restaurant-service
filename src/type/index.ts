@@ -148,6 +148,8 @@ export interface FullCartItem {
   item_img: string;
   customer_id: number;
   sku_id: number;
+  menu_item_id: number;
+  quantity_available: number;
   price: number;
   price_after_discount: number;
   unit: string;
@@ -175,6 +177,8 @@ export interface AdditionalInfoForSKU {
   sku_price: number;
   sku_price_after_discount: number;
   sku_unit: string;
+  menu_item_id: number;
+  quantity_available: number;
 }
 export interface PriceUnitByMenuItem {
   menu_item_id: number;

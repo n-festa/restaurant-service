@@ -19,6 +19,8 @@ interface FullCartItem {
   item_img: string;
   customer_id: number;
   sku_id: number;
+  menu_item_id: number;
+  quantity_available: number;
   price: number;
   price_after_discount: number;
   unit: string;

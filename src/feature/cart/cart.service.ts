@@ -229,6 +229,8 @@ export class CartService {
         item_img: additionalInfoForSku.sku_img,
         customer_id: item.customer_id,
         sku_id: item.sku_id,
+        menu_item_id: additionalInfoForSku.menu_item_id,
+        quantity_available: additionalInfoForSku.quantity_available,
         price: additionalInfoForSku.sku_price,
         price_after_discount: additionalInfoForSku.sku_price_after_discount,
         unit: additionalInfoForSku.sku_unit,
