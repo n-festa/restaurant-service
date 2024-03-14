@@ -6,7 +6,12 @@ import {
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
-import { OrderStatus } from 'src/enum';
+import {
+  CalculationType,
+  CouponFilterType,
+  CouponType,
+  OrderStatus,
+} from 'src/enum';
 import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
@@ -15,6 +20,11 @@ import { OrderStatusLog } from 'src/entity/order-status-log.entity';
 import { DriverStatusLog } from 'src/entity/driver-status-log.entity';
 import { Driver } from 'src/entity/driver.entity';
 import { UrgentActionNeeded } from 'src/entity/urgent-action-needed.entity';
+import { CouponAppliedItem, MoneyType } from 'src/type';
+import { Restaurant } from 'src/entity/restaurant.entity';
+import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
+import { Coupon } from 'src/entity/coupon.entity';
+import { Unit } from 'src/entity/unit.entity';
 
 @Injectable()
 export class OrderService {
@@ -291,5 +301,176 @@ export class OrderService {
       .createQueryBuilder(PaymentOption, 'payment')
       .where('payment.is_active = 1')
       .getMany();
+  }
+
+  async getCutleryFee(
+    restaurant_id: number,
+    quantity: number,
+  ): Promise<MoneyType> {
+    const restaurant = await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.unit_obj', 'unit')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+
+    if (!restaurant) {
+      throw new CustomRpcException(2, 'Restaurant doesnot exist');
+    }
+    if (!restaurant.cutlery_price) {
+      return {
+        amount: 0,
+        currency: restaurant.unit_obj.symbol,
+      };
+    }
+    return {
+      amount: restaurant.cutlery_price * quantity,
+      currency: restaurant.unit_obj.symbol,
+    };
+  }
+
+  async getCouponInfoWithRestaurntIds(
+    restaurnt_ids: number[],
+  ): Promise<Coupon[]> {
+    const now = Date.now();
+
+    //get valid coupon list from table Coupon
+    const validCoupons = await this.entityManager
+      .createQueryBuilder(Coupon, 'coupon')
+      .where('coupon.is_active = 1')
+      .leftJoinAndSelect('coupon.restaurant_coupon_obj', 'resCoup')
+      .andWhere('coupon.valid_from <= :now', { now })
+      .andWhere('coupon.valid_until >= :now', { now })
+      .andWhere('coupon.out_of_budget = 0')
+      .andWhere('coupon.coupon_type = :type', { type: CouponType.RESTAURANT })
+      .getMany();
+
+    if (restaurnt_ids.length == 0) {
+      return validCoupons;
+    }
+
+    //filter it with the table Restaurant_Coupon based on the filter_type
+    const uniqueResaurantIds = [...new Set(restaurnt_ids)];
+    const filteredCoupons = [];
+    for (const coupon of validCoupons) {
+      const couponRestarantIds = coupon.restaurant_coupon_obj.map(
+        (i) => i.restaurant_id,
+      );
+      const overlapRestarantIds = couponRestarantIds.filter((i) =>
+        uniqueResaurantIds.includes(i),
+      );
+      if (coupon.filter_type === CouponFilterType.INCLUDED) {
+        if (overlapRestarantIds.length > 0) {
+          //only one item in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      } else if (coupon.filter_type === CouponFilterType.EXCLUDED) {
+        if (overlapRestarantIds.length < uniqueResaurantIds.length) {
+          //only one item is NOT in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      }
+    }
+    return filteredCoupons;
+  }
+
+  async getCouponInfoWithSkus(sku_ids: number[]): Promise<Coupon[]> {
+    const now = Date.now();
+
+    //get valid coupon list from table Coupon
+    const validCoupons = await this.entityManager
+      .createQueryBuilder(Coupon, 'coupon')
+      .where('coupon.is_active = 1')
+      .leftJoinAndSelect('coupon.skus_coupon_obj', 'skuCoup')
+      .andWhere('coupon.valid_from <= :now', { now })
+      .andWhere('coupon.valid_until >= :now', { now })
+      .andWhere('coupon.out_of_budget = 0')
+      .andWhere('coupon.coupon_type = :type', { type: CouponType.SKU })
+      .getMany();
+
+    if (sku_ids.length == 0) {
+      return validCoupons;
+    }
+
+    //filter it with the table SKUs_coupon based on the filter_type
+    const uniqueSkuIds = [...new Set(sku_ids)];
+    const filteredCoupons = [];
+    for (const coupon of validCoupons) {
+      const couponSkuIds = coupon.skus_coupon_obj.map((i) => i.sku_id);
+      const overlapSkuIds = couponSkuIds.filter((i) =>
+        uniqueSkuIds.includes(i),
+      );
+      if (coupon.filter_type === CouponFilterType.INCLUDED) {
+        if (overlapSkuIds.length > 0) {
+          //only one item in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      } else if (coupon.filter_type === CouponFilterType.EXCLUDED) {
+        if (overlapSkuIds.length < uniqueSkuIds.length) {
+          //only one item is NOT in the include list -> pass
+          filteredCoupons.push(coupon);
+        }
+      }
+    }
+
+    return filteredCoupons;
+  }
+
+  async validateApplyingCouponCode(
+    coupon_code: string,
+    restaurant_id: number,
+    sku_ids: number[],
+  ): Promise<Coupon | undefined> {
+    let validCoupon: Coupon;
+    //Get restaurant coupon
+    const restaurantCoupons: Coupon[] =
+      await this.getCouponInfoWithRestaurntIds([restaurant_id]);
+    validCoupon = restaurantCoupons.find((i) => i.coupon_code == coupon_code);
+    if (validCoupon) {
+      return validCoupon;
+    }
+    //get sku coupon
+    const skuCoupons: Coupon[] = await this.getCouponInfoWithSkus(sku_ids);
+
+    validCoupon = skuCoupons.find((i) => i.coupon_code == coupon_code);
+    if (validCoupon) {
+      return validCoupon;
+    }
+
+    return validCoupon;
+  }
+
+  calculateDiscountAmount(coupon: Coupon, items: CouponAppliedItem[]): number {
+    let discountAmount: number = 0;
+    //calculate the amount base to apply promotion code
+    let amount_base: number = 0;
+    for (const item of items) {
+      amount_base +=
+        (item.price_after_discount + item.packaging_price) * item.qty_ordered;
+    }
+
+    // check if the amount base is greater than minimum_order_value
+    if (amount_base < coupon.mininum_order_value) {
+      //the order does not reach the minimum order value
+      throw new CustomRpcException(5, {
+        minium_order_value: coupon.mininum_order_value,
+      });
+    }
+
+    //calculate the discount amount
+    if (coupon.calculation_type === CalculationType.PERCENTAGE) {
+      discountAmount = amount_base * (coupon.discount_value / 100);
+      discountAmount = Math.min(discountAmount, coupon.maximum_discount_amount);
+    } else if (coupon.calculation_type === CalculationType.FIXED) {
+      discountAmount = coupon.discount_value;
+    }
+
+    return discountAmount;
+  }
+
+  async getUnitById(unit_id: number): Promise<Unit> {
+    return await this.entityManager
+      .createQueryBuilder(Unit, 'unit')
+      .where('unit.unit_id = :unit_id', { unit_id })
+      .getOne();
   }
 }

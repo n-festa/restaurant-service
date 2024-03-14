@@ -192,3 +192,15 @@ export interface PackagingInfo {
 }
 
 export type NumbericBoolean = 0 | 1;
+
+export interface MoneyType {
+  amount: number;
+  currency: string;
+}
+
+export interface CouponAppliedItem {
+  sku_id: number;
+  qty_ordered: number;
+  price_after_discount: number;
+  packaging_price: number;
+}

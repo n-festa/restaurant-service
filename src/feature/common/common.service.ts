@@ -1,4 +1,4 @@
-import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import {
   AdditionalInfoForSKU,
   BasicTasteSelection,
@@ -44,6 +44,7 @@ import { ManualCutoffTime } from 'src/entity/manual-cutoff-time.entity';
 
 @Injectable()
 export class CommonService {
+  private readonly logger = new Logger(CommonService.name);
   constructor(
     @Inject('FLAGSMITH_SERVICE') private readonly flagService: FlagsmithService,
     @InjectEntityManager() private entityManager: EntityManager,
@@ -930,4 +931,23 @@ export class CommonService {
     //return data after adjusting with time offset and cutoff time config
     return startingPointOfLocalToday + cutoffTimeConfig * 60 * 1000;
   }
+
+  async validateSkuListBelongsToRestaurant(
+    restaurant_id: number,
+    sku_ids: number[],
+  ): Promise<boolean> {
+    const uniqueSkuIds = [...new Set(sku_ids)];
+    const skus = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .where('menuItem.restaurant_id = :restaurant_id', { restaurant_id })
+      .andWhere('sku.sku_id IN (:...uniqueSkuIds)', { uniqueSkuIds })
+      .getMany();
+    return skus.length == uniqueSkuIds.length;
+  }
+
+  findOverlapItemOfTwoArrays(arr1: any[], arr2: any[]): any[] {
+    const overlap = arr1.filter((item) => arr2.includes(item));
+    return overlap;
+  } //end of findOverlapItemOfTwoArrays
 }

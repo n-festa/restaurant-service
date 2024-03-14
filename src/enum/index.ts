@@ -51,3 +51,24 @@ export enum InvoiceHistoryStatusEnum {
   REFUNDED = 'REFUNDED',
   STARTED = 'STARTED',
 }
+
+export enum CouponCreatorType {
+  ADMIN = 'Admin',
+  RESTAURANT = 'Restaurant',
+}
+
+export enum CouponType {
+  RESTAURANT = 'restaurant',
+  SYS_CATEGORY = 'system_category',
+  SKU = 'sku',
+}
+
+export enum CouponFilterType {
+  INCLUDED = 'included',
+  EXCLUDED = 'excluded',
+}
+
+export enum CalculationType {
+  PERCENTAGE = 'percentage',
+  FIXED = 'fixed',
+}
