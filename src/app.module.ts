@@ -14,6 +14,8 @@ import { CommonModule } from './feature/common/common.module';
 import { CartModule } from './feature/cart/cart.module';
 import { RatingAndReviewModule } from './feature/rating-and-review/rating-and-review.module';
 import { AhamoveModule } from './dependency/ahamove/ahamove.module';
+import { InvoiceStatusHistoryModule } from './feature/invoice-status-history/invoice-status-history.module';
+import { MomoModule } from './dependency/momo/momo.module';
 import { OrderModule } from './feature/order/order.module';
 import { HealthCheckController } from './healthcheck/health-check.controller';
 
@@ -50,6 +52,8 @@ import { HealthCheckController } from './healthcheck/health-check.controller';
     CartModule,
     RatingAndReviewModule,
     AhamoveModule,
+    InvoiceStatusHistoryModule,
+    MomoModule,
     OrderModule,
   ],
   controllers: [AppController, HealthCheckController],

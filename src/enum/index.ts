@@ -39,6 +39,17 @@ export enum OrderStatus {
   NEW = 'NEW',
   PROCESSING = 'PROCESSING',
   READY = 'READY',
+  STUCK = 'STUCK',
+}
+
+export enum InvoiceHistoryStatusEnum {
+  PAID = 'PAID',
+  PENDING = 'PENDING',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+  COMPLETED = 'COMPLETED',
+  REFUNDED = 'REFUNDED',
+  STARTED = 'STARTED',
 }
 
 export enum CouponCreatorType {

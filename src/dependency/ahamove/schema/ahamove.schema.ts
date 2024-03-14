@@ -53,5 +53,7 @@ const coordinateSchema = Joi.object({
   long: Joi.number().required(),
 });
 
-export const coordinateListSchema = Joi.array().items(coordinateSchema).required();
+export const coordinateListSchema = Joi.array()
+  .items(coordinateSchema)
+  .required();
 export default postAhaOrderRequestSchema;

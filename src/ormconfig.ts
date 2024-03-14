@@ -1,8 +1,8 @@
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSourceOptions } from 'typeorm';
+import 'dotenv/config';
 
 function ormConfig(): DataSourceOptions {
-  console.log(__dirname + '/migrations/**/*{.ts,.js}');
+  console.log('process.env.BACKEND_ENV', process.env.BACKEND_ENV);
 
   const commonConf = {
     SYNCRONIZE: true,

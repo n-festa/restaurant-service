@@ -1,5 +1,12 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, Inject, Injectable, InternalServerErrorException, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { AxiosRequestConfig } from 'axios';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { Coordinate } from 'src/type';
@@ -7,7 +14,9 @@ import { FlagsmithService } from '../flagsmith/flagsmith.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { AhamoveOrder, PostAhaOrderRequest } from './dto/ahamove.dto';
-import postAhaOrderRequestSchema, { coordinateListSchema } from './schema/ahamove.schema';
+import postAhaOrderRequestSchema, {
+  coordinateListSchema,
+} from './schema/ahamove.schema';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AhamoveOrderEntity } from 'src/entity/ahamove-order.entity';
@@ -32,13 +41,18 @@ export class AhamoveService implements OnModuleInit {
     private readonly httpService: HttpService,
     @Inject('FLAGSMITH_SERVICE') private flagService: FlagsmithService,
     private configService: ConfigService,
-    @InjectRepository(AhamoveOrderEntity) private ahamoveOrder: Repository<AhamoveOrderEntity>,
-    @InjectRepository(AhamoveOrderHookEntity) private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
-    private readonly orderService: OrderService,
+    @InjectRepository(AhamoveOrderEntity)
+    private ahamoveOrder: Repository<AhamoveOrderEntity>,
+    @InjectRepository(AhamoveOrderHookEntity)
+    private ahamoveOrderHook: Repository<AhamoveOrderHookEntity>,
   ) {
-    this.AHA_MOVE_BASE_URL = configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com/api';
-    this.AHA_MOVE_API_KEY = configService.get('ahamove.apiKey') || '7bbc5c69e7237f267e97f81237a717c387f13bdb';
-    this.AHA_MOVE_USERNAME = configService.get('ahamove.username') || '2ALL Admin';
+    this.AHA_MOVE_BASE_URL =
+      configService.get('ahamove.baseUrl') || 'https://apistg.ahamove.com';
+    this.AHA_MOVE_API_KEY =
+      configService.get('ahamove.apiKey') ||
+      '7bbc5c69e7237f267e97f81237a717c387f13bdb';
+    this.AHA_MOVE_USERNAME =
+      configService.get('ahamove.username') || '2ALL Admin';
     this.AHA_MOVE_MOBILE = configService.get('ahamove.mobile') || '84905005248';
   }
 
@@ -48,14 +62,14 @@ export class AhamoveService implements OnModuleInit {
 
   async getAhamoveAccessToken() {
     let data = JSON.stringify({
-      mobile: '84905005248',
-      name: '2ALL Admin',
-      api_key: '7bbc5c69e7237f267e97f81237a717c387f13bdb',
+      mobile: this.AHA_MOVE_MOBILE,
+      name: this.AHA_MOVE_USERNAME,
+      api_key: this.AHA_MOVE_API_KEY,
     });
 
     let config = {
       method: 'post',
-      url: `${this.AHA_MOVE_BASE_URL}/v3/partner/account/register`,
+      url: `${this.AHA_MOVE_BASE_URL}/api/v3/partner/account/register`,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -75,7 +89,10 @@ export class AhamoveService implements OnModuleInit {
       });
   }
 
-  async estimateTimeAndDistance(startingPoint: Coordinate, destination: Coordinate) {
+  async estimateTimeAndDistance(
+    startingPoint: Coordinate,
+    destination: Coordinate,
+  ) {
     try {
       const data: any = JSON.stringify({
         order_time: 0,
@@ -135,7 +152,9 @@ export class AhamoveService implements OnModuleInit {
     const { error, value } = await coordinateListSchema.validate(coordinates);
     if (error) {
       this.logger.warn('Bad coordinates: ' + coordinates);
-      throw new BadRequestException(error?.details.map((x) => x.message).join(', '));
+      throw new BadRequestException(
+        error?.details.map((x) => x.message).join(', '),
+      );
     }
     const startingPoint = coordinates[0];
     const destination = coordinates[1];
@@ -168,7 +187,7 @@ export class AhamoveService implements OnModuleInit {
     const config: AxiosRequestConfig = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `${this.AHA_MOVE_BASE_URL}/v3/partner/order/estimate`,
+      url: `${this.AHA_MOVE_BASE_URL}/api/v3/partner/order/estimate`,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.AHA_MOVE_TOKEN}`,
@@ -179,7 +198,9 @@ export class AhamoveService implements OnModuleInit {
       const response = await axios.request(config);
       return response.data;
     } catch (error) {
-      this.logger.error('Error occurred while call to get estimate: ' + JSON.stringify(error));
+      this.logger.error(
+        'Error occurred while call to get estimate: ' + JSON.stringify(error),
+      );
       throw new InternalServerErrorException(error);
     }
   }
@@ -194,7 +215,7 @@ export class AhamoveService implements OnModuleInit {
     let config = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: `${this.AHA_MOVE_BASE_URL}/v3/partner/order/create`,
+      url: `${this.AHA_MOVE_BASE_URL}/api/v3/partner/order/create`,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.AHA_MOVE_TOKEN}`,
@@ -206,17 +227,24 @@ export class AhamoveService implements OnModuleInit {
       // update order id and response from ahamove
       orderRequest.order_id = data.order_id;
       orderRequest.response = data;
-      const result = await this.ahamoveOrder.save(AhamoveMapper.fromDTOtoEntity(orderRequest));
+      const result = await this.ahamoveOrder.save(
+        AhamoveMapper.fromDTOtoEntity(orderRequest),
+      );
       this.logger.verbose('created ahamove order', JSON.stringify(result));
       return data;
     } catch (error) {
-      this.logger.error('An error occurred while calling post ahamove order', JSON.stringify(error));
+      this.logger.error(
+        'An error occurred while calling post ahamove order',
+        JSON.stringify(error),
+      );
       throw new InternalServerErrorException('An error occurred');
     }
   }
 
   async getAhamoveOrderByOrderId(orderId: string): Promise<AhamoveOrderEntity> {
-    const result = await this.ahamoveOrder.findOne({ where: { order_id: orderId } });
+    const result = await this.ahamoveOrder.findOne({
+      where: { order_id: orderId },
+    });
     return result;
   }
 
@@ -225,7 +253,10 @@ export class AhamoveService implements OnModuleInit {
     return result;
   }
 
-  async #buildAhamoveRequest(order: PostAhaOrderRequest, service_type: string): Promise<AhamoveOrder> {
+  async #buildAhamoveRequest(
+    order: PostAhaOrderRequest,
+    service_type: string,
+  ): Promise<AhamoveOrder> {
     try {
       await postAhaOrderRequestSchema.validate(order);
     } catch (error) {
@@ -252,5 +283,25 @@ export class AhamoveService implements OnModuleInit {
       result.requests = [{ _id: this.REQUEST_ID }];
     }
     return result;
+  }
+
+  async cancelAhamoveOrder(orderId, cancelReasonMessage) {
+    cancelReasonMessage =
+      cancelReasonMessage || 'supplier_sender_ask_to_return_the_package';
+    let config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: `${this.AHA_MOVE_BASE_URL}/v1/order/cancel?token=${this.AHA_MOVE_TOKEN}&order_id=${orderId}&comment=${cancelReasonMessage}`,
+      headers: {
+        'cache-control': 'no-cache',
+      },
+    };
+    try {
+      const result = await axios.request(config);
+      return result;
+    } catch (error) {
+      this.logger.error('An error occurred ', JSON.stringify(error));
+      throw new InternalServerErrorException(error?.message);
+    }
   }
 }
