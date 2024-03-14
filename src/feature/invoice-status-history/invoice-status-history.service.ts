@@ -52,13 +52,9 @@ export class InvoiceStatusHistoryService {
         momoInvoiceStatusHistory.status_history_id = uuidv4();
         await this.invoiceHistoryStatusRepo.save(momoInvoiceStatusHistory);
         if (updateData.status_id === InvoiceHistoryStatusEnum.FAILED) {
-          await this.orderService.cancelOrder(
-            currentInvoice.order_id,
-            currentInvoice.invoice_id,
-            {
-              isMomo: true,
-            },
-          );
+          await this.orderService.cancelOrder(currentInvoice.order_id, {
+            isMomo: true,
+          });
         }
         return { message: 'Order updated successfully' };
       }
