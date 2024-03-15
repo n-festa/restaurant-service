@@ -1,4 +1,4 @@
-import { Controller, HttpException } from '@nestjs/common';
+import { Controller, HttpException, Logger } from '@nestjs/common';
 import { RecommendationService } from './recommendation.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { FoodRecommendationRequest } from './dto/food-recommendation-request.dto';
@@ -8,6 +8,7 @@ import { RestaurantRecommendationResponse } from './dto/restaurant-recommendatio
 
 @Controller()
 export class RecommendationController {
+  private readonly logger = new Logger(RecommendationController.name);
   constructor(private readonly recommendationService: RecommendationService) {}
 
   @MessagePattern({ cmd: 'get_general_food_recomendation' })
@@ -26,6 +27,7 @@ export class RecommendationController {
       res.message = 'Get food recommendation successfully';
       res.data = food;
     } catch (error) {
+      this.logger.error(error);
       if (error instanceof HttpException) {
         res.statusCode = error.getStatus();
         res.message = error.getResponse();

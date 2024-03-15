@@ -63,6 +63,9 @@ export class FoodService {
   } // end of getPriceRangeByMenuItem
 
   async getFoodsWithListOfRestaurants(restaurantIds: number[]) {
+    if (!restaurantIds || restaurantIds.length === 0) {
+      return [];
+    }
     const foodList = await this.menuItemRepo
       .createQueryBuilder('menuItem')
       .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
