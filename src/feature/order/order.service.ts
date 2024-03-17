@@ -44,6 +44,7 @@ import { Invoice } from 'src/entity/invoice.entity';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { PostAhaOrderRequest } from 'src/dependency/ahamove/dto/ahamove.dto';
 import { Customer } from 'src/entity/customer.entity';
+import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 
 @Injectable()
 export class OrderService {
@@ -753,9 +754,16 @@ export class OrderService {
       const customerAddressString = address.address_line
         ? `${address.address_line}, ${address.ward}, ${address.city}, ${address.country}`
         : `${address.ward}, ${address.city}, ${address.country}`;
+      const restaurantExt = await this.entityManager
+        .createQueryBuilder(RestaurantExt, 'ext')
+        .where('ext.restaurant_id = :restaurant_id', { restaurant_id })
+        .andWhere('ext.ISO_language_code = :lang', { lang: 'vie' })
+        .getOne();
       const deliveryTime = deliveryEstimation.duration * 1000;
       const deliverBufferTime =
         this.configService.get<number>('deliverBufferTime') * 60 * 1000;
+      const orderTime =
+        (expected_arrival_time - deliveryTime - deliverBufferTime) / 1000;
       const averageOtherFee = (orderTotal - orderSubTotal) / orderQuantitySum;
       const skuWIthMenuItems = await this.entityManager
         .createQueryBuilder(SKU, 'sku')
@@ -775,17 +783,15 @@ export class OrderService {
           _id: i.sku_id.toString(),
           num: i.qty_ordered,
           name: `${name} - ${i.portion_customization} - ${i.advanced_taste_customization} - ${i.basic_taste_customization}`,
-          price: i.qty_ordered + averageOtherFee,
+          price: i.price + averageOtherFee,
         });
       });
       const ahamoveOrderRequest: PostAhaOrderRequest = {
         startingPoint: {
           address: restaurantAddressString,
-          lat: restaurantAddress.latitude,
-          lng: restaurantAddress.longitude,
-          name: restaurant.restaurant_ext.find(
-            (i) => (i.ISO_language_code = 'vie'),
-          ).name,
+          lat: Number(restaurantAddress.latitude),
+          lng: Number(restaurantAddress.longitude),
+          name: restaurantExt.name,
           mobile: restaurant.phone_number,
           cod: 0,
           formatted_address: restaurantAddressString,
@@ -797,8 +803,8 @@ export class OrderService {
         },
         destination: {
           address: customerAddressString,
-          lat: address.latitude,
-          lng: address.longitude,
+          lat: Number(address.latitude),
+          lng: Number(address.longitude),
           name: customer.name,
           mobile: customer.phone_number,
           cod: orderTotal,
@@ -811,12 +817,12 @@ export class OrderService {
         },
         paymentMethod: 'BALANCE',
         totalPay: 0,
-        orderTime: expected_arrival_time - deliveryTime - deliverBufferTime,
+        orderTime: orderTime,
         promoCode: null,
         remarks: driver_note,
         adminNote: '',
         routeOptimized: false,
-        idleUntil: expected_arrival_time - deliveryTime - deliverBufferTime,
+        idleUntil: orderTime,
         items: deliveryItems,
         packageDetails: [],
         groupServiceId: null,
