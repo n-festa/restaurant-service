@@ -48,7 +48,7 @@ export class SKU {
     nullable: true,
     unique: false,
   })
-  public calorie_kcal: number;
+  public calorie_kcal: string;
 
   @Column({
     type: 'decimal',

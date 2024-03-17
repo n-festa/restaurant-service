@@ -21,4 +21,5 @@ export default () => ({
   featureFlag: process.env.FEATURE_FLAG || '',
   ahamoveToken: process.env.AHAMOVE_TOKEN,
   planningDay: 7, // the restaurant will plan new cooking schedule every Saturday (last until the end of the day)
+  timeStepInTimSlotConverterM: 15, //minutes
 });

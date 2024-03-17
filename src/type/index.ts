@@ -208,3 +208,22 @@ export interface CouponAppliedItem {
   price_after_discount: number;
   packaging_price: number;
 }
+
+export interface CouponValue {
+  coupon_value_from_platform: number;
+  coupon_value_from_restaurant: number;
+}
+
+export interface OrderItemRequest {
+  sku_id: number;
+  qty_ordered: number;
+  advanced_taste_customization_obj: OptionSelection[];
+  basic_taste_customization_obj: BasicTasteSelection[];
+  notes: string;
+  packaging_id: number;
+}
+
+export interface OrderDetailRequest {
+  order_id: number;
+  customer_id: number;
+}

@@ -3,26 +3,29 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Media } from './media.entity';
 
 @Entity('Driver')
 export class Driver {
   @PrimaryGeneratedColumn()
   driver_id: number;
 
-  @Column({ length: 255 })
+  @Column({ type: 'varchar', length: 255, nullable: false, unique: false })
   name: string;
 
-  @Column({ length: 25, nullable: true })
+  @Column({ type: 'varchar', length: 25, nullable: true, unique: false })
   phone_number: string | null;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   email: string | null;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   vehicle: string | null;
 
-  @Column({ length: 48, nullable: true })
+  @Column({ type: 'varchar', length: 48, nullable: true, unique: false })
   license_plates: string | null;
 
   @Column({
@@ -32,10 +35,10 @@ export class Driver {
   })
   type: 'AHAMOVE' | 'ONWHEEL' | null;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   reference_id: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true, unique: false })
   profile_image: number;
 
   @CreateDateColumn({
@@ -45,4 +48,12 @@ export class Driver {
     default: () => 'CURRENT_TIMESTAMP',
   })
   public created_at: Date;
+
+  //RELATIONSHIP
+  @ManyToOne(() => Media)
+  @JoinColumn({
+    name: 'profile_image',
+    referencedColumnName: 'media_id',
+  })
+  profile_image_obj: Media;
 }

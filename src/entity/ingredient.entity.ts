@@ -18,17 +18,41 @@ export class Ingredient {
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public eng_name: string;
 
-  @Column({ type: 'int', nullable: true, unique: false })
-  public calorie_kcal: number;
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    unique: false,
+  })
+  public calorie_kcal: string;
 
-  @Column({ type: 'int', nullable: true, unique: false })
-  public protein_g: number;
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    unique: false,
+  })
+  public protein_g: string;
 
-  @Column({ type: 'int', nullable: true, unique: false })
-  public fat_g: number;
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    unique: false,
+  })
+  public fat_g: string;
 
-  @Column({ type: 'int', nullable: true, unique: false })
-  public carbohydrate_g: number;
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    unique: false,
+  })
+  public carbohydrate_g: string;
 
   @Column({ type: 'varchar', length: 10, nullable: true, unique: false })
   public ma_BTP2007: string;
