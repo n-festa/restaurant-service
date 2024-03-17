@@ -50,6 +50,7 @@ export interface AhamoveOrder {
   group_requests: null | string;
   order_id?: string;
   response: string;
+  shared_link?: string;
 }
 
 export interface PostAhaOrderRequest {

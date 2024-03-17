@@ -19,14 +19,14 @@ export class OrderDetailResponse {
   expected_arrival_time: number;
   order_items: OrderItemResponse[];
   order_status_log: OrderStatusLog[];
+  tracking_url: string;
 }
 interface Driver {
   driver_id: number;
   name: string;
-  phone_number: number;
+  phone_number: string;
   vehicle: string;
   license_plates: string;
-  tracking_url: string;
   profile_image: string;
 }
 interface Payment {

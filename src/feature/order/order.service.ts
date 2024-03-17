@@ -821,6 +821,8 @@ export class OrderService {
       this.logger.log(newInvoice.identifiers);
       const newInvoiceId = Number(newInvoice.identifiers[0].invoice_id);
 
+      //Create the request to
+
       // insert data into table Invoice_Status_History
       // - status STARTED
       const newInvoiceStatus = await transactionalEntityManager
@@ -1017,13 +1019,22 @@ export class OrderService {
     );
 
     //Get driver info
-    const driver = await this.entityManager
-      .createQueryBuilder(DriverStatusLog, 'driverLog')
-      .leftJoinAndSelect('driverLog.driver', 'driver')
-      .leftJoinAndSelect('driver.profile_image_obj', 'profileImg')
-      .where('driverLog.order_id = :order_id', { order_id })
-      .orderBy('driverLog.logged_at', 'DESC')
-      .getOne();
+    const driver = (
+      await this.entityManager
+        .createQueryBuilder(DriverStatusLog, 'driverLog')
+        .leftJoinAndSelect('driverLog.driver', 'driver')
+        .leftJoinAndSelect('driver.profile_image_obj', 'profileImg')
+        .where('driverLog.order_id = :order_id', { order_id })
+        .orderBy('driverLog.logged_at', 'DESC')
+        .getOne()
+    )?.driver;
+
+    //Get tracking link
+    const shareLink = (
+      await this.ahamoveService.getAhamoveOrderByOrderId(
+        order.delivery_order_id,
+      )
+    ).shared_link;
 
     const orderDetail: OrderDetailResponse = {
       order_id: order.order_id,
@@ -1043,7 +1054,16 @@ export class OrderService {
         longitude: order.address_obj.longitude,
       },
       driver_note: order.driver_note,
-      // driver: Driver;
+      driver: !driver
+        ? null
+        : {
+            driver_id: driver.driver_id,
+            name: driver.name,
+            phone_number: driver.phone_number,
+            vehicle: driver.vehicle,
+            license_plates: driver.license_plates,
+            profile_image: driver.profile_image_obj?.url,
+          },
       // order_total: number;
       // delivery_fee: number;
       // packaging_fee: number;
@@ -1058,6 +1078,7 @@ export class OrderService {
       // expected_arrival_time: number;
       // order_items: OrderItemResponse[];
       // order_status_log: OrderStatusLog[];
+      tracking_url: shareLink,
     };
 
     return new OrderDetailResponse();

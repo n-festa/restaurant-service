@@ -1,6 +1,17 @@
-import { AhaMoveRequest, Item, PackageDetail } from 'src/dependency/ahamove/dto/ahamove.dto';
+import {
+  AhaMoveRequest,
+  Item,
+  PackageDetail,
+} from 'src/dependency/ahamove/dto/ahamove.dto';
 import { PathLocation } from 'src/dependency/ahamove/dto/ahamove.hook';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 
 @Entity('Ahamove_Order')
 export class AhamoveOrderEntity {
@@ -57,4 +68,7 @@ export class AhamoveOrderEntity {
 
   @Column({ nullable: true })
   group_requests: string | null;
+
+  @Column({ type: 'varchar', length: 2048, nullable: true })
+  shared_link: string;
 }
