@@ -82,3 +82,8 @@ export enum OrderMilestones {
   CREATED = 'created',
   START_TO_PROCESS = 'started_to_process',
 }
+
+export enum PaymentList {
+  MOMO = 'momo',
+  COD = 'COD',
+}

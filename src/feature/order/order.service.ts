@@ -12,6 +12,7 @@ import {
   CouponType,
   InvoiceHistoryStatusEnum,
   OrderStatus,
+  PaymentList,
 } from 'src/enum';
 import { EntityManager, Repository } from 'typeorm';
 import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
@@ -41,6 +42,8 @@ import { MenuItem } from 'src/entity/menu-item.entity';
 import { ConfigService } from '@nestjs/config';
 import { Invoice } from 'src/entity/invoice.entity';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
+import { PostAhaOrderRequest } from 'src/dependency/ahamove/dto/ahamove.dto';
+import { Customer } from 'src/entity/customer.entity';
 
 @Injectable()
 export class OrderService {
@@ -524,6 +527,17 @@ export class OrderService {
       throw new CustomRpcException(100, 'Restaurant doesnot exist');
     }
 
+    //validate customer exist
+    const customer = await this.entityManager
+      .createQueryBuilder(Customer, 'customer')
+      .where('customer.customer_id = :customer_id', {
+        customer_id,
+      })
+      .getOne();
+    if (!customer) {
+      throw new CustomRpcException(115, 'Customer is not found');
+    }
+
     const skuList = [...new Set(order_items.map((i) => i.sku_id))];
     //Validate SKU list belongs to the restaurant
     if (order_items.length > 0) {
@@ -551,7 +565,7 @@ export class OrderService {
         address_id: restaurant.address_id,
       })
       .getOne();
-    const deliveryFee = (
+    const deliveryEstimation = (
       await this.ahamoveService.estimatePrice([
         {
           lat: restaurantAddress.latitude,
@@ -562,7 +576,9 @@ export class OrderService {
           long: address.longitude,
         },
       ])
-    )[0].data.total_price;
+    )[0].data;
+    const deliveryFee = deliveryEstimation.total_price;
+
     this.logger.debug(deliveryFee);
     if (deliveryFee != delivery_fee) {
       console.log(deliveryFee);
@@ -709,12 +725,12 @@ export class OrderService {
         break;
       }
     }
-    // if (!isValidExpectedArrivalTime) {
-    //   throw new CustomRpcException(112, {
-    //     message: 'Invalid expected arrival time',
-    //     expected_arrival_time_ranges: availableDeliveryTime,
-    //   });
-    // }
+    if (!isValidExpectedArrivalTime) {
+      throw new CustomRpcException(112, {
+        message: 'Invalid expected arrival time',
+        expected_arrival_time_ranges: availableDeliveryTime,
+      });
+    }
 
     //set is_preorder or not
     let isPreorder = false;
@@ -726,6 +742,97 @@ export class OrderService {
       isPreorder = true;
     } else if (isToday && havingAdvancedCustomization) {
       isPreorder = true;
+    }
+
+    //Create the request to delivery service
+    let deliveryOrderId = null;
+    if (isPreorder == false && paymentMethod.name == PaymentList.COD) {
+      const restaurantAddressString = restaurantAddress.address_line
+        ? `${restaurantAddress.address_line}, ${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`
+        : `${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`;
+      const customerAddressString = address.address_line
+        ? `${address.address_line}, ${address.ward}, ${address.city}, ${address.country}`
+        : `${address.ward}, ${address.city}, ${address.country}`;
+      const deliveryTime = deliveryEstimation.duration * 1000;
+      const deliverBufferTime =
+        this.configService.get<number>('deliverBufferTime') * 60 * 1000;
+      const averageOtherFee = (orderTotal - orderSubTotal) / orderQuantitySum;
+      const skuWIthMenuItems = await this.entityManager
+        .createQueryBuilder(SKU, 'sku')
+        .leftJoinAndSelect('sku.menu_item', 'menuItem')
+        .leftJoinAndSelect('menuItem.menuItemExt', 'ext')
+        .where('sku.sku_id IN (:...skuList)', { skuList })
+        .getMany();
+      const deliveryItems = [];
+      orderItems.forEach((i) => {
+        const sku = skuWIthMenuItems.find(
+          (skuWIthMenuItem) => skuWIthMenuItem.sku_id == i.sku_id,
+        );
+        const name = sku.menu_item.menuItemExt.find(
+          (ext) => ext.ISO_language_code == 'vie',
+        ).short_name;
+        deliveryItems.push({
+          _id: i.sku_id.toString(),
+          num: i.qty_ordered,
+          name: `${name} - ${i.portion_customization} - ${i.advanced_taste_customization} - ${i.basic_taste_customization}`,
+          price: i.qty_ordered + averageOtherFee,
+        });
+      });
+      const ahamoveOrderRequest: PostAhaOrderRequest = {
+        startingPoint: {
+          address: restaurantAddressString,
+          lat: restaurantAddress.latitude,
+          lng: restaurantAddress.longitude,
+          name: restaurant.restaurant_ext.find(
+            (i) => (i.ISO_language_code = 'vie'),
+          ).name,
+          mobile: restaurant.phone_number,
+          cod: 0,
+          formatted_address: restaurantAddressString,
+          short_address: restaurantAddressString,
+          address_code: null,
+          remarks: 'KHÔNG ỨNG TIỀN',
+          item_value: 0,
+          // require_pod?: boolean; // Optional property
+        },
+        destination: {
+          address: customerAddressString,
+          lat: address.latitude,
+          lng: address.longitude,
+          name: customer.name,
+          mobile: customer.phone_number,
+          cod: orderTotal,
+          formatted_address: customerAddressString,
+          short_address: customerAddressString,
+          address_code: null,
+          remarks: 'KHÔNG ỨNG TIỀN',
+          item_value: 0,
+          require_pod: true,
+        },
+        paymentMethod: 'BALANCE',
+        totalPay: 0,
+        orderTime: expected_arrival_time - deliveryTime - deliverBufferTime,
+        promoCode: null,
+        remarks: driver_note,
+        adminNote: '',
+        routeOptimized: false,
+        idleUntil: expected_arrival_time - deliveryTime - deliverBufferTime,
+        items: deliveryItems,
+        packageDetails: [],
+        groupServiceId: null,
+        groupRequests: null,
+        serviceType: null,
+      };
+      try {
+        deliveryOrderId = (
+          await this.ahamoveService.postAhamoveOrder(ahamoveOrderRequest)
+        ).order_id;
+      } catch (error) {
+        throw new CustomRpcException(
+          114,
+          'There are some errors to request the delivery service',
+        );
+      }
     }
 
     //insert database (with transaction)
@@ -770,6 +877,7 @@ export class OrderService {
           currency: restaurant.unit,
           is_preorder: isPreorder,
           expected_arrival_time: expected_arrival_time,
+          delivery_order_id: deliveryOrderId,
           driver_note: driver_note,
         })
         .execute();
@@ -820,8 +928,6 @@ export class OrderService {
         .execute();
       this.logger.log(newInvoice.identifiers);
       const newInvoiceId = Number(newInvoice.identifiers[0].invoice_id);
-
-      //Create the request to
 
       // insert data into table Invoice_Status_History
       // - status STARTED
@@ -1030,11 +1136,13 @@ export class OrderService {
     )?.driver;
 
     //Get tracking link
-    const shareLink = (
-      await this.ahamoveService.getAhamoveOrderByOrderId(
-        order.delivery_order_id,
-      )
-    ).shared_link;
+    const shareLink = order.delivery_order_id
+      ? (
+          await this.ahamoveService.getAhamoveOrderByOrderId(
+            order.delivery_order_id,
+          )
+        )?.shared_link
+      : undefined;
 
     const orderDetail: OrderDetailResponse = {
       order_id: order.order_id,

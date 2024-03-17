@@ -963,7 +963,7 @@ export class CommonService {
     lat: number,
     // utc_offset: number,
     having_advanced_customization: boolean,
-    buffer_s = 5 * 60, // 5 mins
+    buffer_s = this.configService.get<number>('deliverBufferTime') * 60, // 5 mins
   ): Promise<TimeRange[]> {
     const menuItems = await this.getMenuItemByIds(menu_item_ids);
 
