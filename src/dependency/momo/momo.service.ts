@@ -64,33 +64,28 @@ export class MomoService {
     const requestId = uuidv4();
     const orderId = requestId;
     const momoSignatureObj = {
-      accessKey: this.accessKey,
-      amount: currentInvoice.total_amount,
-      extraData: currentInvoice.description,
-      ipnUrl: this.ipnUrl,
-      orderId: orderId,
-      orderInfo: currentInvoice.description,
       partnerCode: this.partnerCode,
-      redirectUrl: this.redirectUrl,
+      accessKey: this.accessKey,
       requestId: requestId,
+      amount: currentInvoice.total_amount,
+      orderId: orderId,
+      orderInfo:
+        currentInvoice.description ||
+        `payment for invoice id ${request.invoiceId}`,
+      redirectUrl: this.redirectUrl,
+      ipnUrl: this.ipnUrl,
+      extraData: '',
       requestType: this.requestType,
     };
+    console.log(momoSignatureObj);
+
     const rawSignature = this.createSignature(momoSignatureObj);
     const signature = crypto
       .createHmac('sha256', this.secretkey)
       .update(rawSignature)
       .digest('hex');
     const requestBody = JSON.stringify({
-      partnerCode: this.partnerCode,
-      accessKey: this.accessKey,
-      requestId: requestId,
-      amount: currentInvoice.total_amount,
-      extraData: currentInvoice.description,
-      ipnUrl: this.ipnUrl,
-      orderId: orderId,
-      orderInfo: currentInvoice.description,
-      redirectUrl: this.redirectUrl,
-      requestType: this.requestType,
+      ...momoSignatureObj,
       signature: signature,
       lang: 'en',
     });
@@ -127,6 +122,8 @@ export class MomoService {
       where: { invoice_id: currentInvoice.invoice_id },
       order: { created_at: 'DESC' },
     });
+    console.log('========', currentInvoice, latestInvoiceStatus);
+
     if (
       latestInvoiceStatus &&
       latestInvoiceStatus.status_id === 'NEW' &&
@@ -134,7 +131,7 @@ export class MomoService {
     ) {
       this.logger.log(
         'currentInvoice for momo payment order: ',
-        currentInvoice,
+        JSON.stringify(currentInvoice),
       );
       return axiosInstance
         .request(options)
@@ -194,10 +191,10 @@ export class MomoService {
             payUrl: momoOrderResult.payUrl,
           };
         })
-        .catch(async (error) => {
+        .catch(async (error: AxiosError) => {
           this.logger.error(
             'An error occurred when create momo request',
-            JSON.stringify(error),
+            JSON.stringify(error.response?.data),
           );
           await this.orderService.cancelOrder(currentInvoice.order_id, {
             isMomo: true,
