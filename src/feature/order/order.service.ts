@@ -560,7 +560,7 @@ export class OrderService {
 
     //Build OrderSKU data
     const orderItems = await this.buildOrderSKUData(order_items);
-    this.logger.debug(orderItems);
+    // this.logger.debug(orderItems);
 
     //calculate  delivery fee
     const restaurantAddress = await this.entityManager
@@ -597,61 +597,58 @@ export class OrderService {
     const orderQuantitySum = order_items
       .map((i) => i.qty_ordered)
       .reduce((sum, current_quan) => (sum += current_quan), 0);
-    const cutleryFee = (
-      await this.getCutleryFee(restaurant_id, orderQuantitySum)
-    ).amount;
-    if (cutleryFee != cutlery_fee) {
-      // throw new CustomRpcException(102, 'Cutlery fee is not correct');
-      throw new CustomRpcException(102, {
-        message: 'Cutlery fee is not correct',
-        cutlery_fee: cutleryFee,
-      });
-    }
 
-    //calculate app_fee
-    const appFee = await this.getApplicationFee(orderQuantitySum, 1);
-    this.logger.log(appFee);
-    if (appFee != app_fee) {
-      // throw new CustomRpcException(103, 'App fee is not correct');
-      throw new CustomRpcException(103, {
-        message: 'App fee is not correct',
-        app_fee: appFee,
-      });
+    let cutleryFee = 0;
+    if (cutlery_fee || cutlery_fee == 0) {
+      cutleryFee = (await this.getCutleryFee(restaurant_id, orderQuantitySum))
+        .amount;
+      if (cutleryFee != cutlery_fee) {
+        // throw new CustomRpcException(102, 'Cutlery fee is not correct');
+        throw new CustomRpcException(102, {
+          message: 'Cutlery fee is not correct',
+          cutlery_fee: cutleryFee,
+        });
+      }
     }
 
     //get coupon info
-    const validCoupon = await this.validateApplyingCouponCode(
-      coupon_code,
-      restaurant_id,
-      skuList,
-    );
-    if (!validCoupon) {
-      throw new CustomRpcException(104, 'Coupon code is invalid');
-    }
-    const couponAppliedItems: CouponAppliedItem[] = orderItems.map((i) => {
-      return {
-        sku_id: i.sku_id,
-        qty_ordered: i.qty_ordered,
-        price_after_discount: i.price,
-        packaging_price: i.packaging_obj.price,
-      };
-    });
-
-    const couponValue: CouponValue = this.calculateDiscountAmount(
-      validCoupon,
-      couponAppliedItems,
-    );
-    if (
-      couponValue.coupon_value_from_platform +
-        couponValue.coupon_value_from_restaurant !=
-      coupon_value
-    ) {
-      throw new CustomRpcException(109, {
-        message: 'Coupon value is incorrect',
-        coupon_value:
-          couponValue.coupon_value_from_platform +
-          couponValue.coupon_value_from_restaurant,
+    let couponValueFromPlatform = 0;
+    let couponValueFromRestaurant = 0;
+    let validCoupon: Coupon = undefined;
+    if (coupon_code) {
+      validCoupon = await this.validateApplyingCouponCode(
+        coupon_code,
+        restaurant_id,
+        skuList,
+      );
+      if (!validCoupon) {
+        throw new CustomRpcException(104, 'Coupon code is invalid');
+      }
+      const couponAppliedItems: CouponAppliedItem[] = orderItems.map((i) => {
+        return {
+          sku_id: i.sku_id,
+          qty_ordered: i.qty_ordered,
+          price_after_discount: i.price,
+          packaging_price: i.packaging_obj.price,
+        };
       });
+
+      const couponValue: CouponValue = this.calculateDiscountAmount(
+        validCoupon,
+        couponAppliedItems,
+      );
+      couponValueFromPlatform = couponValue.coupon_value_from_platform;
+      couponValueFromRestaurant = couponValue.coupon_value_from_restaurant;
+      // this.logger.debug(couponValueFromPlatform);
+      // this.logger.debug(couponValueFromRestaurant);
+      if (couponValueFromPlatform + couponValueFromRestaurant != coupon_value) {
+        throw new CustomRpcException(109, {
+          message: 'Coupon value is incorrect',
+          coupon_value:
+            couponValue.coupon_value_from_platform +
+            couponValue.coupon_value_from_restaurant,
+        });
+      }
     }
 
     let orderSubTotal = 0;
@@ -659,6 +656,17 @@ export class OrderService {
     for (const item of orderItems) {
       orderSubTotal += item.price * item.qty_ordered;
       packagingFee += item.packaging_obj.price * item.qty_ordered;
+    }
+
+    //calculate app_fee
+    const appFee = await this.getApplicationFee(orderSubTotal, 1);
+    this.logger.log(appFee);
+    if (appFee != app_fee) {
+      // throw new CustomRpcException(103, 'App fee is not correct');
+      throw new CustomRpcException(103, {
+        message: 'App fee is not correct',
+        app_fee: appFee,
+      });
     }
 
     //validate with packaging fee
@@ -670,14 +678,24 @@ export class OrderService {
     }
 
     //validate order total
+    // this.logger.debug('orderSubTotal', orderSubTotal);
+    // this.logger.debug('deliveryFee', deliveryFee);
+    // this.logger.debug('packagingFee', packagingFee);
+    // this.logger.debug('cutleryFee', cutleryFee);
+    // this.logger.debug('appFee', appFee);
+    // this.logger.debug(
+    //   'couponValue',
+    //   couponValueFromPlatform + couponValueFromRestaurant,
+    // );
+
     const orderTotal =
       orderSubTotal +
       deliveryFee +
       packagingFee +
       cutleryFee +
       appFee -
-      couponValue.coupon_value_from_platform -
-      couponValue.coupon_value_from_restaurant;
+      couponValueFromPlatform -
+      couponValueFromRestaurant;
     if (orderTotal != order_total) {
       throw new CustomRpcException(111, {
         message: 'Order total is incorrect',
@@ -879,10 +897,9 @@ export class OrderService {
           packaging_fee: packagingFee,
           cutlery_fee: cutleryFee,
           app_fee: appFee,
-          coupon_value_from_platform: couponValue.coupon_value_from_platform,
-          coupon_value_from_restaurant:
-            couponValue.coupon_value_from_restaurant,
-          coupon_id: validCoupon.coupon_id,
+          coupon_value_from_platform: couponValueFromPlatform,
+          coupon_value_from_restaurant: couponValueFromRestaurant,
+          coupon_id: validCoupon ? validCoupon.coupon_id : null,
           currency: restaurant.unit,
           is_preorder: isPreorder,
           expected_arrival_time: expected_arrival_time,
@@ -927,9 +944,7 @@ export class OrderService {
           payment_method: payment_method_id,
           total_amount: orderTotal,
           tax_amount: 0,
-          discount_amount:
-            couponValue.coupon_value_from_platform +
-            couponValue.coupon_value_from_restaurant,
+          discount_amount: couponValueFromPlatform + couponValueFromRestaurant,
           description: '',
           order_id: newOrderId,
           currency: restaurant.unit,
