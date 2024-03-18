@@ -226,6 +226,7 @@ export class AhamoveService implements OnModuleInit {
       const { data } = await axios.request(config);
       // update order id and response from ahamove
       orderRequest.order_id = data.order_id;
+      orderRequest.shared_link = data.shared_link;
       orderRequest.response = data;
       const result = await this.ahamoveOrder.save(
         AhamoveMapper.fromDTOtoEntity(orderRequest),
