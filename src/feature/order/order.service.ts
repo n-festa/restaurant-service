@@ -11,6 +11,7 @@ import {
   CouponFilterType,
   CouponType,
   InvoiceHistoryStatusEnum,
+  OrderMilestones,
   OrderStatus,
   PaymentList,
 } from 'src/enum';
@@ -27,6 +28,7 @@ import {
   CouponValue,
   MoneyType,
   OrderItemRequest,
+  TextByLang,
 } from 'src/type';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
@@ -45,6 +47,7 @@ import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { PostAhaOrderRequest } from 'src/dependency/ahamove/dto/ahamove.dto';
 import { Customer } from 'src/entity/customer.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
+import { Packaging } from 'src/entity/packaging.entity';
 
 @Injectable()
 export class OrderService {
@@ -1104,6 +1107,7 @@ export class OrderService {
       .leftJoinAndSelect('order.order_status_log', 'orderStatusLog')
       .leftJoinAndSelect('orderStatusLog.order_status_ext', 'orderStatusExt')
       .leftJoinAndSelect('order.invoice_obj', 'invoice')
+      .leftJoinAndSelect('invoice.payment_option_obj', 'payment')
       .leftJoinAndSelect('invoice.history_status_obj', 'invoiceHistory')
       .leftJoinAndSelect(
         'invoiceHistory.invoice_status_ext',
@@ -1150,6 +1154,154 @@ export class OrderService {
         )?.shared_link
       : undefined;
 
+    //build PaymentStatusHistory List
+    const paymentStatusHistory = [];
+    for (const invoiceHistory of order.invoice_obj.history_status_obj) {
+      const nameByLang: TextByLang[] = [];
+      invoiceHistory.invoice_status_ext.forEach((status) => {
+        nameByLang.push({
+          ISO_language_code: status.ISO_language_code,
+          text: status.name,
+        });
+      });
+      paymentStatusHistory.push({
+        status_id: invoiceHistory.status_id,
+        name: nameByLang,
+        note: invoiceHistory.note,
+        created_at: invoiceHistory.created_at,
+      });
+    }
+
+    // Build OrderItemResponse
+    const orderItemResponse = [];
+    const skuIds = [...new Set(order.items.map((i) => i.sku_id))];
+    const skus = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'image')
+      .where('sku.sku_id IN (:...skuIds)', { skuIds })
+      .getMany();
+    const packagingIds = [...new Set(order.items.map((i) => i.packaging_id))];
+    const packages = await this.entityManager
+      .createQueryBuilder(Packaging, 'packaging')
+      .leftJoinAndSelect('packaging.packaging_ext_obj', 'ext')
+      .where('packaging.packaging_id IN (:...packagingIds)', {
+        packagingIds,
+      })
+      .getMany();
+
+    for (const orderItem of order.items) {
+      const sku = skus.find((i) => i.sku_id);
+      const itemNameByLang: TextByLang[] = sku.menu_item.menuItemExt.map(
+        (i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.name,
+          };
+        },
+      );
+      const packaging = packages.find(
+        (i) => i.packaging_id == orderItem.packaging_id,
+      );
+      const packagingName: TextByLang[] = [];
+      const packagingDesc: TextByLang[] = [];
+      packaging.packaging_ext_obj.forEach((ext) => {
+        packagingName.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+        packagingDesc.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.description,
+        });
+      });
+      const orderItemPackaging = {
+        packaging_id: packaging.packaging_id,
+        name: packagingName,
+        description: packagingDesc,
+        price: packaging.price,
+      };
+      orderItemResponse.push({
+        item_name: itemNameByLang,
+        item_img: sku.menu_item.image_obj.url,
+        order_id: orderItem.order_id,
+        sku_id: orderItem.sku_id,
+        qty_ordered: orderItem.qty_ordered,
+        price: orderItem.price,
+        advanced_taste_customization_obj:
+          orderItem.advanced_taste_customization_obj
+            ? JSON.parse(orderItem.advanced_taste_customization_obj)
+            : [],
+        basic_taste_customization_obj: orderItem.basic_taste_customization_obj
+          ? JSON.parse(orderItem.basic_taste_customization_obj)
+          : [],
+        advanced_taste_customization: orderItem.advanced_taste_customization,
+        basic_taste_customization: orderItem.basic_taste_customization,
+        portion_customization: orderItem.portion_customization,
+        notes: orderItem.notes,
+        calorie_kcal: orderItem.calorie_kcal,
+        packaging_info: orderItemPackaging,
+      });
+    }
+
+    //buil OrderStatusLog
+    const orderStatusLog = [];
+    order.order_status_log.forEach((log) => {
+      let milestone = null;
+      switch (log.order_status_id) {
+        case OrderStatus.NEW: {
+          milestone = OrderMilestones.CREATED;
+          break;
+        }
+
+        case OrderStatus.IDLE: {
+          milestone = OrderMilestones.CONFIRMED;
+          break;
+        }
+
+        case OrderStatus.PROCESSING: {
+          milestone = OrderMilestones.START_TO_PROCESS;
+          break;
+        }
+
+        case OrderStatus.DELIVERING: {
+          milestone = OrderMilestones.PICKED_UP;
+          break;
+        }
+
+        case OrderStatus.COMPLETED: {
+          milestone = OrderMilestones.COMPLETED;
+          break;
+        }
+
+        case OrderStatus.FAILED: {
+          milestone = OrderMilestones.FAILED;
+          break;
+        }
+
+        case OrderStatus.CANCELLED: {
+          milestone = OrderMilestones.CANCELLED;
+          break;
+        }
+
+        default:
+          //do nothing
+          break;
+      }
+      orderStatusLog.push({
+        status: log.order_status_id,
+        description: log.order_status_ext.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.description,
+          };
+        }),
+        logged_at: log.logged_at,
+        milestone: milestone,
+      });
+    });
+
     const orderDetail: OrderDetailResponse = {
       order_id: order.order_id,
       customer_id: order.customer_id,
@@ -1178,23 +1330,27 @@ export class OrderService {
             license_plates: driver.license_plates,
             profile_image: driver.profile_image_obj?.url,
           },
-      // order_total: number;
-      // delivery_fee: number;
-      // packaging_fee: number;
-      // cutlery_fee: number;
-      // app_fee: number;
-      // coupon_value: number;
-      // coupon_id: number;
-      // invoice_id: number;
-      // payment_method: Payment;
-      // payment_status_history: PaymentStatusHistory[];
-      // is_preorder: boolean;
-      // expected_arrival_time: number;
-      // order_items: OrderItemResponse[];
-      // order_status_log: OrderStatusLog[];
+      order_total: order.order_total,
+      delivery_fee: order.delivery_fee,
+      packaging_fee: order.packaging_fee,
+      cutlery_fee: order.cutlery_fee,
+      app_fee: order.app_fee,
+      coupon_value:
+        order.coupon_value_from_platform + order.coupon_value_from_restaurant,
+      coupon_id: order.order_id,
+      invoice_id: order.invoice_obj.invoice_id,
+      payment_method: {
+        id: order.invoice_obj.payment_option_obj.option_id,
+        name: order.invoice_obj.payment_option_obj.name,
+      },
+      payment_status_history: paymentStatusHistory,
+      is_preorder: Boolean(order.is_preorder),
+      expected_arrival_time: order.expected_arrival_time,
+      order_items: orderItemResponse,
+      order_status_log: orderStatusLog,
       tracking_url: shareLink,
     };
 
-    return new OrderDetailResponse();
+    return orderDetail;
   }
 }

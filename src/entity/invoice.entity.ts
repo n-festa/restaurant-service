@@ -6,9 +6,11 @@ import {
   OneToOne,
   JoinColumn,
   OneToMany,
+  ManyToOne,
 } from 'typeorm';
 import { Order } from './order.entity';
 import { InvoiceStatusHistory } from './invoice-history-status.entity';
+import { PaymentOption } from './payment-option.entity';
 
 @Entity('Invoice')
 export class Invoice {
@@ -91,4 +93,11 @@ export class Invoice {
 
   @OneToMany(() => InvoiceStatusHistory, (history) => history.invoice_obj)
   public history_status_obj: InvoiceStatusHistory[];
+
+  @ManyToOne(() => PaymentOption)
+  @JoinColumn({
+    name: 'payment_method',
+    referencedColumnName: 'option_id',
+  })
+  public payment_option_obj: PaymentOption;
 }
