@@ -82,11 +82,11 @@ export class OrderService {
         where: { delivery_order_id: orderId },
       });
       const latestOrderStatus = await this.orderStatusLogRepo.findOne({
-        where: { order_id: orderId },
+        where: { order_id: currentOrder.order_id },
         order: { logged_at: 'DESC' },
       });
       const latestDriverStatus = await this.driverStatusLogRepo.findOne({
-        where: { order_id: orderId },
+        where: { order_id: currentOrder.order_id },
         order: { logged_at: 'DESC' },
       });
       if (currentOrder) {
@@ -100,9 +100,7 @@ export class OrderService {
       }
       return { message: 'Order not existed' };
     } catch (error) {
-      this.logger.error(
-        `An error occurred while updating order: ${error.message}`,
-      );
+      this.logger.error(`An error occurred while updating order: ${error}`);
       throw new InternalServerErrorException();
     }
   }
@@ -112,7 +110,7 @@ export class OrderService {
     latestDriverId,
     webhookData,
   ) {
-    const PATH_STATUS = webhookData?.path?.status;
+    const PATH_STATUS = webhookData?.path[2]?.status; // assume 3rd is status record
     const SUB_STATUS = webhookData?.sub_status;
 
     const orderStatusLog = new OrderStatusLog();
@@ -168,7 +166,7 @@ export class OrderService {
         const currentDriver = await this.driverRepo.findOne({
           where: { reference_id: webhookData.supplier_id, type: driverType },
         });
-        let driverId = currentDriver.driver_id;
+        let driverId = currentDriver?.driver_id;
         if (currentDriver) {
           currentDriver.license_plates = webhookData.supplier_plate_number;
           currentDriver.phone_number = webhookData.supplier_id;
@@ -208,13 +206,13 @@ export class OrderService {
         // Order_Status_Log with READY and DELIVERING
         if (latestOrderStatus === OrderStatus.PROCESSING) {
           orderStatusLog.order_status_id = OrderStatus.READY;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.orderStatusLogRepo.save({ ...orderStatusLog });
           orderStatusLog.order_status_id = OrderStatus.DELIVERING;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.orderStatusLogRepo.save({ ...orderStatusLog });
         } else if (latestOrderStatus === OrderStatus.READY) {
           // order_status == READY
           // Order_Status_Log with DELIVERING
-          orderStatusLog.order_status_id = OrderStatus.COMPLETED;
+          orderStatusLog.order_status_id = OrderStatus.DELIVERING;
           await this.orderStatusLogRepo.save(orderStatusLog);
         } else {
           //Urgent_Action_Needed
