@@ -70,7 +70,7 @@ export class InvoiceStatusHistoryService {
           }
           if (order.is_preorder == FALSE) {
             const deliveryOrderId =
-              await this.orderService.createDeliveryRequest(order);
+              await this.orderService.createDeliveryRequest(order, 0);
             await this.entityManager
               .createQueryBuilder()
               .update(Order)

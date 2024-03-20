@@ -778,6 +778,7 @@ export class OrderService {
 
       deliveryOrderId = await this.createDeliveryRequest(
         undefined,
+        orderTotal,
         restaurant_id,
         restaurantAddress,
         customerAddress,
@@ -1343,6 +1344,7 @@ export class OrderService {
 
   async createDeliveryRequest(
     order: Order = undefined,
+    cod_amount: number,
     restaurant_id: number = undefined,
     restaurant_address: Address = undefined,
     customer_address: Address = undefined,
@@ -1556,7 +1558,7 @@ export class OrderService {
         lng: Number(customerAddress.longitude),
         name: customer.name,
         mobile: customer.phone_number,
-        cod: orderTotal,
+        cod: cod_amount,
         formatted_address: customerAddressString,
         short_address: customerAddressString,
         address_code: null,
