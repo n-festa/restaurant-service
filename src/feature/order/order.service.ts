@@ -48,6 +48,8 @@ import { PostAhaOrderRequest } from 'src/dependency/ahamove/dto/ahamove.dto';
 import { Customer } from 'src/entity/customer.entity';
 import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { Packaging } from 'src/entity/packaging.entity';
+import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
+import { VND } from 'src/constant/unit.constant';
 
 @Injectable()
 export class OrderService {
@@ -1365,5 +1367,45 @@ export class OrderService {
     };
 
     return orderDetail;
+  }
+
+  async getDeliveryFeeFromEndPoint(
+    restaurant_id: number,
+    delivery_latitude: number,
+    delivery_longitude: number,
+  ): Promise<GetDeliveryFeeResonse> {
+    //validate restaurant exist
+    const restaurant =
+      await this.commonService.getRestaurantById(restaurant_id);
+    if (!restaurant) {
+      throw new CustomRpcException(2, 'Restaurant doesnot exist');
+    }
+
+    //calculate  delivery fee
+    const restaurantAddress = await this.entityManager
+      .createQueryBuilder(Address, 'address')
+      .where('address.address_id = :address_id', {
+        address_id: restaurant.address_id,
+      })
+      .getOne();
+    const deliveryEstimation = (
+      await this.ahamoveService.estimatePrice([
+        {
+          lat: restaurantAddress.latitude,
+          long: restaurantAddress.longitude,
+        },
+        {
+          lat: delivery_latitude,
+          long: delivery_longitude,
+        },
+      ])
+    )[0].data;
+
+    return {
+      delivery_fee: deliveryEstimation?.total_price,
+      currency: VND,
+      duration_s: deliveryEstimation?.duration,
+      distance_km: deliveryEstimation?.distance,
+    };
   }
 }
