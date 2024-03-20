@@ -16,7 +16,6 @@ import {
   PaymentList,
 } from 'src/enum';
 import { EntityManager, Repository } from 'typeorm';
-import { GetApplicationFeeResponse } from './dto/get-application-fee-response.dto';
 import { AhamoveService } from 'src/dependency/ahamove/ahamove.service';
 import { PaymentOption } from 'src/entity/payment-option.entity';
 import { OrderStatusLog } from 'src/entity/order-status-log.entity';
@@ -50,6 +49,7 @@ import { RestaurantExt } from 'src/entity/restaurant-ext.entity';
 import { Packaging } from 'src/entity/packaging.entity';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { VND } from 'src/constant/unit.constant';
+import { FALSE, TRUE } from 'src/constant';
 
 @Injectable()
 export class OrderService {
@@ -284,6 +284,7 @@ export class OrderService {
         } finally {
           // UPDATE ORDER STATUS
           const orderStatusLog = new OrderStatusLog();
+          orderStatusLog.order_id = order_id;
           orderStatusLog.logged_at = new Date().getTime();
           orderStatusLog.order_status_id = OrderStatus.CANCELLED;
           orderStatusLog.note = 'momo payment has been failed';
@@ -755,111 +756,42 @@ export class OrderService {
     }
 
     //set is_preorder or not
-    let isPreorder = false;
+    let isPreorder = FALSE;
     const isToday = this.commonService.isToday(
       expected_arrival_time,
       restaurant.utc_time_zone,
     );
     if (!isToday) {
-      isPreorder = true;
+      isPreorder = TRUE;
     } else if (isToday && havingAdvancedCustomization) {
-      isPreorder = true;
+      isPreorder = TRUE;
     }
 
     //Create the request to delivery service
     let deliveryOrderId = null;
-    if (isPreorder == false && paymentMethod.name == PaymentList.COD) {
-      const restaurantAddressString = restaurantAddress.address_line
-        ? `${restaurantAddress.address_line}, ${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`
-        : `${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`;
-      const customerAddressString = address.address_line
-        ? `${address.address_line}, ${address.ward}, ${address.city}, ${address.country}`
-        : `${address.ward}, ${address.city}, ${address.country}`;
-      const restaurantExt = await this.entityManager
-        .createQueryBuilder(RestaurantExt, 'ext')
-        .where('ext.restaurant_id = :restaurant_id', { restaurant_id })
-        .andWhere('ext.ISO_language_code = :lang', { lang: 'vie' })
-        .getOne();
-      const deliveryTime = deliveryEstimation.duration * 1000;
-      const deliverBufferTime =
-        this.configService.get<number>('deliverBufferTime') * 60 * 1000;
-      const orderTime =
-        (expected_arrival_time - deliveryTime - deliverBufferTime) / 1000;
-      const averageOtherFee = (orderTotal - orderSubTotal) / orderQuantitySum;
-      const skuWIthMenuItems = await this.entityManager
-        .createQueryBuilder(SKU, 'sku')
-        .leftJoinAndSelect('sku.menu_item', 'menuItem')
-        .leftJoinAndSelect('menuItem.menuItemExt', 'ext')
-        .where('sku.sku_id IN (:...skuList)', { skuList })
-        .getMany();
-      const deliveryItems = [];
-      orderItems.forEach((i) => {
-        const sku = skuWIthMenuItems.find(
-          (skuWIthMenuItem) => skuWIthMenuItem.sku_id == i.sku_id,
-        );
-        const name = sku.menu_item.menuItemExt.find(
-          (ext) => ext.ISO_language_code == 'vie',
-        ).short_name;
-        deliveryItems.push({
-          _id: i.sku_id.toString(),
-          num: i.qty_ordered,
-          name: `${name} - ${i.portion_customization} - ${i.advanced_taste_customization} - ${i.basic_taste_customization}`,
-          price: i.price + averageOtherFee,
-        });
-      });
-      const ahamoveOrderRequest: PostAhaOrderRequest = {
-        startingPoint: {
-          address: restaurantAddressString,
-          lat: Number(restaurantAddress.latitude),
-          lng: Number(restaurantAddress.longitude),
-          name: restaurantExt.name,
-          mobile: restaurant.phone_number,
-          cod: 0,
-          formatted_address: restaurantAddressString,
-          short_address: restaurantAddressString,
-          address_code: null,
-          remarks: 'KHÔNG ỨNG TIỀN',
-          item_value: 0,
-          // require_pod?: boolean; // Optional property
-        },
-        destination: {
-          address: customerAddressString,
-          lat: Number(address.latitude),
-          lng: Number(address.longitude),
-          name: customer.name,
-          mobile: customer.phone_number,
-          cod: orderTotal,
-          formatted_address: customerAddressString,
-          short_address: customerAddressString,
-          address_code: null,
-          remarks: 'KHÔNG ỨNG TIỀN',
-          item_value: 0,
-          require_pod: true,
-        },
-        paymentMethod: 'BALANCE',
-        totalPay: 0,
-        orderTime: orderTime,
-        promoCode: null,
-        remarks: driver_note,
-        adminNote: '',
-        routeOptimized: false,
-        idleUntil: orderTime,
-        items: deliveryItems,
-        packageDetails: [],
-        groupServiceId: null,
-        groupRequests: null,
-        serviceType: null,
+    if (isPreorder == FALSE && paymentMethod.name == PaymentList.COD) {
+      const customerAddress: Address = {
+        address_id: undefined,
+        created_at: undefined,
+        ...address,
       };
-      try {
-        deliveryOrderId = (
-          await this.ahamoveService.postAhamoveOrder(ahamoveOrderRequest)
-        ).order_id;
-      } catch (error) {
-        throw new CustomRpcException(
-          114,
-          'There are some errors to request the delivery service',
-        );
-      }
+
+      deliveryOrderId = await this.createDeliveryRequest(
+        undefined,
+        restaurant_id,
+        restaurantAddress,
+        customerAddress,
+        deliveryEstimation,
+        expected_arrival_time,
+        orderTotal,
+        orderSubTotal,
+        orderQuantitySum,
+        skuList,
+        orderItems,
+        restaurant,
+        customer,
+        driver_note,
+      );
     }
 
     //insert database (with transaction)
@@ -1407,5 +1339,256 @@ export class OrderService {
       duration_s: deliveryEstimation?.duration,
       distance_km: deliveryEstimation?.distance,
     };
+  }
+
+  async createDeliveryRequest(
+    order: Order = undefined,
+    restaurant_id: number = undefined,
+    restaurant_address: Address = undefined,
+    customer_address: Address = undefined,
+    delivery_estimation: any = undefined,
+    expected_arrival_time: number = undefined,
+    order_total: number = undefined,
+    order_sub_total: number = undefined,
+    order_quantity_sum: number = undefined,
+    sku_list: number[] = undefined,
+    order_items: OrderSKU[] = undefined,
+    _restaurant: Restaurant = undefined,
+    _customer: Customer = undefined,
+    driver_note: string = undefined,
+  ): Promise<string> {
+    //Create the request to delivery service
+    let deliveryOrderId: string = undefined;
+
+    //Restaurant Info
+    let restaurant: Restaurant = undefined;
+    if (_restaurant) {
+      restaurant = _restaurant;
+    } else {
+      restaurant = await this.commonService.getRestaurantById(
+        order.restaurant_id,
+      );
+      if (!restaurant) {
+        this.logger.error('Restaurant doesnot exist');
+        throw new Error('Restaurant doesnot exist');
+      }
+    }
+
+    const restaurantId = restaurant_id
+      ? restaurant_id
+      : restaurant.restaurant_id;
+
+    //Restaurant Address
+    let restaurantAddress: Address = undefined;
+    if (restaurant_address) {
+      restaurantAddress = restaurant_address;
+    } else {
+      restaurantAddress = await this.entityManager
+        .createQueryBuilder(Address, 'address')
+        .where('address.address_id = :address_id', {
+          address_id: restaurant.address_id,
+        })
+        .getOne();
+      if (!restaurantAddress) {
+        this.logger.error('Restaurant address doesnot exist');
+        throw new Error('Restaurant address doesnot exist');
+      }
+    }
+
+    //Customer Address
+    let customerAddress: Address = undefined;
+    if (customer_address) {
+      customerAddress = customer_address;
+    } else {
+      customerAddress = await this.entityManager
+        .createQueryBuilder(Address, 'address')
+        .where('address.address_id = :address_id', {
+          address_id: order.address_id,
+        })
+        .getOne();
+      if (!customerAddress) {
+        this.logger.error('Customer address doesnot exist');
+        throw new Error('Customer address doesnot exist');
+      }
+    }
+
+    //Delivery Estimation
+    let deliveryEstimation: any = undefined;
+    if (delivery_estimation) {
+      deliveryEstimation = delivery_estimation;
+    } else {
+      deliveryEstimation = (
+        await this.ahamoveService.estimatePrice([
+          {
+            lat: restaurantAddress.latitude,
+            long: restaurantAddress.longitude,
+          },
+          {
+            lat: customerAddress.latitude,
+            long: customerAddress.longitude,
+          },
+        ])
+      )[0].data;
+      if (!deliveryEstimation) {
+        this.logger.error('Cannot get delivery estimation');
+        throw new Error('Cannot get delivery estimation');
+      }
+    }
+
+    const expectedArrivalTime: number = expected_arrival_time
+      ? expected_arrival_time
+      : order.expected_arrival_time;
+
+    const orderTotal: number = order_total ? order_total : order.order_total;
+
+    const orderSubTotal: number = order_sub_total
+      ? order_sub_total
+      : order.order_total -
+        order.delivery_fee -
+        order.packaging_fee -
+        order.cutlery_fee -
+        order.app_fee +
+        order.coupon_value_from_platform +
+        order.coupon_value_from_restaurant;
+
+    //Order Items
+    let orderItems: OrderSKU[] = undefined;
+    if (order_items) {
+      orderItems = order_items;
+    } else {
+      orderItems = await this.entityManager
+        .createQueryBuilder(OrderSKU, 'item')
+        .where('item.order_id = :order_id', { order_id: order.order_id })
+        .getMany();
+      if (!orderItems || orderItems.length <= 0) {
+        this.logger.error('Cannot found order items');
+        throw new Error('Cannot found order items');
+      }
+    }
+
+    let skuList: number[] = undefined;
+    if (sku_list) {
+      skuList = sku_list;
+    } else {
+      skuList = [...new Set(orderItems.map((item) => item.sku_id))];
+    }
+
+    const orderQuantitySum: number = order_quantity_sum
+      ? order_quantity_sum
+      : orderItems
+          .map((i) => i.qty_ordered)
+          .reduce((sum, val) => (sum += val), 0);
+
+    //Customer Info
+    let customer: Customer = undefined;
+    if (_customer) {
+      customer = _customer;
+    } else {
+      customer = await this.entityManager
+        .createQueryBuilder(Customer, 'customer')
+        .where('customer.customer_id = :customer_id', {
+          customer_id: order.customer_id,
+        })
+        .getOne();
+      if (!customer) {
+        throw new Error('Customer is not found');
+      }
+    }
+
+    const driverNote: string = driver_note ? driver_note : order.driver_note;
+
+    const restaurantAddressString = restaurantAddress.address_line
+      ? `${restaurantAddress.address_line}, ${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`
+      : `${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`;
+    const customerAddressString = customerAddress.address_line
+      ? `${customerAddress.address_line}, ${customerAddress.ward}, ${customerAddress.city}, ${customerAddress.country}`
+      : `${customerAddress.ward}, ${customerAddress.city}, ${customerAddress.country}`;
+    const restaurantExt = await this.entityManager
+      .createQueryBuilder(RestaurantExt, 'ext')
+      .where('ext.restaurant_id = :restaurantId', { restaurantId })
+      .andWhere('ext.ISO_language_code = :lang', { lang: 'vie' })
+      .getOne();
+    const deliveryTime = deliveryEstimation.duration * 1000;
+    const deliverBufferTime =
+      this.configService.get<number>('deliverBufferTime') * 60 * 1000;
+    const orderTime =
+      (expectedArrivalTime - deliveryTime - deliverBufferTime) / 1000;
+    const averageOtherFee = (orderTotal - orderSubTotal) / orderQuantitySum;
+    const skuWIthMenuItems = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'ext')
+      .where('sku.sku_id IN (:...skuList)', { skuList })
+      .getMany();
+    const deliveryItems = [];
+    orderItems.forEach((i) => {
+      const sku = skuWIthMenuItems.find(
+        (skuWIthMenuItem) => skuWIthMenuItem.sku_id == i.sku_id,
+      );
+      const name = sku.menu_item.menuItemExt.find(
+        (ext) => ext.ISO_language_code == 'vie',
+      ).short_name;
+      deliveryItems.push({
+        _id: i.sku_id.toString(),
+        num: i.qty_ordered,
+        name: `${name} - ${i.portion_customization} - ${i.advanced_taste_customization} - ${i.basic_taste_customization}`,
+        price: i.price + averageOtherFee,
+      });
+    });
+    const ahamoveOrderRequest: PostAhaOrderRequest = {
+      startingPoint: {
+        address: restaurantAddressString,
+        lat: Number(restaurantAddress.latitude),
+        lng: Number(restaurantAddress.longitude),
+        name: restaurantExt.name,
+        mobile: restaurant.phone_number,
+        cod: 0,
+        formatted_address: restaurantAddressString,
+        short_address: restaurantAddressString,
+        address_code: null,
+        remarks: 'KHÔNG ỨNG TIỀN',
+        item_value: 0,
+        // require_pod?: boolean; // Optional property
+      },
+      destination: {
+        address: customerAddressString,
+        lat: Number(customerAddress.latitude),
+        lng: Number(customerAddress.longitude),
+        name: customer.name,
+        mobile: customer.phone_number,
+        cod: orderTotal,
+        formatted_address: customerAddressString,
+        short_address: customerAddressString,
+        address_code: null,
+        remarks: driverNote,
+        item_value: 0,
+        require_pod: true,
+      },
+      paymentMethod: 'BALANCE',
+      totalPay: 0,
+      orderTime: orderTime,
+      promoCode: null,
+      remarks: driverNote,
+      adminNote: '',
+      routeOptimized: false,
+      idleUntil: orderTime,
+      items: deliveryItems,
+      packageDetails: [],
+      groupServiceId: null,
+      groupRequests: null,
+      serviceType: null,
+    };
+    try {
+      deliveryOrderId = (
+        await this.ahamoveService.postAhamoveOrder(ahamoveOrderRequest)
+      ).order_id;
+    } catch (error) {
+      throw new CustomRpcException(
+        114,
+        'There are some errors to request the delivery service',
+      );
+    }
+
+    return deliveryOrderId;
   }
 }

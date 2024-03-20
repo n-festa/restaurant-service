@@ -55,7 +55,7 @@ export class Order {
   currency: number;
 
   @Column({ type: 'tinyint', nullable: false, default: '0', unique: false })
-  is_preorder: boolean;
+  is_preorder: number;
 
   @Column({ type: 'bigint', nullable: true, unique: false })
   expected_arrival_time: number;

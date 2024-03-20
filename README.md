@@ -1,4 +1,3 @@
-
 ## Node version
 
 v20.10.0
@@ -13,10 +12,12 @@ v20.10.0
 $ yarn install
 ```
 
-## Running the app
-$ export BACKEND_ENV=dev
-$ npm run typeorm migration:run -- -d ./src/migration.config.ts        
+## Migration
 
+$ export BACKEND_ENV=dev
+$ npm run typeorm migration:run -- -d ./src/migration.config.ts
+$ npm run typeorm migration:revert -- -d ./src/migration.config.ts
+$ npm run typeorm migration:generate ./src/database/migrations/XXXX -- -d ./src/migration.config.ts
 
 ```bash
 # development
