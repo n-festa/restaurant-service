@@ -21,6 +21,8 @@ import { ApplyPromotionCodeResponse } from './dto/apply-promotion-code-response.
 import { CreateOrderRequest } from './dto/create-order-request.dto';
 import { CreateOrderResponse } from './dto/create-order-response.dto';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
+import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
+import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 
 @Controller('order')
 export class OrderController {
@@ -231,5 +233,19 @@ export class OrderController {
     }
 
     return order;
+  }
+
+  @MessagePattern({ cmd: 'get_delivery_fee' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getDeliveryFee(
+    data: GetDeliveryFeeRequest,
+  ): Promise<GetDeliveryFeeResonse> {
+    const { restaurant_id, delivery_latitude, delivery_longitude } = data;
+
+    return await this.orderService.getDeliveryFeeFromEndPoint(
+      restaurant_id,
+      delivery_latitude,
+      delivery_longitude,
+    );
   }
 }
