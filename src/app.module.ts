@@ -19,6 +19,11 @@ import { MomoModule } from './dependency/momo/momo.module';
 import { OrderModule } from './feature/order/order.module';
 import { HealthCheckController } from './healthcheck/health-check.controller';
 import { ClientProxyFactory } from '@nestjs/microservices';
+import { OrderStatusLogSubscriber } from './subscriber/order-status-log.subscriber';
+import { OrderSubscriber } from './subscriber/order.subscriber';
+import { InvoiceSubscriber } from './subscriber/invoice.subscriber';
+import { InvoiceStatusHistorySubscriber } from './subscriber/invoice-status-history.subscriber';
+import { DriverStatusLogSubscriber } from './subscriber/driver-status-log.subscriber';
 
 @Global()
 @Module({
@@ -70,6 +75,11 @@ import { ClientProxyFactory } from '@nestjs/microservices';
       },
       inject: [ConfigService],
     },
+    OrderStatusLogSubscriber,
+    OrderSubscriber,
+    DriverStatusLogSubscriber,
+    InvoiceSubscriber,
+    InvoiceStatusHistorySubscriber,
   ],
   exports: ['GATEWAY_SERVICE'],
 })
