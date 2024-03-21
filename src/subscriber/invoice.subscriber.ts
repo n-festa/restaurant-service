@@ -38,8 +38,8 @@ export class InvoiceSubscriber implements EntitySubscriberInterface<Invoice> {
    */
   afterUpdate(event: UpdateEvent<Invoice>) {
     console.log(`AFTER ENTITY UPDATED: `, event.entity);
-    this.gatewayClient.emit('order_updated', {
-      order_id: event.entity.order_id,
-    });
+    // this.gatewayClient.emit('order_updated', {
+    //   order_id: event.entity.order_id,
+    // });
   }
 }

@@ -25,10 +25,11 @@ export class OrderSubscriber implements EntitySubscriberInterface<Order> {
   /**
    * Called after entity update.
    */
-  afterUpdate(event: UpdateEvent<Order>) {
+  async afterUpdate(event: UpdateEvent<Order>) {
     console.log(`AFTER ENTITY UPDATED: `, event.entity);
-    this.gatewayClient.emit('order_updated', {
-      order_id: event.entity.order_id,
-    });
+
+    // this.gatewayClient.emit('order_updated', {
+    //   order_id: event.entity.order_id,
+    // });
   }
 }
