@@ -68,7 +68,7 @@ export class InvoiceStatusHistoryService {
             this.logger.error(`Order ${currentInvoice.order_id} not existed`);
             throw new InternalServerErrorException();
           }
-          if (order.is_preorder == FALSE) {
+          if (order.is_preorder == FALSE && !order.delivery_order_id) {
             const deliveryOrderId =
               await this.orderService.createDeliveryRequest(order, 0);
             await this.entityManager
