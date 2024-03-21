@@ -1,5 +1,9 @@
-import { Controller, Get, UseFilters } from '@nestjs/common';
-import { MessagePattern } from '@nestjs/microservices';
+import { Controller, Get, Inject, UseFilters } from '@nestjs/common';
+import {
+  ClientProxy,
+  EventPattern,
+  MessagePattern,
+} from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { Repository } from 'typeorm';
@@ -30,6 +34,8 @@ export class OrderController {
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     private readonly orderService: OrderService,
     private readonly commonService: CommonService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
   @MessagePattern({ cmd: 'get_order_by_id' })
   async getOrderByOrderId(order_id) {
@@ -247,5 +253,19 @@ export class OrderController {
       delivery_latitude,
       delivery_longitude,
     );
+  }
+
+  @MessagePattern({ cmd: 'get_order_detail_sse' })
+  async getOrderDetailSse(data: any): Promise<OrderDetailResponse> {
+    const { order_id } = data;
+    const order = await this.orderService.getOrderDetail(order_id);
+    return order;
+  }
+
+  @MessagePattern({ cmd: 'confirm_order_from_restaurant' })
+  async confirmOrder(data: any) {
+    const { order_id } = data;
+    this.gatewayClient.emit('order_updated', { order_id });
+    return order_id;
   }
 }
