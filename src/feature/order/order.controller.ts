@@ -27,6 +27,7 @@ import { CreateOrderResponse } from './dto/create-order-response.dto';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
+import { OrderStatus } from 'src/enum';
 
 @Controller('order')
 export class OrderController {
@@ -267,5 +268,12 @@ export class OrderController {
     const { order_id } = data;
     this.gatewayClient.emit('order_updated', { order_id });
     return order_id;
+  }
+
+  @MessagePattern({ cmd: 'change_order_status_for_testing' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async changeOrderStatusForTesting(data: any) {
+    const { order_id, new_order_status } = data;
+    return await this.orderService.setOrderStatus(order_id, new_order_status);
   }
 }
