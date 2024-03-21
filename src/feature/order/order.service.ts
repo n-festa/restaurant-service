@@ -1593,4 +1593,145 @@ export class OrderService {
 
     return deliveryOrderId;
   }
+
+  async getLatestOrderStatus(order_id: number): Promise<OrderStatusLog> {
+    return await this.entityManager
+      .createQueryBuilder(OrderStatusLog, 'log')
+      .where('log.order_id = :order_id', { order_id })
+      .orderBy('log.logged_at', 'DESC')
+      .getOne();
+  }
+  async setOrderStatus(
+    order_id: number,
+    new_order_status: OrderStatus,
+    note: string = null,
+  ): Promise<string> {
+    this.logger.log(new_order_status);
+    if (!(new_order_status in OrderStatus)) {
+      this.logger.error('Invalid order status');
+      throw new CustomRpcException(1, 'Invalid order status');
+    }
+    const currenOrderStatus = await this.getLatestOrderStatus(order_id);
+    if (!currenOrderStatus) {
+      throw new CustomRpcException(1, 'Order does not exist');
+    }
+
+    switch (new_order_status) {
+      case OrderStatus.NEW:
+        throw new CustomRpcException(1, {
+          message: 'Cannot change order status to NEW',
+          order_id: currenOrderStatus.order_id,
+          order_status: currenOrderStatus.order_status_id,
+        });
+      case OrderStatus.IDLE:
+        if (currenOrderStatus.order_status_id != OrderStatus.NEW) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to IDLE',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.PROCESSING:
+        if (currenOrderStatus.order_status_id != OrderStatus.IDLE) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to PROCESSING',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.READY:
+        if (currenOrderStatus.order_status_id != OrderStatus.PROCESSING) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to READY',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.DELIVERING:
+        if (currenOrderStatus.order_status_id != OrderStatus.READY) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to DELIVERING',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.COMPLETED:
+        if (currenOrderStatus.order_status_id != OrderStatus.DELIVERING) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to COMPLETED',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.FAILED:
+        if (currenOrderStatus.order_status_id != OrderStatus.DELIVERING) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to FAILED',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.CANCELLED:
+        if (
+          currenOrderStatus.order_status_id != OrderStatus.NEW &&
+          currenOrderStatus.order_status_id != OrderStatus.IDLE &&
+          currenOrderStatus.order_status_id != OrderStatus.PROCESSING
+        ) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to CANCELLED ',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      case OrderStatus.STUCK:
+        if (currenOrderStatus.order_status_id == OrderStatus.STUCK) {
+          throw new CustomRpcException(1, {
+            message: 'Order stuck already',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        } else if (
+          currenOrderStatus.order_status_id == OrderStatus.CANCELLED ||
+          currenOrderStatus.order_status_id == OrderStatus.FAILED ||
+          currenOrderStatus.order_status_id == OrderStatus.COMPLETED
+        ) {
+          throw new CustomRpcException(1, {
+            message: 'Cannot change order status to STUCK',
+            order_id: currenOrderStatus.order_id,
+            order_status: currenOrderStatus.order_status_id,
+          });
+        }
+        break;
+
+      default:
+        throw new CustomRpcException(2, 'Order status is not valid');
+    }
+
+    return (
+      await this.entityManager
+        .createQueryBuilder()
+        .insert()
+        .into(OrderStatusLog)
+        .values({
+          order_id: order_id,
+          order_status_id: new_order_status,
+          note,
+        })
+        .execute()
+    ).identifiers[0].log_id;
+  }
 }
