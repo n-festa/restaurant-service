@@ -1,5 +1,9 @@
-import { Controller, Get, UseFilters } from '@nestjs/common';
-import { MessagePattern } from '@nestjs/microservices';
+import { Controller, Get, Inject, UseFilters } from '@nestjs/common';
+import {
+  ClientProxy,
+  EventPattern,
+  MessagePattern,
+} from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { Repository } from 'typeorm';
@@ -23,6 +27,7 @@ import { CreateOrderResponse } from './dto/create-order-response.dto';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
+import { OrderStatus } from 'src/enum';
 
 @Controller('order')
 export class OrderController {
@@ -30,6 +35,8 @@ export class OrderController {
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     private readonly orderService: OrderService,
     private readonly commonService: CommonService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
   @MessagePattern({ cmd: 'get_order_by_id' })
   async getOrderByOrderId(order_id) {
@@ -247,5 +254,26 @@ export class OrderController {
       delivery_latitude,
       delivery_longitude,
     );
+  }
+
+  @MessagePattern({ cmd: 'get_order_detail_sse' })
+  async getOrderDetailSse(data: any): Promise<OrderDetailResponse> {
+    const { order_id } = data;
+    const order = await this.orderService.getOrderDetail(order_id);
+    return order;
+  }
+
+  @MessagePattern({ cmd: 'confirm_order_from_restaurant' })
+  async confirmOrder(data: any) {
+    const { order_id } = data;
+    this.gatewayClient.emit('order_updated', { order_id });
+    return order_id;
+  }
+
+  @MessagePattern({ cmd: 'change_order_status_for_testing' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async changeOrderStatusForTesting(data: any) {
+    const { order_id, new_order_status } = data;
+    return await this.orderService.setOrderStatus(order_id, new_order_status);
   }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { FoodModule } from './feature/food/food.module';
@@ -18,7 +18,14 @@ import { InvoiceStatusHistoryModule } from './feature/invoice-status-history/inv
 import { MomoModule } from './dependency/momo/momo.module';
 import { OrderModule } from './feature/order/order.module';
 import { HealthCheckController } from './healthcheck/health-check.controller';
+import { ClientProxyFactory } from '@nestjs/microservices';
+import { OrderStatusLogSubscriber } from './subscriber/order-status-log.subscriber';
+import { OrderSubscriber } from './subscriber/order.subscriber';
+import { InvoiceSubscriber } from './subscriber/invoice.subscriber';
+import { InvoiceStatusHistorySubscriber } from './subscriber/invoice-status-history.subscriber';
+import { DriverStatusLogSubscriber } from './subscriber/driver-status-log.subscriber';
 
+@Global()
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -36,6 +43,7 @@ import { HealthCheckController } from './healthcheck/health-check.controller';
         password: configService.get<string>('database.password'),
         database: configService.get<string>('database.name'),
         entities: [__dirname + '/entity/*.entity{.ts,.js}'],
+        subscribers: [__dirname + '/subscriber/*.subscriber{.ts,.js}'],
         synchronize: false,
         autoLoadEntities: true,
       }),
@@ -57,6 +65,22 @@ import { HealthCheckController } from './healthcheck/health-check.controller';
     OrderModule,
   ],
   controllers: [AppController, HealthCheckController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: 'GATEWAY_SERVICE',
+      useFactory: (configService: ConfigService) => {
+        const options = configService.get('microServices.gateway');
+        return ClientProxyFactory.create(options);
+      },
+      inject: [ConfigService],
+    },
+    OrderStatusLogSubscriber,
+    OrderSubscriber,
+    DriverStatusLogSubscriber,
+    InvoiceSubscriber,
+    InvoiceStatusHistorySubscriber,
+  ],
+  exports: ['GATEWAY_SERVICE'],
 })
 export class AppModule {}
