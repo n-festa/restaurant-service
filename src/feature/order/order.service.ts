@@ -1497,7 +1497,8 @@ export class OrderService {
       }
     }
 
-    const driverNote: string = driver_note ? driver_note : order.driver_note;
+    const driverNote: string =
+      driver_note != undefined ? driver_note : order.driver_note;
 
     const restaurantAddressString = restaurantAddress.address_line
       ? `${restaurantAddress.address_line}, ${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`

@@ -30,7 +30,7 @@ export class InvoiceStatusHistorySubscriber
    * Called after entity insertion.
    */
   async afterInsert(event: InsertEvent<InvoiceStatusHistory>) {
-    console.log(`AFTER ENTITY INSERTED: `, event.entity);
+    console.log(`AFTER ENTITY INSERTED: `, event.entity.invoice_id);
 
     const order = await this.dataSource
       .createQueryBuilder(Invoice, 'invoice')
@@ -38,8 +38,10 @@ export class InvoiceStatusHistorySubscriber
         invoice_id: event.entity.invoice_id,
       })
       .getOne();
-    this.gatewayClient.emit('order_updated', {
-      order_id: order.order_id,
-    });
+    if (order) {
+      this.gatewayClient.emit('order_updated', {
+        order_id: order.order_id,
+      });
+    }
   }
 }
