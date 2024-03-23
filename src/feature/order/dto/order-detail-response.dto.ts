@@ -1,3 +1,5 @@
+import { OrderItemResponse } from 'src/type';
+
 export class OrderDetailResponse {
   order_id: number;
   customer_id: number;
@@ -43,35 +45,7 @@ interface TextByLang {
   ISO_language_code: string;
   text: string;
 }
-interface OrderItemResponse {
-  item_name: TextByLang[];
-  item_img: string;
-  order_id: number;
-  sku_id: number;
-  qty_ordered: number;
-  price: number;
-  advanced_taste_customization_obj: OptionSelection[];
-  basic_taste_customization_obj: BasicTasteSelection[];
-  advanced_taste_customization: string;
-  basic_taste_customization: string;
-  portion_customization: string;
-  notes: string;
-  calorie_kcal: string;
-  packaging_info: OrderItemPackaging;
-}
-interface OrderItemPackaging {
-  packaging_id: number;
-  name: TextByLang[];
-  description: TextByLang[];
-  price: number;
-}
-interface OptionSelection {
-  option_id: string;
-  value_id: string;
-}
-interface BasicTasteSelection {
-  no_adding_id: string;
-}
+
 interface OrderStatusLog {
   status: string;
   description: TextByLang[];

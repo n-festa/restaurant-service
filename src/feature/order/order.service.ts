@@ -27,6 +27,7 @@ import {
   CouponValue,
   MoneyType,
   OrderItemRequest,
+  OrderItemResponse,
   TextByLang,
 } from 'src/type';
 import { Restaurant } from 'src/entity/restaurant.entity';
@@ -1121,7 +1122,7 @@ export class OrderService {
     }
 
     // Build OrderItemResponse
-    const orderItemResponse = [];
+    const orderItemResponse: OrderItemResponse[] = [];
     const skuIds = [...new Set(order.items.map((i) => i.sku_id))];
     const skus = await this.entityManager
       .createQueryBuilder(SKU, 'sku')
@@ -1174,6 +1175,7 @@ export class OrderService {
         item_name: itemNameByLang,
         item_img: sku.menu_item.image_obj.url,
         order_id: orderItem.order_id,
+        menu_item_id: sku.menu_item_id,
         sku_id: orderItem.sku_id,
         qty_ordered: orderItem.qty_ordered,
         price: orderItem.price,
