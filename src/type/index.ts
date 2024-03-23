@@ -227,3 +227,28 @@ export interface OrderDetailRequest {
   order_id: number;
   customer_id: number;
 }
+
+export interface OrderItemResponse {
+  item_name: TextByLang[];
+  item_img: string;
+  order_id: number;
+  sku_id: number;
+  menu_item_id: number;
+  qty_ordered: number;
+  price: number;
+  advanced_taste_customization_obj: OptionSelection[];
+  basic_taste_customization_obj: BasicTasteSelection[];
+  advanced_taste_customization: string;
+  basic_taste_customization: string;
+  portion_customization: string;
+  notes: string;
+  calorie_kcal: string;
+  packaging_info: OrderItemPackaging;
+}
+
+interface OrderItemPackaging {
+  packaging_id: number;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+}
