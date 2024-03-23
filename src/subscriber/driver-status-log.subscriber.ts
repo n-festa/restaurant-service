@@ -30,8 +30,8 @@ export class DriverStatusLogSubscriber
    */
   afterInsert(event: InsertEvent<DriverStatusLog>) {
     console.log(`AFTER ENTITY INSERTED: `, event.entity);
-    this.gatewayClient.emit('order_updated', {
-      order_id: event.entity.order_id,
-    });
+    // this.gatewayClient.emit('order_updated', {
+    //   order_id: event.entity.order_id,
+    // });
   }
 }

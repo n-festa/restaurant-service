@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -12,6 +13,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { OrderService } from '../order/order.service';
 import { FALSE } from 'src/constant';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class InvoiceStatusHistoryService {
@@ -22,6 +24,8 @@ export class InvoiceStatusHistoryService {
     private invoiceHistoryStatusRepo: Repository<InvoiceStatusHistory>,
     private readonly orderService: OrderService,
     @InjectEntityManager() private entityManager: EntityManager,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
 
   async updateInvoiceHistoryFromMomoWebhook(webhookData): Promise<any> {
@@ -56,31 +60,11 @@ export class InvoiceStatusHistoryService {
           await this.orderService.cancelOrder(currentInvoice.order_id, {
             isMomo: true,
           });
-        } else if (updateData.status_id === InvoiceHistoryStatusEnum.PAID) {
-          //Create Ahamove Request if the order is the normal order
-          const order = await this.entityManager
-            .createQueryBuilder(Order, 'order')
-            .where('order.order_id = :order_id', {
-              order_id: currentInvoice.order_id,
-            })
-            .getOne();
-          if (!order) {
-            this.logger.error(`Order ${currentInvoice.order_id} not existed`);
-            throw new InternalServerErrorException();
-          }
-          if (order.is_preorder == FALSE && !order.delivery_order_id) {
-            const deliveryOrderId =
-              await this.orderService.createDeliveryRequest(order, 0);
-            await this.entityManager
-              .createQueryBuilder()
-              .update(Order)
-              .set({
-                delivery_order_id: deliveryOrderId,
-              })
-              .where('order_id = :order_id', { order_id: order.order_id })
-              .execute();
-          }
         }
+        //Notify order detail SSE
+        this.gatewayClient.emit('order_updated', {
+          order_id: currentInvoice.order_id,
+        });
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };

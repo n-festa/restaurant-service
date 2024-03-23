@@ -1,17 +1,18 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { MomoTransaction } from 'src/entity/momo-transaction.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 const crypto = require('crypto');
 import axiosRetry from 'axios-retry';
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { InvoiceHistoryStatusEnum } from 'src/enum';
+import { InvoiceHistoryStatusEnum, PaymentList } from 'src/enum';
 import { Invoice } from 'src/entity/invoice.entity';
 import { OrderService } from 'src/feature/order/order.service';
 import { InvoiceStatusHistoryService } from 'src/feature/invoice-status-history/invoice-status-history.service';
@@ -19,6 +20,7 @@ import { ConfigService } from '@nestjs/config';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 import { CreateMomoPaymentResponse } from 'src/dto/create-momo-payment-response.dto';
 import { CreateMomoPaymentRequest } from 'src/dto/create-momo-payment-request.dto';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class MomoService {
@@ -44,6 +46,9 @@ export class MomoService {
     private readonly orderService: OrderService,
     private readonly invoiceStatusHistoryService: InvoiceStatusHistoryService,
     private configService: ConfigService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
+    @InjectEntityManager() private entityManager: EntityManager,
   ) {
     this.partnerCode = configService.get('momo.partnerCode');
     this.accessKey = configService.get('momo.accessKey');
@@ -59,12 +64,23 @@ export class MomoService {
   async sendMomoPaymentRequest(
     request: CreateMomoPaymentRequest,
   ): Promise<CreateMomoPaymentResponse> {
-    const currentInvoice = await this.invoiceRepo.findOne({
-      where: { invoice_id: request.invoiceId },
-    });
+    // const currentInvoice = await this.invoiceRepo.findOne({
+    //   where: { invoice_id: request.invoiceId },
+    // });
+    const currentInvoice = await this.entityManager
+      .createQueryBuilder(Invoice, 'invoice')
+      .leftJoinAndSelect('invoice.payment_option_obj', 'payment')
+      .where('invoice.invoice_id = :invoice_id', {
+        invoice_id: request.invoiceId,
+      })
+      .getOne();
     if (!currentInvoice) {
       // throw new InternalServerErrorException('Invoice not found');
       throw new CustomRpcException(2, 'Invoice is not found');
+    }
+    if (currentInvoice.payment_option_obj.name != PaymentList.MOMO) {
+      // throw new InternalServerErrorException('Invoice not found');
+      throw new CustomRpcException(9, 'Invoice payment method is not MOMO');
     }
     const requestId = uuidv4();
     const orderId = requestId;
@@ -141,6 +157,7 @@ export class MomoService {
       try {
         response = await axiosInstance.request(options);
       } catch (error) {
+        //FAIL TO CALL API MOMO
         console.log('error', error);
         this.logger.error(
           'An error occurred when create momo request',
@@ -157,15 +174,17 @@ export class MomoService {
         momoInvoiceStatusHistory.note = 'Failed to call momo api';
         momoInvoiceStatusHistory.status_history_id = uuidv4();
         await this.invoiceHistoryStatusRepo.save(momoInvoiceStatusHistory);
+        //Notify order detail SSE
+        this.gatewayClient.emit('order_updated', {
+          order_id: currentInvoice.order_id,
+        });
         // throw new InternalServerErrorException();
         throw new CustomRpcException(201, error.response?.data);
       }
       const momoOrderResult = response.data;
       this.logger.debug('momoOrderResult: ', momoOrderResult);
-      if (
-        momoOrderResult.resultCode === 0 ||
-        momoOrderResult.resultCode === 9000
-      ) {
+      if (momoOrderResult.resultCode === 0) {
+        // ABLE TO CALL API MOMO AND GET SUCESSFUL RESPONSE
         const momoResult = {
           ...momoOrderResult,
           requestId: requestId,
@@ -195,14 +214,41 @@ export class MomoService {
           momoInvoiceStatusHistory.note = `momo request ${momoResult.requestId} for payment`;
           await this.orderStatusHistoryRepo.insert(momoInvoiceStatusHistory);
         }
+        //Notify order detail SSE
+        this.gatewayClient.emit('order_updated', {
+          order_id: currentInvoice.order_id,
+        });
+
+        // return momoOrderResult;
+        return {
+          invoiceId: currentInvoice.invoice_id,
+          amount: momoOrderResult.amount,
+          payUrl: momoOrderResult.payUrl,
+        };
+      } else if (momoOrderResult.resultCode !== 0) {
+        // ABLE TO CALL API MOMO AND GET FAILED RESPONSE
+        this.logger.error(
+          'An error occurred when create momo request',
+          JSON.stringify(momoOrderResult?.message),
+        );
+        //Cancel Order
+        await this.orderService.cancelOrder(currentInvoice.order_id, {
+          isMomo: true,
+        });
+        //Cancel Invoice
+        const momoInvoiceStatusHistory = new InvoiceStatusHistory();
+        momoInvoiceStatusHistory.invoice_id = currentInvoice.invoice_id;
+        momoInvoiceStatusHistory.status_id = InvoiceHistoryStatusEnum.CANCELLED;
+        momoInvoiceStatusHistory.note = 'Failed to call momo api';
+        momoInvoiceStatusHistory.status_history_id = uuidv4();
+        await this.invoiceHistoryStatusRepo.save(momoInvoiceStatusHistory);
+        //Notify order detail SSE
+        this.gatewayClient.emit('order_updated', {
+          order_id: currentInvoice.order_id,
+        });
+        // throw new InternalServerErrorException();
+        throw new CustomRpcException(201, momoOrderResult?.message);
       }
-      this.logger.debug('end usecase new invoice');
-      // return momoOrderResult;
-      return {
-        invoiceId: currentInvoice.invoice_id,
-        amount: momoOrderResult.amount,
-        payUrl: momoOrderResult.payUrl,
-      };
     } else if (
       latestInvoiceStatus &&
       latestInvoiceStatus.status_id === InvoiceHistoryStatusEnum.PENDING &&
