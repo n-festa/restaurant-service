@@ -72,7 +72,7 @@ export class MomoService {
       orderInfo:
         currentInvoice.description ||
         `payment for invoice id ${request.invoiceId}`,
-      redirectUrl: this.redirectUrl,
+      redirectUrl: this.redirectUrl + '/' + currentInvoice.order_id,
       ipnUrl: this.ipnUrl,
       extraData: '',
       requestType: this.requestType,
