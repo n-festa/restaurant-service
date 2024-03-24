@@ -14,7 +14,7 @@ $ yarn install
 
 ## Migration
 
-$ export BACKEND_ENV=dev
+$ export BACKEND_ENV=stage
 $ npm run typeorm migration:run -- -d ./src/migration.config.ts
 $ npm run typeorm migration:revert -- -d ./src/migration.config.ts
 $ npm run typeorm migration:generate ./src/database/migrations/XXXX -- -d ./src/migration.config.ts
