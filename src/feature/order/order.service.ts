@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -51,6 +52,7 @@ import { Packaging } from 'src/entity/packaging.entity';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { VND } from 'src/constant/unit.constant';
 import { FALSE, TRUE } from 'src/constant';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderService {
@@ -71,6 +73,8 @@ export class OrderService {
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly commonService: CommonService,
     private readonly configService: ConfigService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
@@ -99,6 +103,10 @@ export class OrderService {
           latestDriverStatus?.driver_id,
           webhookData,
         );
+
+        this.gatewayClient.emit('order_updated', {
+          order_id: currentOrder.order_id,
+        });
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };
@@ -125,7 +133,7 @@ export class OrderService {
           latestOrderStatus !== OrderStatus.READY
         ) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
@@ -134,13 +142,13 @@ export class OrderService {
           if (latestDriverId) {
             //Driver_Status_Log
             const driverStatusLog = new DriverStatusLog();
-            driverStatusLog.driver_id = latestDriverId;
+            // driverStatusLog.driver_id = latestDriverId;
             driverStatusLog.order_id = order.order_id;
             driverStatusLog.note = webhookData.rebroadcast_comment;
             await this.driverStatusLogRepo.save(driverStatusLog);
           } else {
             this.logger.error(
-              `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is rebroadcasting but the order didnot have any driver infomation before`,
+              `Order ${order.order_id}: Ahavmove order ${webhookData._id} is rebroadcasting but the order didnot have any driver infomation before`,
             );
           }
         } else {
@@ -153,14 +161,14 @@ export class OrderService {
           latestOrderStatus !== OrderStatus.READY
         ) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
 
         if (latestDriverId) {
           this.logger.error(
-            `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
+            `Order ${order.order_id}: Ahavmove order ${webhookData._id} get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
           );
         }
 
@@ -192,12 +200,13 @@ export class OrderService {
 
         break;
       case 'CANCELLED':
-        // //Order_Status_Log with status STUCK
-        // orderStatusLog.order_status_id = OrderStatus.STUCK;
-        // await this.orderStatusLogRepo.save(orderStatusLog);
+        //Order_Status_Log with status CANCELLED
+        orderStatusLog.order_status_id = OrderStatus.CANCELLED;
+        orderStatusLog.note = `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `;
+        await this.orderStatusLogRepo.save(orderStatusLog);
         //Urgent_Action_Needed
         const action = new UrgentActionNeeded();
-        action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> got cancel with comment '<${webhookData.cancel_comment}>'. Need action from admin !!!`;
+        action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. Need action from admin !!!`;
         await this.urgentActionNeededRepo.save(action);
         break;
       case 'IN PROCESS':
@@ -220,7 +229,7 @@ export class OrderService {
         } else {
           //Urgent_Action_Needed
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
         }
         break;
@@ -230,7 +239,7 @@ export class OrderService {
         }
         if (latestOrderStatus !== OrderStatus.DELIVERING) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is completed but the order status is not DELIVERING'. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} is completed but the order status is not DELIVERING'. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
