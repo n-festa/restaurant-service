@@ -257,6 +257,7 @@ export class OrderController {
   }
 
   @MessagePattern({ cmd: 'get_order_detail_sse' })
+  @UseFilters(new CustomRpcExceptionFilter())
   async getOrderDetailSse(data: any): Promise<OrderDetailResponse> {
     const { order_id } = data;
     const order = await this.orderService.getOrderDetail(order_id);
@@ -264,16 +265,27 @@ export class OrderController {
   }
 
   @MessagePattern({ cmd: 'confirm_order_from_restaurant' })
+  @UseFilters(new CustomRpcExceptionFilter())
   async confirmOrder(data: any) {
     const { order_id } = data;
-    this.gatewayClient.emit('order_updated', { order_id });
-    return order_id;
+    await this.orderService.confirmOrder(order_id);
+    this.gatewayClient.emit('order_updated', {
+      order_id: order_id,
+    });
+    return { message: 'confirm order from restaurant successfully' };
   }
 
   @MessagePattern({ cmd: 'change_order_status_for_testing' })
   @UseFilters(new CustomRpcExceptionFilter())
   async changeOrderStatusForTesting(data: any) {
     const { order_id, new_order_status } = data;
-    return await this.orderService.setOrderStatus(order_id, new_order_status);
+    const record = await this.orderService.setOrderStatus(
+      order_id,
+      new_order_status,
+    );
+    this.gatewayClient.emit('order_updated', {
+      order_id: order_id,
+    });
+    return record;
   }
 }

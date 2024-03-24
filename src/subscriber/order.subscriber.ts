@@ -5,6 +5,7 @@ import {
   DataSource,
   EntitySubscriberInterface,
   EventSubscriber,
+  TransactionCommitEvent,
   UpdateEvent,
 } from 'typeorm';
 

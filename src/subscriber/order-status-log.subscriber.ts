@@ -6,6 +6,8 @@ import {
   EntitySubscriberInterface,
   EventSubscriber,
   InsertEvent,
+  TransactionCommitEvent,
+  TransactionStartEvent,
 } from 'typeorm';
 
 @Injectable()
@@ -30,8 +32,8 @@ export class OrderStatusLogSubscriber
    */
   afterInsert(event: InsertEvent<OrderStatusLog>) {
     console.log(`AFTER ENTITY INSERTED: `, event.entity);
-    this.gatewayClient.emit('order_updated', {
-      order_id: event.entity.order_id,
-    });
+    // this.gatewayClient.emit('order_updated', {
+    //   order_id: event.entity.order_id,
+    // });
   }
 }

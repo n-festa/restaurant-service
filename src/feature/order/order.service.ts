@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -51,6 +52,7 @@ import { Packaging } from 'src/entity/packaging.entity';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { VND } from 'src/constant/unit.constant';
 import { FALSE, TRUE } from 'src/constant';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderService {
@@ -71,18 +73,20 @@ export class OrderService {
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly commonService: CommonService,
     private readonly configService: ConfigService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
-    orderId,
+    delivery_order_id,
     webhookData,
   ): Promise<any> {
     try {
       this.logger.log(
-        `receiving data from webhook to ${orderId} with ${webhookData.status}`,
+        `receiving data from webhook to ${delivery_order_id} with ${webhookData.status}`,
       );
       const currentOrder = await this.orderRepo.findOne({
-        where: { delivery_order_id: orderId },
+        where: { delivery_order_id: delivery_order_id },
       });
       const latestOrderStatus = await this.orderStatusLogRepo.findOne({
         where: { order_id: currentOrder.order_id },
@@ -99,6 +103,10 @@ export class OrderService {
           latestDriverStatus?.driver_id,
           webhookData,
         );
+
+        this.gatewayClient.emit('order_updated', {
+          order_id: currentOrder.order_id,
+        });
         return { message: 'Order updated successfully' };
       }
       return { message: 'Order not existed' };
@@ -125,7 +133,7 @@ export class OrderService {
           latestOrderStatus !== OrderStatus.READY
         ) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
@@ -134,13 +142,13 @@ export class OrderService {
           if (latestDriverId) {
             //Driver_Status_Log
             const driverStatusLog = new DriverStatusLog();
-            driverStatusLog.driver_id = latestDriverId;
+            // driverStatusLog.driver_id = latestDriverId;
             driverStatusLog.order_id = order.order_id;
             driverStatusLog.note = webhookData.rebroadcast_comment;
             await this.driverStatusLogRepo.save(driverStatusLog);
           } else {
             this.logger.error(
-              `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is rebroadcasting but the order didnot have any driver infomation before`,
+              `Order ${order.order_id}: Ahavmove order ${webhookData._id} is rebroadcasting but the order didnot have any driver infomation before`,
             );
           }
         } else {
@@ -153,14 +161,14 @@ export class OrderService {
           latestOrderStatus !== OrderStatus.READY
         ) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
 
         if (latestDriverId) {
           this.logger.error(
-            `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
+            `Order ${order.order_id}: Ahavmove order ${webhookData._id} get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
           );
         }
 
@@ -192,12 +200,13 @@ export class OrderService {
 
         break;
       case 'CANCELLED':
-        // //Order_Status_Log with status STUCK
-        // orderStatusLog.order_status_id = OrderStatus.STUCK;
-        // await this.orderStatusLogRepo.save(orderStatusLog);
+        //Order_Status_Log with status CANCELLED
+        orderStatusLog.order_status_id = OrderStatus.CANCELLED;
+        orderStatusLog.note = `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `;
+        await this.orderStatusLogRepo.save(orderStatusLog);
         //Urgent_Action_Needed
         const action = new UrgentActionNeeded();
-        action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> got cancel with comment '<${webhookData.cancel_comment}>'. Need action from admin !!!`;
+        action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. Need action from admin !!!`;
         await this.urgentActionNeededRepo.save(action);
         break;
       case 'IN PROCESS':
@@ -220,7 +229,7 @@ export class OrderService {
         } else {
           //Urgent_Action_Needed
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
         }
         break;
@@ -230,7 +239,7 @@ export class OrderService {
         }
         if (latestOrderStatus !== OrderStatus.DELIVERING) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is completed but the order status is not DELIVERING'. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} is completed but the order status is not DELIVERING'. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
@@ -768,33 +777,33 @@ export class OrderService {
       isPreorder = TRUE;
     }
 
-    //Create the request to delivery service
-    let deliveryOrderId = null;
-    if (isPreorder == FALSE && paymentMethod.name == PaymentList.COD) {
-      const customerAddress: Address = {
-        address_id: undefined,
-        created_at: undefined,
-        ...address,
-      };
+    // //Create the request to delivery service
+    // let deliveryOrderId = null;
+    // if (isPreorder == FALSE && paymentMethod.name == PaymentList.COD) {
+    //   const customerAddress: Address = {
+    //     address_id: undefined,
+    //     created_at: undefined,
+    //     ...address,
+    //   };
 
-      deliveryOrderId = await this.createDeliveryRequest(
-        undefined,
-        orderTotal,
-        restaurant_id,
-        restaurantAddress,
-        customerAddress,
-        deliveryEstimation,
-        expected_arrival_time,
-        orderTotal,
-        orderSubTotal,
-        orderQuantitySum,
-        skuList,
-        orderItems,
-        restaurant,
-        customer,
-        driver_note,
-      );
-    }
+    //   deliveryOrderId = await this.createDeliveryRequest(
+    //     undefined,
+    //     orderTotal,
+    //     restaurant_id,
+    //     restaurantAddress,
+    //     customerAddress,
+    //     deliveryEstimation,
+    //     expected_arrival_time,
+    //     orderTotal,
+    //     orderSubTotal,
+    //     orderQuantitySum,
+    //     skuList,
+    //     orderItems,
+    //     restaurant,
+    //     customer,
+    //     driver_note,
+    //   );
+    // }
 
     //insert database (with transaction)
     let newOrderId: number;
@@ -837,7 +846,7 @@ export class OrderService {
           currency: restaurant.unit,
           is_preorder: isPreorder,
           expected_arrival_time: expected_arrival_time,
-          delivery_order_id: deliveryOrderId,
+          // delivery_order_id: deliveryOrderId,
           driver_note: driver_note,
         })
         .execute();
@@ -1047,7 +1056,7 @@ export class OrderService {
   }
 
   async getOrderDetail(order_id): Promise<OrderDetailResponse | undefined> {
-    console.log(order_id);
+    // console.log(order_id);
     if (!order_id) {
       return undefined;
     }
@@ -1070,7 +1079,7 @@ export class OrderService {
     if (!order) {
       return undefined;
     }
-    console.log(order);
+    // console.log(order);
 
     //Get restaurant info
     const skuId = order.items[0].sku_id;
@@ -1347,160 +1356,124 @@ export class OrderService {
   async createDeliveryRequest(
     order: Order = undefined,
     cod_amount: number,
-    restaurant_id: number = undefined,
-    restaurant_address: Address = undefined,
-    customer_address: Address = undefined,
-    delivery_estimation: any = undefined,
-    expected_arrival_time: number = undefined,
-    order_total: number = undefined,
-    order_sub_total: number = undefined,
-    order_quantity_sum: number = undefined,
-    sku_list: number[] = undefined,
-    order_items: OrderSKU[] = undefined,
-    _restaurant: Restaurant = undefined,
-    _customer: Customer = undefined,
-    driver_note: string = undefined,
+    // restaurant_id: number = undefined,
+    // restaurant_address: Address = undefined,
+    // customer_address: Address = undefined,
+    // delivery_estimation: any = undefined,
+    // expected_arrival_time: number = undefined,
+    // order_total: number = undefined,
+    // order_sub_total: number = undefined,
+    // order_quantity_sum: number = undefined,
+    // sku_list: number[] = undefined,
+    // order_items: OrderSKU[] = undefined,
+    // _restaurant: Restaurant = undefined,
+    // _customer: Customer = undefined,
+    // driver_note: string = undefined,
   ): Promise<string> {
+    if (!cod_amount && cod_amount != 0) {
+      this.logger.error('COD amount is undefined/null/empty');
+      throw new Error('COD amount is undefined/null/empty');
+    }
+
     //Create the request to delivery service
     let deliveryOrderId: string = undefined;
 
     //Restaurant Info
-    let restaurant: Restaurant = undefined;
-    if (_restaurant) {
-      restaurant = _restaurant;
-    } else {
-      restaurant = await this.commonService.getRestaurantById(
-        order.restaurant_id,
-      );
-      if (!restaurant) {
-        this.logger.error('Restaurant doesnot exist');
-        throw new Error('Restaurant doesnot exist');
-      }
+    const restaurant: Restaurant = await this.commonService.getRestaurantById(
+      order.restaurant_id,
+    );
+    if (!restaurant) {
+      this.logger.error('Restaurant doesnot exist');
+      throw new Error('Restaurant doesnot exist');
     }
 
-    const restaurantId = restaurant_id
-      ? restaurant_id
-      : restaurant.restaurant_id;
+    const restaurantId = restaurant.restaurant_id;
 
     //Restaurant Address
-    let restaurantAddress: Address = undefined;
-    if (restaurant_address) {
-      restaurantAddress = restaurant_address;
-    } else {
-      restaurantAddress = await this.entityManager
-        .createQueryBuilder(Address, 'address')
-        .where('address.address_id = :address_id', {
-          address_id: restaurant.address_id,
-        })
-        .getOne();
-      if (!restaurantAddress) {
-        this.logger.error('Restaurant address doesnot exist');
-        throw new Error('Restaurant address doesnot exist');
-      }
+    const restaurantAddress = await this.entityManager
+      .createQueryBuilder(Address, 'address')
+      .where('address.address_id = :address_id', {
+        address_id: restaurant.address_id,
+      })
+      .getOne();
+    if (!restaurantAddress) {
+      this.logger.error('Restaurant address doesnot exist');
+      throw new Error('Restaurant address doesnot exist');
     }
 
     //Customer Address
-    let customerAddress: Address = undefined;
-    if (customer_address) {
-      customerAddress = customer_address;
-    } else {
-      customerAddress = await this.entityManager
-        .createQueryBuilder(Address, 'address')
-        .where('address.address_id = :address_id', {
-          address_id: order.address_id,
-        })
-        .getOne();
-      if (!customerAddress) {
-        this.logger.error('Customer address doesnot exist');
-        throw new Error('Customer address doesnot exist');
-      }
+    const customerAddress = await this.entityManager
+      .createQueryBuilder(Address, 'address')
+      .where('address.address_id = :address_id', {
+        address_id: order.address_id,
+      })
+      .getOne();
+    if (!customerAddress) {
+      this.logger.error('Customer address doesnot exist');
+      throw new Error('Customer address doesnot exist');
     }
 
     //Delivery Estimation
-    let deliveryEstimation: any = undefined;
-    if (delivery_estimation) {
-      deliveryEstimation = delivery_estimation;
-    } else {
-      deliveryEstimation = (
-        await this.ahamoveService.estimatePrice([
-          {
-            lat: restaurantAddress.latitude,
-            long: restaurantAddress.longitude,
-          },
-          {
-            lat: customerAddress.latitude,
-            long: customerAddress.longitude,
-          },
-        ])
-      )[0].data;
-      if (!deliveryEstimation) {
-        this.logger.error('Cannot get delivery estimation');
-        throw new Error('Cannot get delivery estimation');
-      }
+    const deliveryEstimation = (
+      await this.ahamoveService.estimatePrice([
+        {
+          lat: restaurantAddress.latitude,
+          long: restaurantAddress.longitude,
+        },
+        {
+          lat: customerAddress.latitude,
+          long: customerAddress.longitude,
+        },
+      ])
+    )[0].data;
+    if (!deliveryEstimation) {
+      this.logger.error('Cannot get delivery estimation');
+      throw new Error('Cannot get delivery estimation');
     }
 
-    const expectedArrivalTime: number = expected_arrival_time
-      ? expected_arrival_time
-      : order.expected_arrival_time;
+    const expectedArrivalTime: number = order.expected_arrival_time;
 
-    const orderTotal: number = order_total ? order_total : order.order_total;
+    const orderTotal: number = order.order_total;
 
-    const orderSubTotal: number = order_sub_total
-      ? order_sub_total
-      : order.order_total -
-        order.delivery_fee -
-        order.packaging_fee -
-        order.cutlery_fee -
-        order.app_fee +
-        order.coupon_value_from_platform +
-        order.coupon_value_from_restaurant;
+    const orderSubTotal: number =
+      order.order_total -
+      order.delivery_fee -
+      order.packaging_fee -
+      order.cutlery_fee -
+      order.app_fee +
+      order.coupon_value_from_platform +
+      order.coupon_value_from_restaurant;
 
     //Order Items
-    let orderItems: OrderSKU[] = undefined;
-    if (order_items) {
-      orderItems = order_items;
-    } else {
-      orderItems = await this.entityManager
-        .createQueryBuilder(OrderSKU, 'item')
-        .where('item.order_id = :order_id', { order_id: order.order_id })
-        .getMany();
-      if (!orderItems || orderItems.length <= 0) {
-        this.logger.error('Cannot found order items');
-        throw new Error('Cannot found order items');
-      }
+    const orderItems = await this.entityManager
+      .createQueryBuilder(OrderSKU, 'item')
+      .where('item.order_id = :order_id', { order_id: order.order_id })
+      .getMany();
+    if (!orderItems || orderItems.length <= 0) {
+      this.logger.error('Cannot found order items');
+      throw new Error('Cannot found order items');
     }
 
-    let skuList: number[] = undefined;
-    if (sku_list) {
-      skuList = sku_list;
-    } else {
-      skuList = [...new Set(orderItems.map((item) => item.sku_id))];
-    }
+    const skuList: number[] = [
+      ...new Set(orderItems.map((item) => item.sku_id)),
+    ];
 
-    const orderQuantitySum: number = order_quantity_sum
-      ? order_quantity_sum
-      : orderItems
-          .map((i) => i.qty_ordered)
-          .reduce((sum, val) => (sum += val), 0);
+    const orderQuantitySum: number = orderItems
+      .map((i) => i.qty_ordered)
+      .reduce((sum, val) => (sum += val), 0);
 
     //Customer Info
-    let customer: Customer = undefined;
-    if (_customer) {
-      customer = _customer;
-    } else {
-      customer = await this.entityManager
-        .createQueryBuilder(Customer, 'customer')
-        .where('customer.customer_id = :customer_id', {
-          customer_id: order.customer_id,
-        })
-        .getOne();
-      if (!customer) {
-        throw new Error('Customer is not found');
-      }
+    const customer: Customer = await this.entityManager
+      .createQueryBuilder(Customer, 'customer')
+      .where('customer.customer_id = :customer_id', {
+        customer_id: order.customer_id,
+      })
+      .getOne();
+    if (!customer) {
+      throw new Error('Customer is not found');
     }
 
-    const driverNote: string =
-      driver_note != undefined ? driver_note : order.driver_note;
+    const driverNote: string = order.driver_note;
 
     const restaurantAddressString = restaurantAddress.address_line
       ? `${restaurantAddress.address_line}, ${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`
@@ -1597,8 +1570,11 @@ export class OrderService {
     return deliveryOrderId;
   }
 
-  async getLatestOrderStatus(order_id: number): Promise<OrderStatusLog> {
-    return await this.entityManager
+  async getLatestOrderStatus(
+    order_id: number,
+    entity_manager: EntityManager = this.entityManager,
+  ): Promise<OrderStatusLog> {
+    return await entity_manager
       .createQueryBuilder(OrderStatusLog, 'log')
       .where('log.order_id = :order_id', { order_id })
       .orderBy('log.logged_at', 'DESC')
@@ -1608,13 +1584,17 @@ export class OrderService {
     order_id: number,
     new_order_status: OrderStatus,
     note: string = null,
+    entity_manager: EntityManager = this.entityManager,
   ): Promise<string> {
     this.logger.log(new_order_status);
     if (!(new_order_status in OrderStatus)) {
       this.logger.error('Invalid order status');
       throw new CustomRpcException(1, 'Invalid order status');
     }
-    const currenOrderStatus = await this.getLatestOrderStatus(order_id);
+    const currenOrderStatus = await this.getLatestOrderStatus(
+      order_id,
+      entity_manager,
+    );
     if (!currenOrderStatus) {
       throw new CustomRpcException(1, 'Order does not exist');
     }
@@ -1725,7 +1705,7 @@ export class OrderService {
     }
 
     return (
-      await this.entityManager
+      await entity_manager
         .createQueryBuilder()
         .insert()
         .into(OrderStatusLog)
@@ -1733,8 +1713,71 @@ export class OrderService {
           order_id: order_id,
           order_status_id: new_order_status,
           note,
+          logged_at: Date.now(),
         })
         .execute()
     ).identifiers[0].log_id;
+  }
+
+  async confirmOrder(order_id: number): Promise<void> {
+    await this.entityManager.transaction(async (transactionalEntityManager) => {
+      const order = await transactionalEntityManager
+        .createQueryBuilder(Order, 'order')
+        .leftJoinAndSelect('order.invoice_obj', 'invoice')
+        .leftJoinAndSelect('invoice.payment_option_obj', 'paymentOption')
+        .where('order.order_id = :order_id', { order_id })
+        .getOne();
+
+      if (order.delivery_order_id) {
+        throw new CustomRpcException(2, 'Order cannot found');
+      }
+
+      await this.setOrderStatus(
+        order_id,
+        OrderStatus.IDLE,
+        null,
+        transactionalEntityManager,
+      );
+
+      const latestInvoiceStatus = await transactionalEntityManager
+        .createQueryBuilder(InvoiceStatusHistory, 'invoiceStatus')
+        .where('invoiceStatus.invoice_id = :invoice_id', {
+          invoice_id: order.invoice_obj.invoice_id,
+        })
+        .orderBy('invoiceStatus.created_at', 'DESC')
+        .getOne();
+
+      //Create the request to delivery service
+      let deliveryOrderId = null;
+      let codAmount = 0;
+      if (order.invoice_obj.payment_option_obj.name == PaymentList.COD) {
+        codAmount = order.order_total;
+      } else {
+        if (latestInvoiceStatus.status_id != InvoiceHistoryStatusEnum.PAID) {
+          this.logger.error('Paymen is not COD and unpaid');
+          throw new CustomRpcException(3, 'Paymen is not COD and unpaid');
+        }
+        codAmount = 0;
+      }
+
+      if (order.is_preorder == FALSE) {
+        await this.setOrderStatus(
+          order_id,
+          OrderStatus.PROCESSING,
+          null,
+          transactionalEntityManager,
+        );
+        deliveryOrderId = await this.createDeliveryRequest(order, codAmount);
+      }
+
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .update(Order)
+        .set({
+          delivery_order_id: deliveryOrderId,
+        })
+        .where('order_id = :order_id', { order_id: order.order_id })
+        .execute();
+    });
   }
 }

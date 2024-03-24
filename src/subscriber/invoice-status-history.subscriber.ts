@@ -32,16 +32,16 @@ export class InvoiceStatusHistorySubscriber
   async afterInsert(event: InsertEvent<InvoiceStatusHistory>) {
     console.log(`AFTER ENTITY INSERTED: `, event.entity.invoice_id);
 
-    const order = await this.dataSource
-      .createQueryBuilder(Invoice, 'invoice')
-      .where('invoice.invoice_id = :invoice_id', {
-        invoice_id: event.entity.invoice_id,
-      })
-      .getOne();
-    if (order) {
-      this.gatewayClient.emit('order_updated', {
-        order_id: order.order_id,
-      });
-    }
+    // const order = await this.dataSource
+    //   .createQueryBuilder(Invoice, 'invoice')
+    //   .where('invoice.invoice_id = :invoice_id', {
+    //     invoice_id: event.entity.invoice_id,
+    //   })
+    //   .getOne();
+    // if (order) {
+    //   this.gatewayClient.emit('order_updated', {
+    //     order_id: order.order_id,
+    //   });
+    // }
   }
 }
