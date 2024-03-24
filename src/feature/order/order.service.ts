@@ -74,15 +74,15 @@ export class OrderService {
   ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
-    orderId,
+    delivery_order_id,
     webhookData,
   ): Promise<any> {
     try {
       this.logger.log(
-        `receiving data from webhook to ${orderId} with ${webhookData.status}`,
+        `receiving data from webhook to ${delivery_order_id} with ${webhookData.status}`,
       );
       const currentOrder = await this.orderRepo.findOne({
-        where: { delivery_order_id: orderId },
+        where: { delivery_order_id: delivery_order_id },
       });
       const latestOrderStatus = await this.orderStatusLogRepo.findOne({
         where: { order_id: currentOrder.order_id },
@@ -1561,8 +1561,11 @@ export class OrderService {
     return deliveryOrderId;
   }
 
-  async getLatestOrderStatus(order_id: number): Promise<OrderStatusLog> {
-    return await this.entityManager
+  async getLatestOrderStatus(
+    order_id: number,
+    entity_manager: EntityManager = this.entityManager,
+  ): Promise<OrderStatusLog> {
+    return await entity_manager
       .createQueryBuilder(OrderStatusLog, 'log')
       .where('log.order_id = :order_id', { order_id })
       .orderBy('log.logged_at', 'DESC')
@@ -1579,7 +1582,10 @@ export class OrderService {
       this.logger.error('Invalid order status');
       throw new CustomRpcException(1, 'Invalid order status');
     }
-    const currenOrderStatus = await this.getLatestOrderStatus(order_id);
+    const currenOrderStatus = await this.getLatestOrderStatus(
+      order_id,
+      entity_manager,
+    );
     if (!currenOrderStatus) {
       throw new CustomRpcException(1, 'Order does not exist');
     }
@@ -1698,6 +1704,7 @@ export class OrderService {
           order_id: order_id,
           order_status_id: new_order_status,
           note,
+          logged_at: Date.now(),
         })
         .execute()
     ).identifiers[0].log_id;
@@ -1723,7 +1730,6 @@ export class OrderService {
         transactionalEntityManager,
       );
 
-      this.logger.log('setOrderStatus');
       const latestInvoiceStatus = await transactionalEntityManager
         .createQueryBuilder(InvoiceStatusHistory, 'invoiceStatus')
         .where('invoiceStatus.invoice_id = :invoice_id', {
@@ -1739,13 +1745,19 @@ export class OrderService {
         codAmount = order.order_total;
       } else {
         if (latestInvoiceStatus.status_id != InvoiceHistoryStatusEnum.PAID) {
-          this.logger.log('Paymen is not COD and unpaid');
+          this.logger.error('Paymen is not COD and unpaid');
           throw new CustomRpcException(3, 'Paymen is not COD and unpaid');
         }
         codAmount = 0;
       }
 
       if (order.is_preorder == FALSE) {
+        await this.setOrderStatus(
+          order_id,
+          OrderStatus.PROCESSING,
+          null,
+          transactionalEntityManager,
+        );
         deliveryOrderId = await this.createDeliveryRequest(order, codAmount);
       }
 
