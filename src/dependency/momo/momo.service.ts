@@ -92,7 +92,7 @@ export class MomoService {
       amount: currentInvoice.total_amount,
       orderId: orderId,
       orderInfo: `Thanh toán cho đơn hàng 2ALL ${currentInvoice.order_id}`,
-      redirectUrl: momoRedirectUrl,
+      redirectUrl: this.redirectUrl + '/' + currentInvoice.order_id,
       ipnUrl: this.ipnUrl,
       extraData: '',
       requestType: this.requestType,
