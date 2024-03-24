@@ -12,7 +12,7 @@ export class MomoTransaction {
   requestId: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
-  amount: number;
+  amount: string;
 
   @Column({ length: 50 })
   orderId: string;

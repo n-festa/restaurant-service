@@ -1,5 +1,9 @@
-import { Controller, Get, UseFilters } from '@nestjs/common';
-import { MessagePattern } from '@nestjs/microservices';
+import { Controller, Get, Inject, UseFilters } from '@nestjs/common';
+import {
+  ClientProxy,
+  EventPattern,
+  MessagePattern,
+} from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { Repository } from 'typeorm';
@@ -11,13 +15,19 @@ import { GetPaymentMethodResponse } from './dto/get-payment-method-response.dto'
 import { GetCutleryFeeRequest } from './dto/get-cutlery-fee-request.dto';
 import { GetCutleryFeeResponse } from './dto/get-cutlery-fee-response.dto';
 import { CommonService } from '../common/common.service';
-import { MoneyType } from 'src/type';
+import { CouponValue, MoneyType } from 'src/type';
 import { GetCouponInfoRequest } from './dto/get-coupon-info-request.dto';
 import { GetCouponInfoResponse } from './dto/get-coupon-info-response.dto';
 import { Coupon } from 'src/entity/coupon.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 import { ApplyPromotionCodeRequest } from './dto/apply-promotion-code-request.dto';
 import { ApplyPromotionCodeResponse } from './dto/apply-promotion-code-response.dto';
+import { CreateOrderRequest } from './dto/create-order-request.dto';
+import { CreateOrderResponse } from './dto/create-order-response.dto';
+import { OrderDetailResponse } from './dto/order-detail-response.dto';
+import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
+import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
+import { OrderStatus } from 'src/enum';
 
 @Controller('order')
 export class OrderController {
@@ -25,6 +35,8 @@ export class OrderController {
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     private readonly orderService: OrderService,
     private readonly commonService: CommonService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
   @MessagePattern({ cmd: 'get_order_by_id' })
   async getOrderByOrderId(order_id) {
@@ -45,10 +57,14 @@ export class OrderController {
     data: GetApplicationFeeRequest,
   ): Promise<GetApplicationFeeResponse> {
     const { items_total, exchange_rate } = data;
-    return await this.orderService.getApplicationFeeFromEndPoint(
+    const applicationFee = await this.orderService.getApplicationFee(
       items_total,
       exchange_rate,
     );
+
+    return {
+      application_fee: applicationFee,
+    };
   }
 
   @MessagePattern({ cmd: 'get_payment_method' })
@@ -183,19 +199,81 @@ export class OrderController {
       throw new CustomRpcException(4, 'Coupon code is invalid');
     }
 
-    const discountAmount: number = this.orderService.calculateDiscountAmount(
+    const couponValue: CouponValue = this.orderService.calculateDiscountAmount(
       validCoupon,
       items,
     );
 
     const unit = await this.orderService.getUnitById(restaurant.unit);
 
-    result.discount_amount = discountAmount;
+    result.discount_amount =
+      couponValue.coupon_value_from_platform +
+      couponValue.coupon_value_from_restaurant;
     result.currency = unit.symbol;
     result.coupon_code = coupon_code;
     result.restaurant_id = restaurant_id;
     result.items = items;
 
     return result;
+  }
+
+  @MessagePattern({ cmd: 'create_order' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async createOrder(data: CreateOrderRequest): Promise<CreateOrderResponse> {
+    return await this.orderService.createOrder(data);
+  }
+
+  @MessagePattern({ cmd: 'get_order_detail' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getOrderDetail(
+    data: OrderDetailResponse,
+  ): Promise<OrderDetailResponse> {
+    const { order_id, customer_id } = data;
+    const order = await this.orderService.getOrderDetail(order_id);
+
+    if (!order) {
+      throw new CustomRpcException(2, 'Order cannot be found');
+    }
+
+    if (order.customer_id && customer_id != order.customer_id) {
+      throw new CustomRpcException(3, "Cannot get other customer's order");
+    }
+
+    return order;
+  }
+
+  @MessagePattern({ cmd: 'get_delivery_fee' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getDeliveryFee(
+    data: GetDeliveryFeeRequest,
+  ): Promise<GetDeliveryFeeResonse> {
+    const { restaurant_id, delivery_latitude, delivery_longitude } = data;
+
+    return await this.orderService.getDeliveryFeeFromEndPoint(
+      restaurant_id,
+      delivery_latitude,
+      delivery_longitude,
+    );
+  }
+
+  @MessagePattern({ cmd: 'get_order_detail_sse' })
+  async getOrderDetailSse(data: any): Promise<OrderDetailResponse> {
+    const { order_id } = data;
+    const order = await this.orderService.getOrderDetail(order_id);
+    return order;
+  }
+
+  @MessagePattern({ cmd: 'confirm_order_from_restaurant' })
+  async confirmOrder(data: any) {
+    const { order_id } = data;
+    this.gatewayClient.emit('order_updated', { order_id });
+    return order_id;
+  }
+
+  @MessagePattern({ cmd: 'change_order_status_for_testing' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async changeOrderStatusForTesting(data: any) {
+    const { order_id, new_order_status } = data;
+    return await this.orderService.setOrderStatus(order_id, new_order_status);
   }
 }

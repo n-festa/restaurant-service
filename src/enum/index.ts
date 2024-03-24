@@ -72,3 +72,18 @@ export enum CalculationType {
   PERCENTAGE = 'percentage',
   FIXED = 'fixed',
 }
+
+export enum OrderMilestones {
+  CANCELLED = 'cancelled',
+  COMPLETED = 'completed',
+  PICKED_UP = 'picked_up',
+  FAILED = 'failed',
+  CONFIRMED = 'confirmed',
+  CREATED = 'created',
+  START_TO_PROCESS = 'started_to_process',
+}
+
+export enum PaymentList {
+  MOMO = 'momo',
+  COD = 'COD',
+}

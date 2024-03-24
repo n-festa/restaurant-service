@@ -525,7 +525,7 @@ export class FoodService {
           await this.commonService.getAvailableDiscountPrice(rawSKU),
         unit: priceUnit,
         is_standard: Boolean(rawSKU.is_standard),
-        calorie_kcal: rawSKU.calorie_kcal,
+        calorie_kcal: Number(rawSKU.calorie_kcal),
         carb_g: rawSKU.carbohydrate_g,
         protein_g: rawSKU.protein_g,
         fat_g: rawSKU.fat_g,

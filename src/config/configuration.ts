@@ -1,3 +1,5 @@
+import { Transport } from '@nestjs/microservices';
+
 export default () => ({
   flagsmithKey: process.env.FLAGSMITH_SERVER_SIDE_ENVIRONMENT_KEY || '',
   database: {
@@ -21,4 +23,12 @@ export default () => ({
   featureFlag: process.env.FEATURE_FLAG || '',
   ahamoveToken: process.env.AHAMOVE_TOKEN,
   planningDay: 7, // the restaurant will plan new cooking schedule every Saturday (last until the end of the day)
+  timeStepInTimSlotConverterM: 15, //minutes
+  deliverBufferTime: 5, //minutes
+  microServices: {
+    gateway: {
+      transport: Transport.TCP,
+      options: { port: 4010 },
+    },
+  },
 });

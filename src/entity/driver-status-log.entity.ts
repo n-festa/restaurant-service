@@ -13,23 +13,24 @@ export class DriverStatusLog {
   @PrimaryGeneratedColumn('uuid')
   log_id: string;
 
-  @Column()
+  @Column({ type: 'int', nullable: false, unique: false })
   order_id: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true, unique: false })
   driver_id: number | null;
 
-  @Column('text', { nullable: true })
+  @Column('text', { nullable: true, unique: false })
   note: string | null;
 
   @Column('bigint')
   logged_at: number;
 
+  //RELATIONSHIP
   @ManyToOne(() => Order)
-  @JoinColumn({ name: 'order_id' })
+  @JoinColumn({ name: 'order_id', referencedColumnName: 'order_id' })
   order: Order;
 
   @ManyToOne(() => Driver, { nullable: true })
-  @JoinColumn({ name: 'driver_id' })
+  @JoinColumn({ name: 'driver_id', referencedColumnName: 'driver_id' })
   driver: Driver | null;
 }

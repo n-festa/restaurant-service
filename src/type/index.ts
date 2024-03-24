@@ -208,3 +208,47 @@ export interface CouponAppliedItem {
   price_after_discount: number;
   packaging_price: number;
 }
+
+export interface CouponValue {
+  coupon_value_from_platform: number;
+  coupon_value_from_restaurant: number;
+}
+
+export interface OrderItemRequest {
+  sku_id: number;
+  qty_ordered: number;
+  advanced_taste_customization_obj: OptionSelection[];
+  basic_taste_customization_obj: BasicTasteSelection[];
+  notes: string;
+  packaging_id: number;
+}
+
+export interface OrderDetailRequest {
+  order_id: number;
+  customer_id: number;
+}
+
+export interface OrderItemResponse {
+  item_name: TextByLang[];
+  item_img: string;
+  order_id: number;
+  sku_id: number;
+  menu_item_id: number;
+  qty_ordered: number;
+  price: number;
+  advanced_taste_customization_obj: OptionSelection[];
+  basic_taste_customization_obj: BasicTasteSelection[];
+  advanced_taste_customization: string;
+  basic_taste_customization: string;
+  portion_customization: string;
+  notes: string;
+  calorie_kcal: string;
+  packaging_info: OrderItemPackaging;
+}
+
+interface OrderItemPackaging {
+  packaging_id: number;
+  name: TextByLang[];
+  description: TextByLang[];
+  price: number;
+}

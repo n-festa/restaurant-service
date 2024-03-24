@@ -20,12 +20,8 @@ export class Restaurant {
   @PrimaryGeneratedColumn()
   public restaurant_id: number;
 
-  @OneToOne(() => Address, { eager: true })
-  @JoinColumn({
-    name: 'address_id',
-    referencedColumnName: 'address_id',
-  })
-  public address: Address;
+  @Column({ type: 'int', nullable: true, unique: false })
+  public address_id: number;
 
   @Column({ type: 'varchar', length: 25, nullable: false, unique: false })
   public phone_number: string;
@@ -145,4 +141,11 @@ export class Restaurant {
     referencedColumnName: 'unit_id',
   })
   public unit_obj: Unit;
+
+  @OneToOne(() => Address, { eager: true })
+  @JoinColumn({
+    name: 'address_id',
+    referencedColumnName: 'address_id',
+  })
+  public address: Address;
 }
