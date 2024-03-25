@@ -401,11 +401,6 @@ export class FoodService {
         description.push(descriptionExt);
       });
 
-      console.log(
-        'menuItemPackaging.is_default',
-        menuItemPackaging.is_default,
-        typeof menuItemPackaging.is_default,
-      );
       const packagingInfo: PackagingInfo = {
         packaging_id: menuItemPackaging.packaging_id,
         image_url: image_url,

@@ -142,7 +142,7 @@ export class MomoService {
       where: { invoice_id: currentInvoice.invoice_id },
       order: { created_at: 'DESC' },
     });
-    console.log('========', currentInvoice, latestInvoiceStatus);
+    // console.log('========', currentInvoice, latestInvoiceStatus);
 
     if (
       latestInvoiceStatus &&
@@ -158,7 +158,6 @@ export class MomoService {
         response = await axiosInstance.request(options);
       } catch (error) {
         //FAIL TO CALL API MOMO
-        console.log('error', error);
         this.logger.error(
           'An error occurred when create momo request',
           JSON.stringify(error.response?.data),

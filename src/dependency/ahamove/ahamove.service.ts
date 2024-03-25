@@ -84,7 +84,7 @@ export class AhamoveService implements OnModuleInit {
         this.AHA_MOVE_REFRESH_TOKEN = response.data?.refresh_token;
       })
       .catch((error) => {
-        console.log(error);
+        // console.log(error);
         this.logger.error('An error occurred ', JSON.stringify(error));
       });
   }
@@ -134,13 +134,13 @@ export class AhamoveService implements OnModuleInit {
       const request = this.httpService.request(config);
 
       const result = await firstValueFrom(request);
-      // console.log(result.data);
+      this.logger.log(result.data);
       return {
         distance_km: result.data[0].data.distance,
         duration_s: result.data[0].data.duration,
       };
     } catch (error) {
-      console.log(error);
+      this.logger.error('An error occurred ', JSON.stringify(error));
       return {
         distance_km: null,
         duration_s: null,

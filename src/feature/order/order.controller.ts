@@ -45,7 +45,7 @@ export class OrderController {
 
   @MessagePattern({ cmd: 'update_order_status_by_webhook' })
   async updateOrderStatusByWebhook({ delivery_order_id, webhookData }) {
-    return this.orderService.updateOrderStatusFromAhamoveWebhook(
+    return await this.orderService.updateOrderStatusFromAhamoveWebhook(
       delivery_order_id,
       webhookData,
     );
