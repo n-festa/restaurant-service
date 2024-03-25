@@ -88,6 +88,12 @@ export class OrderService {
       const currentOrder = await this.orderRepo.findOne({
         where: { delivery_order_id: delivery_order_id },
       });
+      if (!currentOrder) {
+        this.logger.error(
+          `Cannot find the order for ahamove order ${delivery_order_id}`,
+        );
+        return { message: 'Order not existed' };
+      }
       const latestOrderStatus = await this.orderStatusLogRepo.findOne({
         where: { order_id: currentOrder.order_id },
         order: { logged_at: 'DESC' },
@@ -96,23 +102,23 @@ export class OrderService {
         where: { order_id: currentOrder.order_id },
         order: { logged_at: 'DESC' },
       });
-      if (currentOrder) {
-        await this.handleOrderFlowBaseOnAhahaStatus(
-          currentOrder,
-          latestOrderStatus?.order_status_id,
-          latestDriverStatus?.driver_id,
-          webhookData,
-        );
+      // if (currentOrder) {
+      await this.handleOrderFlowBaseOnAhahaStatus(
+        currentOrder,
+        latestOrderStatus?.order_status_id,
+        latestDriverStatus?.driver_id,
+        webhookData,
+      );
 
-        this.gatewayClient.emit('order_updated', {
-          order_id: currentOrder.order_id,
-        });
-        return { message: 'Order updated successfully' };
-      }
-      return { message: 'Order not existed' };
+      this.gatewayClient.emit('order_updated', {
+        order_id: currentOrder.order_id,
+      });
+      return { message: 'Order updated successfully' };
+      // }
+      // return { message: 'Order not existed' };
     } catch (error) {
       this.logger.error(`An error occurred while updating order: ${error}`);
-      throw new InternalServerErrorException();
+      // throw new InternalServerErrorException();
     }
   }
   private async handleOrderFlowBaseOnAhahaStatus(
@@ -121,11 +127,13 @@ export class OrderService {
     latestDriverId,
     webhookData,
   ) {
-    const PATH_STATUS = webhookData?.path[2]?.status; // assume 3rd is status record
+    const PATH_STATUS = webhookData?.path[1]?.status; // assume 2nd is status record
+    this.logger.log(`PATH_STATUS: ${PATH_STATUS}`);
     const SUB_STATUS = webhookData?.sub_status;
+    this.logger.log(`SUB_STATUS: ${SUB_STATUS}`);
 
-    const orderStatusLog = new OrderStatusLog();
-    orderStatusLog.order_id = order.order_id;
+    // const orderStatusLog = new OrderStatusLog();
+    // orderStatusLog.order_id = order.order_id;
     switch (webhookData.status) {
       case 'ASSIGNING':
         if (
@@ -201,9 +209,14 @@ export class OrderService {
         break;
       case 'CANCELLED':
         //Order_Status_Log with status CANCELLED
-        orderStatusLog.order_status_id = OrderStatus.CANCELLED;
-        orderStatusLog.note = `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `;
-        await this.orderStatusLogRepo.save(orderStatusLog);
+        // orderStatusLog.order_status_id = OrderStatus.CANCELLED;
+        // orderStatusLog.note = `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `;
+        // await this.orderStatusLogRepo.save(orderStatusLog);
+        await this.setOrderStatus(
+          order.order_id,
+          OrderStatus.CANCELLED,
+          `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `,
+        );
         //Urgent_Action_Needed
         const action = new UrgentActionNeeded();
         action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. Need action from admin !!!`;
@@ -217,15 +230,28 @@ export class OrderService {
         // order_status == PROCESSING
         // Order_Status_Log with READY and DELIVERING
         if (latestOrderStatus === OrderStatus.PROCESSING) {
-          orderStatusLog.order_status_id = OrderStatus.READY;
-          await this.orderStatusLogRepo.save({ ...orderStatusLog });
-          orderStatusLog.order_status_id = OrderStatus.DELIVERING;
-          await this.orderStatusLogRepo.save({ ...orderStatusLog });
+          // orderStatusLog.order_status_id = OrderStatus.READY;
+          // await this.orderStatusLogRepo.save({ ...orderStatusLog });
+          await this.setOrderStatus(
+            order.order_id,
+            OrderStatus.READY,
+            '',
+            this.entityManager,
+          );
+          // orderStatusLog.order_status_id = OrderStatus.DELIVERING;
+          // await this.orderStatusLogRepo.save({ ...orderStatusLog });
+          await this.setOrderStatus(
+            order.order_id,
+            OrderStatus.DELIVERING,
+            '',
+            this.entityManager,
+          );
         } else if (latestOrderStatus === OrderStatus.READY) {
           // order_status == READY
           // Order_Status_Log with DELIVERING
-          orderStatusLog.order_status_id = OrderStatus.DELIVERING;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          // orderStatusLog.order_status_id = OrderStatus.DELIVERING;
+          // await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.setOrderStatus(order.order_id, OrderStatus.DELIVERING, '');
         } else {
           //Urgent_Action_Needed
           const action = new UrgentActionNeeded();
@@ -243,14 +269,17 @@ export class OrderService {
           await this.urgentActionNeededRepo.save(action);
           break;
         }
+
         if (PATH_STATUS === 'FAILED') {
           // Order_Status_Log with FAILED
-          orderStatusLog.order_status_id = OrderStatus.FAILED;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          // orderStatusLog.order_status_id = OrderStatus.FAILED;
+          // await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.setOrderStatus(order.order_id, OrderStatus.FAILED, '');
         } else if (PATH_STATUS === 'COMPLETED') {
           // Order_Status_Log with COMPLETED
-          orderStatusLog.order_status_id = OrderStatus.COMPLETED;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          // orderStatusLog.order_status_id = OrderStatus.COMPLETED;
+          // await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.setOrderStatus(order.order_id, OrderStatus.COMPLETED, '');
         }
         break;
       default:
