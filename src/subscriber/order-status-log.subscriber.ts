@@ -31,7 +31,7 @@ export class OrderStatusLogSubscriber
    * Called after entity insertion.
    */
   afterInsert(event: InsertEvent<OrderStatusLog>) {
-    console.log(`AFTER ENTITY INSERTED: `, event.entity);
+    // console.log(`AFTER ENTITY INSERTED: `, event.entity);
     // this.gatewayClient.emit('order_updated', {
     //   order_id: event.entity.order_id,
     // });

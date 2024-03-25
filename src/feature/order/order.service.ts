@@ -596,7 +596,6 @@ export class OrderService {
 
     this.logger.debug(deliveryFee);
     if (deliveryFee != delivery_fee) {
-      console.log(deliveryFee);
       // throw new CustomRpcException(101, 'Delivery fee is not correct');
       throw new CustomRpcException(101, {
         message: 'Delivery fee is not correct',
