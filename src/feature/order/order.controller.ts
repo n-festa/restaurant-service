@@ -28,6 +28,7 @@ import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { OrderStatus } from 'src/enum';
+import { GetOngoingOrdersResponse } from './dto/get-ongoing-orders-response.dto';
 
 @Controller('order')
 export class OrderController {
@@ -287,5 +288,16 @@ export class OrderController {
       order_id: order_id,
     });
     return record;
+  }
+
+  @MessagePattern({ cmd: 'get_customer_ongoing_orders' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getCustomerOngoingOrders(
+    customer_id: number,
+  ): Promise<GetOngoingOrdersResponse> {
+    const ongoingOrders: Order[] =
+      await this.orderService.getOngoingOrders(customer_id);
+
+    return await this.orderService.buildGetOngoingOrdersResponse(ongoingOrders);
   }
 }

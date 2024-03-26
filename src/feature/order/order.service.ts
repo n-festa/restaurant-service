@@ -53,6 +53,13 @@ import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { VND } from 'src/constant/unit.constant';
 import { FALSE, TRUE } from 'src/constant';
 import { ClientProxy } from '@nestjs/microservices';
+import { OrderStatusEntity } from 'src/entity/order-status.entity';
+import {
+  GetOngoingOrdersResponse,
+  OngoingOrder,
+  OrderStatusLog as OngoignOrderStatusLog,
+  OrderItem as OngoingOrderItem,
+} from './dto/get-ongoing-orders-response.dto';
 
 @Injectable()
 export class OrderService {
@@ -1235,47 +1242,47 @@ export class OrderService {
     //buil OrderStatusLog
     const orderStatusLog = [];
     order.order_status_log.forEach((log) => {
-      let milestone = null;
-      switch (log.order_status_id) {
-        case OrderStatus.NEW: {
-          milestone = OrderMilestones.CREATED;
-          break;
-        }
+      // let milestone = null;
+      // switch (log.order_status_id) {
+      //   case OrderStatus.NEW: {
+      //     milestone = OrderMilestones.CREATED;
+      //     break;
+      //   }
 
-        case OrderStatus.IDLE: {
-          milestone = OrderMilestones.CONFIRMED;
-          break;
-        }
+      //   case OrderStatus.IDLE: {
+      //     milestone = OrderMilestones.CONFIRMED;
+      //     break;
+      //   }
 
-        case OrderStatus.PROCESSING: {
-          milestone = OrderMilestones.START_TO_PROCESS;
-          break;
-        }
+      //   case OrderStatus.PROCESSING: {
+      //     milestone = OrderMilestones.START_TO_PROCESS;
+      //     break;
+      //   }
 
-        case OrderStatus.DELIVERING: {
-          milestone = OrderMilestones.PICKED_UP;
-          break;
-        }
+      //   case OrderStatus.DELIVERING: {
+      //     milestone = OrderMilestones.PICKED_UP;
+      //     break;
+      //   }
 
-        case OrderStatus.COMPLETED: {
-          milestone = OrderMilestones.COMPLETED;
-          break;
-        }
+      //   case OrderStatus.COMPLETED: {
+      //     milestone = OrderMilestones.COMPLETED;
+      //     break;
+      //   }
 
-        case OrderStatus.FAILED: {
-          milestone = OrderMilestones.FAILED;
-          break;
-        }
+      //   case OrderStatus.FAILED: {
+      //     milestone = OrderMilestones.FAILED;
+      //     break;
+      //   }
 
-        case OrderStatus.CANCELLED: {
-          milestone = OrderMilestones.CANCELLED;
-          break;
-        }
+      //   case OrderStatus.CANCELLED: {
+      //     milestone = OrderMilestones.CANCELLED;
+      //     break;
+      //   }
 
-        default:
-          //do nothing
-          break;
-      }
+      //   default:
+      //     //do nothing
+      //     break;
+      // }
       orderStatusLog.push({
         status: log.order_status_id,
         description: log.order_status_ext.map((i) => {
@@ -1285,7 +1292,7 @@ export class OrderService {
           };
         }),
         logged_at: log.logged_at,
-        milestone: milestone,
+        milestone: this.getOrderMilestone(log.order_status_id),
       });
     });
 
@@ -1807,5 +1814,178 @@ export class OrderService {
         .where('order_id = :order_id', { order_id: order.order_id })
         .execute();
     });
+  }
+
+  async getOngoingOrders(customer_id: number): Promise<Order[]> {
+    const ongoingOrders: Order[] = [];
+    const orders = await this.entityManager
+      .createQueryBuilder(Order, 'order')
+      .leftJoinAndSelect('order.order_status_log', 'statusLog')
+      .leftJoinAndSelect('statusLog.order_status_ext', 'ext')
+      .where('order.customer_id = :customer_id', { customer_id })
+      .getMany();
+    const ongoingStatusList = (
+      await this.entityManager
+        .createQueryBuilder(OrderStatusEntity, 'status')
+        .where('status.is_active = 1')
+        .andWhere('status.is_end_status = 0')
+        .getMany()
+    ).map((i) => i.order_status_id);
+
+    for (const order of orders) {
+      const latestStatus = order.order_status_log.sort(
+        (a, b) => b.logged_at - a.logged_at,
+      )[0].order_status_id;
+      if (ongoingStatusList.includes(latestStatus)) {
+        ongoingOrders.push(order);
+      }
+    }
+
+    return ongoingOrders;
+  }
+
+  async getRestaurantInfoById(restaurant_id: number): Promise<Restaurant> {
+    return await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.restaurant_ext', 'ext')
+      .leftJoinAndSelect('restaurant.logo', 'logo')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+  }
+
+  async getOrderItems(order_id: number): Promise<OrderSKU[]> {
+    return await this.entityManager
+      .createQueryBuilder(OrderSKU, 'item')
+      .leftJoinAndSelect('item.sku_obj', 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'ext')
+      .where('item.order_id = :order_id', { order_id })
+      .getMany();
+  }
+
+  async buildGetOngoingOrdersResponse(
+    ongoing_orders: Order[],
+  ): Promise<GetOngoingOrdersResponse> {
+    const result = new GetOngoingOrdersResponse();
+    result.ongoing_oders = [];
+
+    if (ongoing_orders.length <= 0) {
+      return result;
+    }
+
+    for (const order of ongoing_orders) {
+      //Get restaurant info
+      const restaurant = await this.getRestaurantInfoById(order.restaurant_id);
+
+      //Get order_items
+      const orderItems = await this.getOrderItems(order.order_id);
+
+      //Build output
+      const ongoingOrderInfo: OngoingOrder = {
+        order_id: order.order_id,
+        order_status_log: [],
+        restaurant_info: null,
+        order_items: [],
+        order_total: order.order_total,
+      };
+
+      order.order_status_log.forEach((log) => {
+        //order_status_log
+        const statusLog: OngoignOrderStatusLog = {
+          status: log.order_status_id,
+          description: log.order_status_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.description,
+            };
+          }),
+          logged_at: log.logged_at,
+          milestone: this.getOrderMilestone(log.order_status_id),
+        };
+        ongoingOrderInfo.order_status_log.push(statusLog);
+      });
+
+      // restaurant_info
+      const restaurantName: TextByLang[] = [];
+      const specialty: TextByLang[] = [];
+      restaurant.restaurant_ext.forEach((ext) => {
+        restaurantName.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+        specialty.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.specialty,
+        });
+      });
+      ongoingOrderInfo.restaurant_info = {
+        restaurant_id: restaurant.restaurant_id,
+        restaurant_name: restaurantName,
+        restaurant_logo_img: restaurant.logo.url,
+        specialty: specialty,
+      };
+
+      // OngoingOrderItem
+      orderItems.forEach((item) => {
+        const orderItem: OngoingOrderItem = {
+          item_name: item.sku_obj.menu_item.menuItemExt.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.name,
+            };
+          }),
+          qty_ordered: item.qty_ordered,
+        };
+        ongoingOrderInfo.order_items.push(orderItem);
+      });
+
+      result.ongoing_oders.push(ongoingOrderInfo);
+    }
+    return result;
+  }
+
+  getOrderMilestone(order_status_id: OrderStatus): OrderMilestones {
+    let milestone = null;
+    switch (order_status_id) {
+      case OrderStatus.NEW: {
+        milestone = OrderMilestones.CREATED;
+        break;
+      }
+
+      case OrderStatus.IDLE: {
+        milestone = OrderMilestones.CONFIRMED;
+        break;
+      }
+
+      case OrderStatus.PROCESSING: {
+        milestone = OrderMilestones.START_TO_PROCESS;
+        break;
+      }
+
+      case OrderStatus.DELIVERING: {
+        milestone = OrderMilestones.PICKED_UP;
+        break;
+      }
+
+      case OrderStatus.COMPLETED: {
+        milestone = OrderMilestones.COMPLETED;
+        break;
+      }
+
+      case OrderStatus.FAILED: {
+        milestone = OrderMilestones.FAILED;
+        break;
+      }
+
+      case OrderStatus.CANCELLED: {
+        milestone = OrderMilestones.CANCELLED;
+        break;
+      }
+
+      default:
+        //do nothing
+        break;
+    }
+    return milestone;
   }
 }
