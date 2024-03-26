@@ -1070,7 +1070,9 @@ export class OrderService {
           : '';
       orderSku.notes = item.notes;
       orderSku.packaging_id = item.packaging_id;
-      orderSku.calorie_kcal = sku.calorie_kcal;
+      orderSku.calorie_kcal = (
+        Number(sku.calorie_kcal) * item.qty_ordered
+      ).toFixed(2);
       orderSku.packaging_obj = packaging;
 
       orderItems.push(orderSku);
