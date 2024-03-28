@@ -27,8 +27,9 @@ import { CreateOrderResponse } from './dto/create-order-response.dto';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
-import { OrderStatus } from 'src/enum';
 import { GetOngoingOrdersResponse } from './dto/get-ongoing-orders-response.dto';
+import { GetOrderHistoryByRestaurantRequest } from './dto/get-order-history-by-restaurant-request.dto';
+import { GetOrderHistoryByRestaurantResponse } from './dto/get-order-history-by-restaurant-response.dto';
 
 @Controller('order')
 export class OrderController {
@@ -299,5 +300,42 @@ export class OrderController {
       await this.orderService.getOngoingOrders(customer_id);
 
     return await this.orderService.buildGetOngoingOrdersResponse(ongoingOrders);
+  }
+
+  @MessagePattern({ cmd: 'get_order_history_by_restaurant' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getOrderHistoryByRestaurant(
+    data: GetOrderHistoryByRestaurantRequest,
+  ): Promise<GetOrderHistoryByRestaurantResponse> {
+    const result = new GetOrderHistoryByRestaurantResponse();
+
+    const {
+      customer_id,
+      sort_type,
+      filtered_order_status,
+      time_range,
+      offset,
+      page_size,
+    } = data;
+
+    const historyOrders: Order[] = await this.orderService.getHistoryOrders(
+      customer_id,
+      sort_type,
+      filtered_order_status,
+      time_range,
+    );
+
+    const historicalOrdersByRestaurant =
+      await this.orderService.buildHistoricalOrderByRestaurant(
+        historyOrders.slice(offset, offset + page_size),
+      );
+
+    result.hitorical_oders = historicalOrdersByRestaurant;
+    result.sort_type = sort_type;
+    result.filtered_order_status = filtered_order_status;
+    result.time_range = time_range;
+    result.offset = offset + historicalOrdersByRestaurant.length;
+    result.total_count = historyOrders.length;
+    return result;
   }
 }

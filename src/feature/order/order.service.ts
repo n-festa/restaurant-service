@@ -30,6 +30,7 @@ import {
   OrderItemRequest,
   OrderItemResponse,
   TextByLang,
+  TimeRange,
 } from 'src/type';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
@@ -60,6 +61,12 @@ import {
   OrderStatusLog as OngoignOrderStatusLog,
   OrderItem as OngoingOrderItem,
 } from './dto/get-ongoing-orders-response.dto';
+import {
+  HistoryOrderStatus,
+  SortType as RestaurantOrderSortType,
+} from './dto/get-order-history-by-restaurant-request.dto';
+import { HistoricalOrderByRestaurant } from './dto/get-order-history-by-restaurant-response.dto';
+import { FoodRating } from 'src/entity/food-rating.entity';
 
 @Injectable()
 export class OrderService {
@@ -1989,5 +1996,178 @@ export class OrderService {
         break;
     }
     return milestone;
+  }
+
+  async getHistoryOrders(
+    customer_id: number,
+    sort_type: RestaurantOrderSortType,
+    filtered_order_status: string[],
+    time_range: TimeRange,
+  ): Promise<Order[]> {
+    const historicalOrders: Order[] = [];
+
+    const orders = await this.entityManager
+      .createQueryBuilder(Order, 'order')
+      .leftJoinAndSelect('order.order_status_log', 'statusLog')
+      .leftJoinAndSelect('statusLog.order_status_ext', 'ext')
+      .where('order.customer_id = :customer_id', { customer_id })
+      .getMany();
+
+    for (const order of orders) {
+      //Sort order_status_log in ascending order
+      order.order_status_log.sort((a, b) => a.logged_at - b.logged_at);
+
+      //Filter by status
+      const numberOfStatusLog = order.order_status_log.length - 1;
+      const latestStatus =
+        order.order_status_log[numberOfStatusLog].order_status_id;
+      if (filtered_order_status && filtered_order_status.length > 0) {
+        if (!filtered_order_status.includes(latestStatus)) {
+          continue;
+        }
+      } else {
+        if (!(latestStatus in HistoryOrderStatus)) {
+          continue;
+        }
+      }
+
+      //Filter by time_range
+      const createdAt = order.order_status_log[0].logged_at;
+      if (time_range.from && time_range.to) {
+        if (createdAt < time_range.from || createdAt > time_range.to) {
+          continue;
+        }
+      }
+
+      historicalOrders.push(order);
+    }
+
+    //Sorting
+    switch (sort_type) {
+      case RestaurantOrderSortType.DATE_DESC:
+        historicalOrders.sort(
+          (a, b) =>
+            b.order_status_log[0].logged_at - a.order_status_log[0].logged_at,
+        );
+        break;
+      case RestaurantOrderSortType.DATE_ASC:
+        historicalOrders.sort(
+          (a, b) =>
+            a.order_status_log[0].logged_at - b.order_status_log[0].logged_at,
+        );
+        break;
+      case RestaurantOrderSortType.TOTAL_DESC:
+        historicalOrders.sort((a, b) => b.order_total - a.order_total);
+        break;
+      case RestaurantOrderSortType.TOTAL_ASC:
+        historicalOrders.sort((a, b) => a.order_total - b.order_total);
+        break;
+      default:
+        this.logger.error('sort_type is not valid');
+        throw new Error('sort_type is not valid');
+    }
+
+    return historicalOrders;
+  }
+
+  async buildHistoricalOrderByRestaurant(
+    history_orders: Order[],
+  ): Promise<HistoricalOrderByRestaurant[]> {
+    const historicalOrderInfos: HistoricalOrderByRestaurant[] = [];
+
+    if (history_orders.length <= 0) {
+      return [];
+    }
+
+    for (const order of history_orders) {
+      //Get restaurant info
+      const restaurant = await this.getRestaurantInfoById(order.restaurant_id);
+
+      //Get order_items
+      const orderItems = await this.getOrderItems(order.order_id);
+
+      //Get Food rating
+      const foodRatings: FoodRating[] =
+        await this.getFoodRatingsWithOrderSkuIds(
+          orderItems.map((i) => i.order_sku_id),
+        );
+      this.logger.log(foodRatings);
+
+      //Build output
+      const historicalOrderInfo: HistoricalOrderByRestaurant = {
+        order_id: order.order_id,
+        order_status_log: [],
+        restaurant_info: null,
+        order_items: [],
+        order_total: order.order_total,
+        order_score:
+          foodRatings
+            .map((i) => i.score)
+            .reduce((sum, val) => (sum += val), 0) / foodRatings.length,
+      };
+
+      order.order_status_log.forEach((log) => {
+        //order_status_log
+        const statusLog = {
+          status: log.order_status_id,
+          description: log.order_status_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.description,
+            };
+          }),
+          logged_at: log.logged_at,
+          milestone: this.getOrderMilestone(log.order_status_id),
+        };
+        historicalOrderInfo.order_status_log.push(statusLog);
+      });
+
+      // restaurant_info
+      const restaurantName: TextByLang[] = [];
+      const specialty: TextByLang[] = [];
+      restaurant.restaurant_ext.forEach((ext) => {
+        restaurantName.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+        specialty.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.specialty,
+        });
+      });
+      historicalOrderInfo.restaurant_info = {
+        restaurant_id: restaurant.restaurant_id,
+        restaurant_name: restaurantName,
+        restaurant_logo_img: restaurant.logo.url,
+        specialty: specialty,
+      };
+
+      // OrderItem
+      orderItems.forEach((item) => {
+        const orderItem = {
+          item_name: item.sku_obj.menu_item.menuItemExt.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.name,
+            };
+          }),
+          qty_ordered: item.qty_ordered,
+        };
+        historicalOrderInfo.order_items.push(orderItem);
+      });
+
+      historicalOrderInfos.push(historicalOrderInfo);
+    }
+    return historicalOrderInfos;
+  }
+
+  async getFoodRatingsWithOrderSkuIds(
+    order_sku_ids: number[],
+  ): Promise<FoodRating[]> {
+    this.logger.log(order_sku_ids);
+    return await this.entityManager
+      .createQueryBuilder(FoodRating, 'rating')
+      .where('rating.order_sku_id IN (:...order_sku_ids)', { order_sku_ids })
+      .getMany();
   }
 }
