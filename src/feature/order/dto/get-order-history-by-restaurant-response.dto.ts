@@ -30,7 +30,12 @@ interface RestaurantInfo {
 }
 interface OrderItem {
   item_name: TextByLang[];
+  sku_id: number;
   qty_ordered: number;
+  advanced_taste_customization_obj: OptionSelection[];
+  basic_taste_customization_obj: BasicTasteSelection[];
+  notes: string;
+  packaging_id: number;
 }
 interface TextByLang {
   ISO_language_code: string;
@@ -39,4 +44,12 @@ interface TextByLang {
 interface TimeRange {
   from: number; //timestamp
   to: number; //timestamp
+}
+
+interface OptionSelection {
+  option_id: string;
+  value_id: string;
+}
+interface BasicTasteSelection {
+  no_adding_id: string;
 }

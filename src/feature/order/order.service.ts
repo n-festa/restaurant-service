@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
@@ -2165,7 +2160,17 @@ export class OrderService {
               text: i.name,
             };
           }),
+          sku_id: item.sku_id,
           qty_ordered: item.qty_ordered,
+          advanced_taste_customization_obj:
+            item.advanced_taste_customization_obj
+              ? JSON.parse(item.advanced_taste_customization_obj)
+              : [],
+          basic_taste_customization_obj: item.basic_taste_customization_obj
+            ? JSON.parse(item.basic_taste_customization_obj)
+            : [],
+          notes: item.notes,
+          packaging_id: item.packaging_id,
         };
         historicalOrderInfo.order_items.push(orderItem);
       });
