@@ -2000,6 +2000,7 @@ export class OrderService {
 
   async getHistoryOrders(
     customer_id: number,
+    search_keyword: string,
     sort_type: RestaurantOrderSortType,
     filtered_order_status: string[],
     time_range: TimeRange,
@@ -2016,6 +2017,19 @@ export class OrderService {
     for (const order of orders) {
       //Sort order_status_log in ascending order
       order.order_status_log.sort((a, b) => a.logged_at - b.logged_at);
+
+      //Filter by search keyword
+      const restaurant = await this.getRestaurantInfoById(order.restaurant_id);
+      let isMatched = false;
+      for (const ext of restaurant.restaurant_ext) {
+        if (this.commonService.matchFullTextSearch(search_keyword, ext.name)) {
+          isMatched = true;
+          break;
+        }
+      }
+      if (!isMatched) {
+        continue;
+      }
 
       //Filter by status
       const numberOfStatusLog = order.order_status_log.length - 1;

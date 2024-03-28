@@ -15,6 +15,7 @@ export enum HistoryOrderStatus {
 }
 export class GetOrderHistoryByRestaurantRequest {
   customer_id: number;
+  search_keyword: string;
   sort_type: SortType;
   filtered_order_status: HistoryOrderStatus[]; // OPTIONAL - COMPLETED | FAILED | CANCELLED
   time_range: TimeRange; // OPTIONAL

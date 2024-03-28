@@ -1,6 +1,7 @@
 export class GetOrderHistoryByRestaurantResponse {
   hitorical_oders: HistoricalOrderByRestaurant[];
   offset: number;
+  search_keyword: string;
   sort_type: string;
   filtered_order_status: string[];
   time_range: TimeRange;

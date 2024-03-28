@@ -311,6 +311,7 @@ export class OrderController {
 
     const {
       customer_id,
+      search_keyword,
       sort_type,
       filtered_order_status,
       time_range,
@@ -320,6 +321,7 @@ export class OrderController {
 
     const historyOrders: Order[] = await this.orderService.getHistoryOrders(
       customer_id,
+      search_keyword,
       sort_type,
       filtered_order_status,
       time_range,
@@ -336,6 +338,7 @@ export class OrderController {
     result.time_range = time_range;
     result.offset = offset + historicalOrdersByRestaurant.length;
     result.total_count = historyOrders.length;
+    result.search_keyword = search_keyword;
     return result;
   }
 }
