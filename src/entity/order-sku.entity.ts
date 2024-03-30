@@ -105,4 +105,9 @@ export class OrderSKU {
     referencedColumnName: 'order_id',
   })
   public order_obj: Order;
+
+  //CALCULATOR
+  public amount() {
+    return this.price * this.qty_ordered;
+  }
 }
