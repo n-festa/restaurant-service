@@ -26,6 +26,9 @@ import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { GetOngoingOrdersResponse } from './dto/get-ongoing-orders-response.dto';
 import { GetOrderHistoryByRestaurantRequest } from './dto/get-order-history-by-restaurant-request.dto';
 import { GetOrderHistoryByRestaurantResponse } from './dto/get-order-history-by-restaurant-response.dto';
+import { GetOrderHistoryByFoodRequest } from './dto/get-order-history-by-food-request.dto';
+import { GetOrderHistoryByFoodResponse } from './dto/get-order-history-by-food-response.dto';
+import { OrderSKU } from 'src/entity/order-sku.entity';
 
 @Controller('order')
 export class OrderController {
@@ -334,6 +337,53 @@ export class OrderController {
     result.time_range = time_range;
     result.offset = offset + historicalOrdersByRestaurant.length;
     result.total_count = historyOrders.length;
+    result.search_keyword = search_keyword;
+    return result;
+  }
+
+  @MessagePattern({ cmd: 'get_order_history_by_food' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getOrderHistoryByFood(
+    data: GetOrderHistoryByFoodRequest,
+  ): Promise<GetOrderHistoryByFoodResponse> {
+    const result = new GetOrderHistoryByFoodResponse();
+
+    const {
+      customer_id,
+      search_keyword,
+      sort_type,
+      filtered_order_status,
+      time_range,
+      offset,
+      page_size,
+    } = data;
+
+    const historyOrders: Order[] = await this.orderService.getHistoryOrders(
+      customer_id,
+      '',
+      '',
+      filtered_order_status,
+      time_range,
+    );
+
+    const historicalFoods: OrderSKU[] =
+      await this.orderService.getHistoricalFoods(
+        historyOrders,
+        search_keyword,
+        sort_type,
+      );
+
+    const historicalOrdersByFood =
+      await this.orderService.buildHistoricalOrderByFood(
+        historicalFoods.slice(offset, offset + page_size),
+      );
+
+    result.hitorical_oders = historicalOrdersByFood;
+    result.sort_type = sort_type;
+    result.filtered_order_status = filtered_order_status;
+    result.time_range = time_range;
+    result.offset = offset + historicalOrdersByFood.length;
+    result.total_count = historicalFoods.length;
     result.search_keyword = search_keyword;
     return result;
   }

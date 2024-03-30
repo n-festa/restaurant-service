@@ -62,6 +62,8 @@ import {
 } from './dto/get-order-history-by-restaurant-request.dto';
 import { HistoricalOrderByRestaurant } from './dto/get-order-history-by-restaurant-response.dto';
 import { FoodRating } from 'src/entity/food-rating.entity';
+import { HistoricalOrderByFood } from './dto/get-order-history-by-food-response.dto';
+import { SortType as FoodOrderSortType } from './dto/get-order-history-by-food-request.dto';
 
 @Injectable()
 export class OrderService {
@@ -1995,8 +1997,8 @@ export class OrderService {
 
   async getHistoryOrders(
     customer_id: number,
-    search_keyword: string,
-    sort_type: RestaurantOrderSortType,
+    search_keyword_for_restaurant_name: string,
+    sort_type: string,
     filtered_order_status: string[],
     time_range: TimeRange,
   ): Promise<Order[]> {
@@ -2014,16 +2016,25 @@ export class OrderService {
       order.order_status_log.sort((a, b) => a.logged_at - b.logged_at);
 
       //Filter by search keyword
-      const restaurant = await this.getRestaurantInfoById(order.restaurant_id);
-      let isMatched = false;
-      for (const ext of restaurant.restaurant_ext) {
-        if (this.commonService.matchFullTextSearch(search_keyword, ext.name)) {
-          isMatched = true;
-          break;
+      if (search_keyword_for_restaurant_name) {
+        const restaurant = await this.getRestaurantInfoById(
+          order.restaurant_id,
+        );
+        let isMatched = false;
+        for (const ext of restaurant.restaurant_ext) {
+          if (
+            this.commonService.matchFullTextSearch(
+              search_keyword_for_restaurant_name,
+              ext.name,
+            )
+          ) {
+            isMatched = true;
+            break;
+          }
         }
-      }
-      if (!isMatched) {
-        continue;
+        if (!isMatched) {
+          continue;
+        }
       }
 
       //Filter by status
@@ -2072,8 +2083,7 @@ export class OrderService {
         historicalOrders.sort((a, b) => a.order_total - b.order_total);
         break;
       default:
-        this.logger.error('sort_type is not valid');
-        throw new Error('sort_type is not valid');
+        break;
     }
 
     return historicalOrders;
@@ -2188,5 +2198,158 @@ export class OrderService {
       .createQueryBuilder(FoodRating, 'rating')
       .where('rating.order_sku_id IN (:...order_sku_ids)', { order_sku_ids })
       .getMany();
+  }
+
+  async getHistoricalFoods(
+    historical_orders: Order[],
+    search_keyword: string,
+    sort_type: string,
+  ): Promise<OrderSKU[]> {
+    const historicalFoods: OrderSKU[] = [];
+
+    if (!historical_orders || historical_orders.length <= 0) {
+      return historicalFoods;
+    }
+    const orderIds = historical_orders.map((i) => i.order_id);
+
+    const orderItems = await this.entityManager
+      .createQueryBuilder(OrderSKU, 'orderItem')
+      .leftJoinAndSelect('orderItem.food_rating_obj', 'rating')
+      .leftJoinAndSelect('orderItem.sku_obj', 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'image')
+      .where('orderItem.order_id IN (:...orderIds)', { orderIds })
+      .getMany();
+
+    for (const item of orderItems) {
+      //Filter by search keyword
+      if (search_keyword) {
+        const isMatched = this.commonService.matchFullTextSearch(
+          search_keyword,
+          item.sku_obj.menu_item.menuItemExt.map((i) => i.name).join(' '),
+        );
+        if (!isMatched) {
+          continue;
+        }
+      }
+
+      //Attach order information to item
+      const order = historical_orders.find((i) => i.order_id === item.order_id);
+      item.order_obj = order;
+      //Sort order_status_log in ascending order
+      item.order_obj.order_status_log.sort((a, b) => a.logged_at - b.logged_at);
+
+      historicalFoods.push(item);
+    }
+
+    //Sorting
+    switch (sort_type) {
+      case FoodOrderSortType.DATE_DESC:
+        historicalFoods.sort(
+          (a, b) =>
+            b.order_obj.order_status_log[0].logged_at -
+            a.order_obj.order_status_log[0].logged_at,
+        );
+        break;
+      case FoodOrderSortType.DATE_ASC:
+        historicalFoods.sort(
+          (a, b) =>
+            a.order_obj.order_status_log[0].logged_at -
+            b.order_obj.order_status_log[0].logged_at,
+        );
+        break;
+      case FoodOrderSortType.TOTAL_DESC:
+        historicalFoods.sort((a, b) => b.amount() - a.amount());
+        break;
+      case FoodOrderSortType.TOTAL_ASC:
+        historicalFoods.sort((a, b) => a.amount() - b.amount());
+        break;
+      default:
+        break;
+    }
+
+    return historicalFoods;
+  }
+
+  async buildHistoricalOrderByFood(
+    historical_foods: OrderSKU[],
+  ): Promise<HistoricalOrderByFood[]> {
+    const historicalFoodsInfo: HistoricalOrderByFood[] = [];
+
+    if (!historical_foods || historical_foods.length <= 0) {
+      return [];
+    }
+    for (const food of historical_foods) {
+      //Get restaurant info
+      const restaurant = await this.getRestaurantInfoById(
+        food.order_obj.restaurant_id,
+      );
+
+      //Build output
+      const historicalFoodInfo: HistoricalOrderByFood = {
+        order_id: food.order_id,
+        order_status_log: [], //TODO
+        restaurant_info: {
+          restaurant_id: restaurant.restaurant_id,
+          restaurant_name: restaurant.restaurant_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.name,
+            };
+          }),
+        },
+        name: food.sku_obj.menu_item.menuItemExt.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.name,
+          };
+        }),
+        image: food.sku_obj.menu_item.image_obj.url,
+        main_cooking_method: food.sku_obj.menu_item.menuItemExt.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.main_cooking_method,
+          };
+        }),
+        ingredient_brief_vie: food.sku_obj.menu_item.ingredient_brief_vie,
+        ingredient_brief_eng: food.sku_obj.menu_item.ingredient_brief_eng,
+        sku_id: food.sku_id,
+        qty_ordered: food.qty_ordered,
+        advanced_taste_customization: food.advanced_taste_customization,
+        basic_taste_customization: food.basic_taste_customization,
+        portion_customization: food.portion_customization,
+        advanced_taste_customization_obj: food.advanced_taste_customization_obj
+          ? JSON.parse(food.advanced_taste_customization_obj)
+          : [],
+        basic_taste_customization_obj: food.basic_taste_customization_obj
+          ? JSON.parse(food.basic_taste_customization_obj)
+          : [],
+        notes: food.notes,
+        packaging_id: food.packaging_id,
+        price: food.price,
+        calorie_kcal: food.calorie_kcal,
+        score: food.food_rating_obj?.score,
+      };
+      food.order_obj.order_status_log.forEach((log) => {
+        //order_status_log
+        const statusLog = {
+          status: log.order_status_id,
+          description: log.order_status_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.description,
+            };
+          }),
+          logged_at: log.logged_at,
+          milestone: this.getOrderMilestone(log.order_status_id),
+        };
+        historicalFoodInfo.order_status_log.push(statusLog);
+      });
+
+      historicalFoodsInfo.push(historicalFoodInfo);
+    }
+
+    return historicalFoodsInfo;
   }
 }
