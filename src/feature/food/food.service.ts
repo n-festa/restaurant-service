@@ -19,7 +19,6 @@ import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
 import { FoodRating } from 'src/entity/food-rating.entity';
 import { Media } from 'src/entity/media.entity';
-import { Packaging } from 'src/entity/packaging.entity';
 import { Recipe } from 'src/entity/recipe.entity';
 import { MenuItemAttribute } from 'src/entity/menu-item-attribute.entity';
 import { SkuDTO } from 'src/dto/sku.dto';
@@ -29,7 +28,7 @@ import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
-import { DayName, Shift } from 'src/enum';
+import { DayName, FetchMode, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
 import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
 import { readFileSync } from 'fs';
@@ -577,7 +576,7 @@ export class FoodService {
   ): Promise<GetSideDishResonse> {
     const res = new GetSideDishResonse(200, '');
 
-    const { menu_item_id, timestamp } = inputData;
+    const { menu_item_id, timestamp, fetch_mode } = inputData;
 
     //Get the list of menu_item_id (side dishes) from table 'Main_Side_Dish'
     const sideDishesIds = (
@@ -632,11 +631,25 @@ export class FoodService {
       return correspondingDayShift.is_available == true;
     });
 
+    let fillteredSideDishes = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredSideDishes = availableSideDishes.slice(0, 3); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredSideDishes = availableSideDishes;
+        break;
+
+      default:
+        throw new HttpException('fetch_mode is invalid', 400);
+    }
+
     //Convert to DTO
     const sideDishesDTOs: FoodDTO[] = [];
-    for (const availableSideDish of availableSideDishes) {
+    for (const sideDish of fillteredSideDishes) {
       const sidesideDishesDTO: FoodDTO =
-        await this.commonService.convertIntoFoodDTO(availableSideDish);
+        await this.commonService.convertIntoFoodDTO(sideDish);
       sideDishesDTOs.push(sidesideDishesDTO);
     }
 
