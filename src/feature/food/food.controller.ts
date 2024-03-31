@@ -58,7 +58,7 @@ export class FoodController {
     data: GetAvailableFoodByRestaurantRequest,
   ): Promise<GetAvailableFoodByRestaurantResponse> {
     const res = new GetAvailableFoodByRestaurantResponse(200, '');
-    const { menu_item_id } = data;
+    const { menu_item_id, fetch_mode } = data;
     const timestamp = Date.now();
     try {
       if (!menu_item_id) {
@@ -71,6 +71,7 @@ export class FoodController {
         await this.foodService.getAvailableFoodByRestaurantFromEndPoint(
           menu_item_id,
           timestamp,
+          fetch_mode,
         );
       res.statusCode = 200;
       res.message = 'Get available food by restaurant successfully';

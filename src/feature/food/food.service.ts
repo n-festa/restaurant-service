@@ -781,6 +781,7 @@ export class FoodService {
   async getAvailableFoodByRestaurantFromEndPoint(
     menu_item_id: number,
     timestamp: number,
+    fetch_mode: FetchMode,
   ): Promise<FoodDTO[]> {
     const foods: FoodDTO[] = [];
 
@@ -836,10 +837,26 @@ export class FoodService {
       return correspondingDayShift.is_available == true;
     });
 
+    //Filter by fetch mode
+    let fillteredMenuItems = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredMenuItems = availableMenuItems.slice(0, 3); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredMenuItems = availableMenuItems;
+        break;
+
+      default:
+        fillteredMenuItems = availableMenuItems.slice(0, 3); // get only 3 items
+        break;
+    }
+
     //Convert to DTO
-    for (const availableMenuItem of availableMenuItems) {
+    for (const menuItem of fillteredMenuItems) {
       const food: FoodDTO =
-        await this.commonService.convertIntoFoodDTO(availableMenuItem);
+        await this.commonService.convertIntoFoodDTO(menuItem);
       foods.push(food);
     }
     return foods;
