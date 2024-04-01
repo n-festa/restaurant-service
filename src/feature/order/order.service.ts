@@ -2110,7 +2110,13 @@ export class OrderService {
         await this.getFoodRatingsWithOrderSkuIds(
           orderItems.map((i) => i.order_sku_id),
         );
-      this.logger.log(foodRatings);
+
+      //Get invoice
+      const invoice = await this.entityManager
+        .createQueryBuilder(Invoice, 'invoice')
+        .leftJoinAndSelect('invoice.payment_option_obj', 'paymentOption')
+        .where('invoice.order_id = :order_id', { order_id: order.order_id })
+        .getOne();
 
       //Build output
       const historicalOrderInfo: HistoricalOrderByRestaurant = {
@@ -2123,6 +2129,10 @@ export class OrderService {
           foodRatings
             .map((i) => i.score)
             .reduce((sum, val) => (sum += val), 0) / foodRatings.length,
+        payment_method: {
+          id: invoice?.payment_option_obj.option_id,
+          name: invoice?.payment_option_obj.name,
+        },
       };
 
       order.order_status_log.forEach((log) => {

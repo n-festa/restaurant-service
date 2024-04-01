@@ -14,6 +14,7 @@ export interface HistoricalOrderByRestaurant {
   order_items: OrderItem[];
   order_total: number;
   order_score: number;
+  payment_method: Payment;
 }
 
 interface OrderStatusLog {
@@ -52,4 +53,8 @@ interface OptionSelection {
 }
 interface BasicTasteSelection {
   no_adding_id: string;
+}
+interface Payment {
+  id: number;
+  name: string;
 }
