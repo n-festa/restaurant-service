@@ -1,4 +1,4 @@
-import { Controller, HttpException, Inject } from '@nestjs/common';
+import { Controller, HttpException, Inject, UseFilters } from '@nestjs/common';
 import { FoodService } from './food.service';
 import { MessagePattern } from '@nestjs/microservices';
 import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
@@ -8,6 +8,9 @@ import { GetHotFoodResponse } from './dto/get-hot-food-response.dto';
 import { FoodDTO } from 'src/dto/food.dto';
 import { GetAvailableFoodByRestaurantRequest } from './dto/get-available-food-by-restaurant-request.dto';
 import { GetAvailableFoodByRestaurantResponse } from './dto/get-available-food-by-restaurant-response.dto';
+import { GetSimilarFoodRequest } from './dto/get-similar-food-request.dto';
+import { GetSimilarFoodResponse } from './dto/get-similar-food-response.dto';
+import { CustomRpcExceptionFilter } from 'src/filters/custom-rpc-exception.filter';
 
 @Controller()
 export class FoodController {
@@ -90,4 +93,17 @@ export class FoodController {
 
     return res;
   } // end of getAvailableFoodByRestaurant
+
+  @MessagePattern({ cmd: 'get_similar_food' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getSimilarFood(
+    data: GetSimilarFoodRequest,
+  ): Promise<GetSimilarFoodResponse> {
+    const { menu_item_id, fetch_mode } = data;
+    const similarMenuItemIds = await this.foodService.getSimilarMenuItems(
+      menu_item_id,
+      fetch_mode,
+    );
+    return await this.foodService.buildSimilarFoodResponse(similarMenuItemIds);
+  }
 }
