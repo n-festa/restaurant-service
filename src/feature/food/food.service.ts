@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { MenuItem } from 'src/entity/menu-item.entity';
 import { EntityManager, Repository } from 'typeorm';
@@ -19,7 +25,6 @@ import { FlagsmithService } from 'src/dependency/flagsmith/flagsmith.service';
 import { GeneralResponse } from 'src/dto/general-response.dto';
 import { FoodRating } from 'src/entity/food-rating.entity';
 import { Media } from 'src/entity/media.entity';
-import { Packaging } from 'src/entity/packaging.entity';
 import { Recipe } from 'src/entity/recipe.entity';
 import { MenuItemAttribute } from 'src/entity/menu-item-attribute.entity';
 import { SkuDTO } from 'src/dto/sku.dto';
@@ -29,11 +34,13 @@ import { CommonService } from '../common/common.service';
 import { GetSideDishRequest } from './dto/get-side-dish-request.dto';
 import { GetSideDishResonse } from './dto/get-side-dish-response.dto';
 import { MainSideDish } from 'src/entity/main-side-dish.entity';
-import { DayName, Shift } from 'src/enum';
+import { DayName, FetchMode, Shift } from 'src/enum';
 import { FoodDTO } from 'src/dto/food.dto';
 import { GetFoodDetailResponse } from './dto/get-food-detail-response.dto';
 import { readFileSync } from 'fs';
 import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
+import { GetSimilarFoodResponse } from './dto/get-similar-food-response.dto';
+import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
 
 @Injectable()
 export class FoodService {
@@ -46,6 +53,8 @@ export class FoodService {
     private skuDiscountRepo: Repository<SkuDiscount>,
     private readonly commonService: CommonService,
   ) {}
+
+  private readonly logger = new Logger(FoodService.name);
 
   async getPriceRangeByMenuItem(menuItemList: number[]): Promise<PriceRange> {
     //Get the before-discount price for only standard SKUs
@@ -401,11 +410,6 @@ export class FoodService {
         description.push(descriptionExt);
       });
 
-      console.log(
-        'menuItemPackaging.is_default',
-        menuItemPackaging.is_default,
-        typeof menuItemPackaging.is_default,
-      );
       const packagingInfo: PackagingInfo = {
         packaging_id: menuItemPackaging.packaging_id,
         image_url: image_url,
@@ -582,7 +586,7 @@ export class FoodService {
   ): Promise<GetSideDishResonse> {
     const res = new GetSideDishResonse(200, '');
 
-    const { menu_item_id, timestamp } = inputData;
+    const { menu_item_id, timestamp, fetch_mode } = inputData;
 
     //Get the list of menu_item_id (side dishes) from table 'Main_Side_Dish'
     const sideDishesIds = (
@@ -637,11 +641,25 @@ export class FoodService {
       return correspondingDayShift.is_available == true;
     });
 
+    let fillteredSideDishes = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredSideDishes = availableSideDishes.slice(0, 3); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredSideDishes = availableSideDishes;
+        break;
+
+      default:
+        throw new HttpException('fetch_mode is invalid', 400);
+    }
+
     //Convert to DTO
     const sideDishesDTOs: FoodDTO[] = [];
-    for (const availableSideDish of availableSideDishes) {
+    for (const sideDish of fillteredSideDishes) {
       const sidesideDishesDTO: FoodDTO =
-        await this.commonService.convertIntoFoodDTO(availableSideDish);
+        await this.commonService.convertIntoFoodDTO(sideDish);
       sideDishesDTOs.push(sidesideDishesDTO);
     }
 
@@ -773,6 +791,7 @@ export class FoodService {
   async getAvailableFoodByRestaurantFromEndPoint(
     menu_item_id: number,
     timestamp: number,
+    fetch_mode: FetchMode,
   ): Promise<FoodDTO[]> {
     const foods: FoodDTO[] = [];
 
@@ -828,10 +847,26 @@ export class FoodService {
       return correspondingDayShift.is_available == true;
     });
 
+    //Filter by fetch mode
+    let fillteredMenuItems = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredMenuItems = availableMenuItems.slice(0, 3); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredMenuItems = availableMenuItems;
+        break;
+
+      default:
+        fillteredMenuItems = availableMenuItems.slice(0, 3); // get only 3 items
+        break;
+    }
+
     //Convert to DTO
-    for (const availableMenuItem of availableMenuItems) {
+    for (const menuItem of fillteredMenuItems) {
       const food: FoodDTO =
-        await this.commonService.convertIntoFoodDTO(availableMenuItem);
+        await this.commonService.convertIntoFoodDTO(menuItem);
       foods.push(food);
     }
     return foods;
@@ -847,4 +882,84 @@ export class FoodService {
     return menuItem.restaurant.unit_obj;
   }
   //end of getCurrencyOfMenuItem
+
+  async getSimilarMenuItems(
+    menu_item_id: number,
+    fetch_mode: string,
+  ): Promise<number[]> {
+    const PRICE_VARIANCE = 0.2; //20%
+    const menuItem = await this.entityManager
+      .createQueryBuilder(MenuItem, 'menuItem')
+      .leftJoinAndSelect('menuItem.skus', 'sku')
+      .where('menuItem.menu_item_id = :menu_item_id', { menu_item_id })
+      .getOne();
+    if (!menuItem) {
+      this.logger.error('Menu item is not found');
+      throw new CustomRpcException(2, 'Menu item is not found');
+    }
+    const standardSku = menuItem.skus.find(
+      (i) => i.is_standard == 1 && i.is_active == 1,
+    );
+    if (!standardSku) {
+      this.logger.error(
+        'Cannot find the standard SKU for MenuItem ',
+        menuItem.menu_item_id,
+      );
+      return [];
+    }
+    const priceRange: PriceRange = {
+      min: standardSku.price - standardSku.price * PRICE_VARIANCE,
+      max: standardSku.price + standardSku.price * PRICE_VARIANCE,
+    };
+
+    const similarSkus = await this.entityManager
+      .createQueryBuilder(SKU, 'sku')
+      .where('sku.price BETWEEN :min AND :max', {
+        min: priceRange.min,
+        max: priceRange.max,
+      })
+      .andWhere('sku.is_active = 1')
+      .andWhere('sku.is_standard = 1')
+      .andWhere('sku.menu_item_id <> :menu_item_id', { menu_item_id })
+      .getMany();
+    if (similarSkus.length === 0) {
+      return [];
+    }
+    const menuItemIds = similarSkus.map((i) => i.menu_item_id);
+
+    let fillteredIds = [];
+    switch (fetch_mode) {
+      case FetchMode.Some:
+        fillteredIds = menuItemIds.slice(0, 3); // get only 3 items
+        break;
+
+      case FetchMode.Full:
+        fillteredIds = menuItemIds;
+        break;
+
+      default:
+        this.logger.error('fetch_mode is invalid');
+        // throw new HttpException('fetch_mode is invalid', 400);
+        fillteredIds = menuItemIds.slice(0, 3); // get only 3 items
+        break;
+    }
+    return fillteredIds;
+  }
+
+  async buildSimilarFoodResponse(
+    menu_item_ids: number[],
+  ): Promise<GetSimilarFoodResponse> {
+    const response: GetSimilarFoodResponse = {
+      foods: [],
+    };
+    if (menu_item_ids.length === 0) return response;
+    const menuItems = await this.getFoodsWithListOfMenuItem(menu_item_ids);
+    for (const menuItem of menuItems) {
+      const food: FoodDTO =
+        await this.commonService.convertIntoFoodDTO(menuItem);
+      response.foods.push(food);
+    }
+
+    return response;
+  }
 }

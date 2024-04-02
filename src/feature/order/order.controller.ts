@@ -1,9 +1,5 @@
-import { Controller, Get, Inject, UseFilters } from '@nestjs/common';
-import {
-  ClientProxy,
-  EventPattern,
-  MessagePattern,
-} from '@nestjs/microservices';
+import { Controller, Inject, UseFilters } from '@nestjs/common';
+import { ClientProxy, MessagePattern } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
 import { Repository } from 'typeorm';
@@ -27,7 +23,12 @@ import { CreateOrderResponse } from './dto/create-order-response.dto';
 import { OrderDetailResponse } from './dto/order-detail-response.dto';
 import { GetDeliveryFeeRequest } from './dto/get-delivery-fee-request.dto';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
-import { OrderStatus } from 'src/enum';
+import { GetOngoingOrdersResponse } from './dto/get-ongoing-orders-response.dto';
+import { GetOrderHistoryByRestaurantRequest } from './dto/get-order-history-by-restaurant-request.dto';
+import { GetOrderHistoryByRestaurantResponse } from './dto/get-order-history-by-restaurant-response.dto';
+import { GetOrderHistoryByFoodRequest } from './dto/get-order-history-by-food-request.dto';
+import { GetOrderHistoryByFoodResponse } from './dto/get-order-history-by-food-response.dto';
+import { OrderSKU } from 'src/entity/order-sku.entity';
 
 @Controller('order')
 export class OrderController {
@@ -45,7 +46,7 @@ export class OrderController {
 
   @MessagePattern({ cmd: 'update_order_status_by_webhook' })
   async updateOrderStatusByWebhook({ delivery_order_id, webhookData }) {
-    return this.orderService.updateOrderStatusFromAhamoveWebhook(
+    return await this.orderService.updateOrderStatusFromAhamoveWebhook(
       delivery_order_id,
       webhookData,
     );
@@ -257,6 +258,7 @@ export class OrderController {
   }
 
   @MessagePattern({ cmd: 'get_order_detail_sse' })
+  @UseFilters(new CustomRpcExceptionFilter())
   async getOrderDetailSse(data: any): Promise<OrderDetailResponse> {
     const { order_id } = data;
     const order = await this.orderService.getOrderDetail(order_id);
@@ -264,16 +266,125 @@ export class OrderController {
   }
 
   @MessagePattern({ cmd: 'confirm_order_from_restaurant' })
+  @UseFilters(new CustomRpcExceptionFilter())
   async confirmOrder(data: any) {
     const { order_id } = data;
-    this.gatewayClient.emit('order_updated', { order_id });
-    return order_id;
+    await this.orderService.confirmOrder(order_id);
+    this.gatewayClient.emit('order_updated', {
+      order_id: order_id,
+    });
+    return { message: 'confirm order from restaurant successfully' };
   }
 
   @MessagePattern({ cmd: 'change_order_status_for_testing' })
   @UseFilters(new CustomRpcExceptionFilter())
   async changeOrderStatusForTesting(data: any) {
     const { order_id, new_order_status } = data;
-    return await this.orderService.setOrderStatus(order_id, new_order_status);
+    const record = await this.orderService.setOrderStatus(
+      order_id,
+      new_order_status,
+    );
+    this.gatewayClient.emit('order_updated', {
+      order_id: order_id,
+    });
+    return record;
+  }
+
+  @MessagePattern({ cmd: 'get_customer_ongoing_orders' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getCustomerOngoingOrders(
+    customer_id: number,
+  ): Promise<GetOngoingOrdersResponse> {
+    const ongoingOrders: Order[] =
+      await this.orderService.getOngoingOrders(customer_id);
+
+    return await this.orderService.buildGetOngoingOrdersResponse(ongoingOrders);
+  }
+
+  @MessagePattern({ cmd: 'get_order_history_by_restaurant' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getOrderHistoryByRestaurant(
+    data: GetOrderHistoryByRestaurantRequest,
+  ): Promise<GetOrderHistoryByRestaurantResponse> {
+    const result = new GetOrderHistoryByRestaurantResponse();
+
+    const {
+      customer_id,
+      search_keyword,
+      sort_type,
+      filtered_order_status,
+      time_range,
+      offset,
+      page_size,
+    } = data;
+
+    const historyOrders: Order[] = await this.orderService.getHistoryOrders(
+      customer_id,
+      search_keyword,
+      sort_type,
+      filtered_order_status,
+      time_range,
+    );
+
+    const historicalOrdersByRestaurant =
+      await this.orderService.buildHistoricalOrderByRestaurant(
+        historyOrders.slice(offset, offset + page_size),
+      );
+
+    result.hitorical_oders = historicalOrdersByRestaurant;
+    result.sort_type = sort_type;
+    result.filtered_order_status = filtered_order_status;
+    result.time_range = time_range;
+    result.offset = offset + historicalOrdersByRestaurant.length;
+    result.total_count = historyOrders.length;
+    result.search_keyword = search_keyword;
+    return result;
+  }
+
+  @MessagePattern({ cmd: 'get_order_history_by_food' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async getOrderHistoryByFood(
+    data: GetOrderHistoryByFoodRequest,
+  ): Promise<GetOrderHistoryByFoodResponse> {
+    const result = new GetOrderHistoryByFoodResponse();
+
+    const {
+      customer_id,
+      search_keyword,
+      sort_type,
+      filtered_order_status,
+      time_range,
+      offset,
+      page_size,
+    } = data;
+
+    const historyOrders: Order[] = await this.orderService.getHistoryOrders(
+      customer_id,
+      '',
+      '',
+      filtered_order_status,
+      time_range,
+    );
+
+    const historicalFoods: OrderSKU[] =
+      await this.orderService.getHistoricalFoods(
+        historyOrders,
+        search_keyword,
+        sort_type,
+      );
+
+    const historicalOrdersByFood =
+      await this.orderService.buildHistoricalOrderByFood(
+        historicalFoods.slice(offset, offset + page_size),
+      );
+
+    result.hitorical_oders = historicalOrdersByFood;
+    result.sort_type = sort_type;
+    result.filtered_order_status = filtered_order_status;
+    result.time_range = time_range;
+    result.offset = offset + historicalOrdersByFood.length;
+    result.total_count = historicalFoods.length;
+    result.search_keyword = search_keyword;
+    return result;
   }
 }

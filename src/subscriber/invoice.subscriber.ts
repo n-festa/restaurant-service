@@ -37,7 +37,7 @@ export class InvoiceSubscriber implements EntitySubscriberInterface<Invoice> {
    * Called after entity update.
    */
   afterUpdate(event: UpdateEvent<Invoice>) {
-    console.log(`AFTER ENTITY UPDATED: `, event.entity);
+    // console.log(`AFTER ENTITY UPDATED: `, event.entity);
     // this.gatewayClient.emit('order_updated', {
     //   order_id: event.entity.order_id,
     // });

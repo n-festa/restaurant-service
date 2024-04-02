@@ -29,9 +29,9 @@ export class DriverStatusLogSubscriber
    * Called after entity insertion.
    */
   afterInsert(event: InsertEvent<DriverStatusLog>) {
-    console.log(`AFTER ENTITY INSERTED: `, event.entity);
-    this.gatewayClient.emit('order_updated', {
-      order_id: event.entity.order_id,
-    });
+    // console.log(`AFTER ENTITY INSERTED: `, event.entity);
+    // this.gatewayClient.emit('order_updated', {
+    //   order_id: event.entity.order_id,
+    // });
   }
 }

@@ -1274,4 +1274,33 @@ export class CommonService {
       localToday.getUTCDate() === localCheckingDate.getUTCDate()
     );
   }
+
+  matchFullTextSearch(keyword: string, text: string): boolean {
+    if (!keyword) {
+      return true;
+    }
+    if (!text) {
+      return false;
+    }
+    const lowerKeyword = keyword.toLowerCase();
+    const lowerText = text.toLowerCase();
+    const terms = lowerKeyword.split(/\s+/); // Split by whitespace
+    for (const term of terms) {
+      // if (!lowerText.includes(term)) {
+      //   return false; // Term not found in text, return false
+      // }
+
+      const normalizedText = lowerText
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const normalizedSearchTerm = term
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const regex = new RegExp(normalizedSearchTerm, 'i'); // 'i' flag for case-insensitive search
+      if (!regex.test(normalizedText)) {
+        return false; // Term not found in text, return false
+      }
+    }
+    return true;
+  }
 }

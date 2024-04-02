@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InvoiceStatusHistory } from 'src/entity/invoice-history-status.entity';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entity/order.entity';
@@ -29,6 +25,7 @@ import {
   OrderItemRequest,
   OrderItemResponse,
   TextByLang,
+  TimeRange,
 } from 'src/type';
 import { Restaurant } from 'src/entity/restaurant.entity';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
@@ -51,6 +48,22 @@ import { Packaging } from 'src/entity/packaging.entity';
 import { GetDeliveryFeeResonse } from './dto/get-delivery-fee-response.dto';
 import { VND } from 'src/constant/unit.constant';
 import { FALSE, TRUE } from 'src/constant';
+import { ClientProxy } from '@nestjs/microservices';
+import { OrderStatusEntity } from 'src/entity/order-status.entity';
+import {
+  GetOngoingOrdersResponse,
+  OngoingOrder,
+  OrderStatusLog as OngoignOrderStatusLog,
+  OrderItem as OngoingOrderItem,
+} from './dto/get-ongoing-orders-response.dto';
+import {
+  HistoryOrderStatus,
+  SortType as RestaurantOrderSortType,
+} from './dto/get-order-history-by-restaurant-request.dto';
+import { HistoricalOrderByRestaurant } from './dto/get-order-history-by-restaurant-response.dto';
+import { FoodRating } from 'src/entity/food-rating.entity';
+import { HistoricalOrderByFood } from './dto/get-order-history-by-food-response.dto';
+import { SortType as FoodOrderSortType } from './dto/get-order-history-by-food-request.dto';
 
 @Injectable()
 export class OrderService {
@@ -71,19 +84,27 @@ export class OrderService {
     @InjectEntityManager() private entityManager: EntityManager,
     private readonly commonService: CommonService,
     private readonly configService: ConfigService,
+    @Inject('GATEWAY_SERVICE')
+    private readonly gatewayClient: ClientProxy,
   ) {}
 
   async updateOrderStatusFromAhamoveWebhook(
-    orderId,
+    delivery_order_id,
     webhookData,
   ): Promise<any> {
     try {
       this.logger.log(
-        `receiving data from webhook to ${orderId} with ${webhookData.status}`,
+        `receiving data from webhook to ${delivery_order_id} with ${webhookData.status}`,
       );
       const currentOrder = await this.orderRepo.findOne({
-        where: { delivery_order_id: orderId },
+        where: { delivery_order_id: delivery_order_id },
       });
+      if (!currentOrder) {
+        this.logger.error(
+          `Cannot find the order for ahamove order ${delivery_order_id}`,
+        );
+        return { message: 'Order not existed' };
+      }
       const latestOrderStatus = await this.orderStatusLogRepo.findOne({
         where: { order_id: currentOrder.order_id },
         order: { logged_at: 'DESC' },
@@ -92,19 +113,23 @@ export class OrderService {
         where: { order_id: currentOrder.order_id },
         order: { logged_at: 'DESC' },
       });
-      if (currentOrder) {
-        await this.handleOrderFlowBaseOnAhahaStatus(
-          currentOrder,
-          latestOrderStatus?.order_status_id,
-          latestDriverStatus?.driver_id,
-          webhookData,
-        );
-        return { message: 'Order updated successfully' };
-      }
-      return { message: 'Order not existed' };
+      // if (currentOrder) {
+      await this.handleOrderFlowBaseOnAhahaStatus(
+        currentOrder,
+        latestOrderStatus?.order_status_id,
+        latestDriverStatus?.driver_id,
+        webhookData,
+      );
+
+      this.gatewayClient.emit('order_updated', {
+        order_id: currentOrder.order_id,
+      });
+      return { message: 'Order updated successfully' };
+      // }
+      // return { message: 'Order not existed' };
     } catch (error) {
       this.logger.error(`An error occurred while updating order: ${error}`);
-      throw new InternalServerErrorException();
+      // throw new InternalServerErrorException();
     }
   }
   private async handleOrderFlowBaseOnAhahaStatus(
@@ -113,11 +138,13 @@ export class OrderService {
     latestDriverId,
     webhookData,
   ) {
-    const PATH_STATUS = webhookData?.path[2]?.status; // assume 3rd is status record
+    const PATH_STATUS = webhookData?.path[1]?.status; // assume 2nd is status record
+    this.logger.log(`PATH_STATUS: ${PATH_STATUS}`);
     const SUB_STATUS = webhookData?.sub_status;
+    this.logger.log(`SUB_STATUS: ${SUB_STATUS}`);
 
-    const orderStatusLog = new OrderStatusLog();
-    orderStatusLog.order_id = order.order_id;
+    // const orderStatusLog = new OrderStatusLog();
+    // orderStatusLog.order_id = order.order_id;
     switch (webhookData.status) {
       case 'ASSIGNING':
         if (
@@ -125,7 +152,7 @@ export class OrderService {
           latestOrderStatus !== OrderStatus.READY
         ) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} is assigning but the order status is neither PROCESSING nor READY'. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
@@ -134,13 +161,13 @@ export class OrderService {
           if (latestDriverId) {
             //Driver_Status_Log
             const driverStatusLog = new DriverStatusLog();
-            driverStatusLog.driver_id = latestDriverId;
+            // driverStatusLog.driver_id = latestDriverId;
             driverStatusLog.order_id = order.order_id;
             driverStatusLog.note = webhookData.rebroadcast_comment;
             await this.driverStatusLogRepo.save(driverStatusLog);
           } else {
             this.logger.error(
-              `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is rebroadcasting but the order didnot have any driver infomation before`,
+              `Order ${order.order_id}: Ahavmove order ${webhookData._id} is rebroadcasting but the order didnot have any driver infomation before`,
             );
           }
         } else {
@@ -153,14 +180,14 @@ export class OrderService {
           latestOrderStatus !== OrderStatus.READY
         ) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} has been accepted by the driver but the order status is neither PROCESSING nor READY'. Need to check the ISSUE !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
 
         if (latestDriverId) {
           this.logger.error(
-            `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
+            `Order ${order.order_id}: Ahavmove order ${webhookData._id} get a driver but the order has been assigned to other driver. Need to check the ISSUE !!!`,
           );
         }
 
@@ -192,12 +219,18 @@ export class OrderService {
 
         break;
       case 'CANCELLED':
-        // //Order_Status_Log with status STUCK
-        // orderStatusLog.order_status_id = OrderStatus.STUCK;
+        //Order_Status_Log with status CANCELLED
+        // orderStatusLog.order_status_id = OrderStatus.CANCELLED;
+        // orderStatusLog.note = `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `;
         // await this.orderStatusLogRepo.save(orderStatusLog);
+        await this.setOrderStatus(
+          order.order_id,
+          OrderStatus.CANCELLED,
+          `Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. `,
+        );
         //Urgent_Action_Needed
         const action = new UrgentActionNeeded();
-        action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> got cancel with comment '<${webhookData.cancel_comment}>'. Need action from admin !!!`;
+        action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} got cancel with comment '${webhookData.cancel_comment}'. Need action from admin !!!`;
         await this.urgentActionNeededRepo.save(action);
         break;
       case 'IN PROCESS':
@@ -208,19 +241,32 @@ export class OrderService {
         // order_status == PROCESSING
         // Order_Status_Log with READY and DELIVERING
         if (latestOrderStatus === OrderStatus.PROCESSING) {
-          orderStatusLog.order_status_id = OrderStatus.READY;
-          await this.orderStatusLogRepo.save({ ...orderStatusLog });
-          orderStatusLog.order_status_id = OrderStatus.DELIVERING;
-          await this.orderStatusLogRepo.save({ ...orderStatusLog });
+          // orderStatusLog.order_status_id = OrderStatus.READY;
+          // await this.orderStatusLogRepo.save({ ...orderStatusLog });
+          await this.setOrderStatus(
+            order.order_id,
+            OrderStatus.READY,
+            '',
+            this.entityManager,
+          );
+          // orderStatusLog.order_status_id = OrderStatus.DELIVERING;
+          // await this.orderStatusLogRepo.save({ ...orderStatusLog });
+          await this.setOrderStatus(
+            order.order_id,
+            OrderStatus.DELIVERING,
+            '',
+            this.entityManager,
+          );
         } else if (latestOrderStatus === OrderStatus.READY) {
           // order_status == READY
           // Order_Status_Log with DELIVERING
-          orderStatusLog.order_status_id = OrderStatus.DELIVERING;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          // orderStatusLog.order_status_id = OrderStatus.DELIVERING;
+          // await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.setOrderStatus(order.order_id, OrderStatus.DELIVERING, '');
         } else {
           //Urgent_Action_Needed
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Food has been picked up BUT the status is neither PROCESSING nor READY. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
         }
         break;
@@ -230,18 +276,21 @@ export class OrderService {
         }
         if (latestOrderStatus !== OrderStatus.DELIVERING) {
           const action = new UrgentActionNeeded();
-          action.description = `Order <${order.order_id}>: Ahavmove order <${webhookData._id}> is completed but the order status is not DELIVERING'. Need action from admin !!!`;
+          action.description = `Order ${order.order_id}: Ahavmove order ${webhookData._id} is completed but the order status is not DELIVERING'. Need action from admin !!!`;
           await this.urgentActionNeededRepo.save(action);
           break;
         }
+
         if (PATH_STATUS === 'FAILED') {
           // Order_Status_Log with FAILED
-          orderStatusLog.order_status_id = OrderStatus.FAILED;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          // orderStatusLog.order_status_id = OrderStatus.FAILED;
+          // await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.setOrderStatus(order.order_id, OrderStatus.FAILED, '');
         } else if (PATH_STATUS === 'COMPLETED') {
           // Order_Status_Log with COMPLETED
-          orderStatusLog.order_status_id = OrderStatus.COMPLETED;
-          await this.orderStatusLogRepo.save(orderStatusLog);
+          // orderStatusLog.order_status_id = OrderStatus.COMPLETED;
+          // await this.orderStatusLogRepo.save(orderStatusLog);
+          await this.setOrderStatus(order.order_id, OrderStatus.COMPLETED, '');
         }
         break;
       default:
@@ -587,7 +636,6 @@ export class OrderService {
 
     this.logger.debug(deliveryFee);
     if (deliveryFee != delivery_fee) {
-      console.log(deliveryFee);
       // throw new CustomRpcException(101, 'Delivery fee is not correct');
       throw new CustomRpcException(101, {
         message: 'Delivery fee is not correct',
@@ -768,33 +816,33 @@ export class OrderService {
       isPreorder = TRUE;
     }
 
-    //Create the request to delivery service
-    let deliveryOrderId = null;
-    if (isPreorder == FALSE && paymentMethod.name == PaymentList.COD) {
-      const customerAddress: Address = {
-        address_id: undefined,
-        created_at: undefined,
-        ...address,
-      };
+    // //Create the request to delivery service
+    // let deliveryOrderId = null;
+    // if (isPreorder == FALSE && paymentMethod.name == PaymentList.COD) {
+    //   const customerAddress: Address = {
+    //     address_id: undefined,
+    //     created_at: undefined,
+    //     ...address,
+    //   };
 
-      deliveryOrderId = await this.createDeliveryRequest(
-        undefined,
-        orderTotal,
-        restaurant_id,
-        restaurantAddress,
-        customerAddress,
-        deliveryEstimation,
-        expected_arrival_time,
-        orderTotal,
-        orderSubTotal,
-        orderQuantitySum,
-        skuList,
-        orderItems,
-        restaurant,
-        customer,
-        driver_note,
-      );
-    }
+    //   deliveryOrderId = await this.createDeliveryRequest(
+    //     undefined,
+    //     orderTotal,
+    //     restaurant_id,
+    //     restaurantAddress,
+    //     customerAddress,
+    //     deliveryEstimation,
+    //     expected_arrival_time,
+    //     orderTotal,
+    //     orderSubTotal,
+    //     orderQuantitySum,
+    //     skuList,
+    //     orderItems,
+    //     restaurant,
+    //     customer,
+    //     driver_note,
+    //   );
+    // }
 
     //insert database (with transaction)
     let newOrderId: number;
@@ -837,7 +885,7 @@ export class OrderService {
           currency: restaurant.unit,
           is_preorder: isPreorder,
           expected_arrival_time: expected_arrival_time,
-          delivery_order_id: deliveryOrderId,
+          // delivery_order_id: deliveryOrderId,
           driver_note: driver_note,
         })
         .execute();
@@ -1026,7 +1074,9 @@ export class OrderService {
           : '';
       orderSku.notes = item.notes;
       orderSku.packaging_id = item.packaging_id;
-      orderSku.calorie_kcal = sku.calorie_kcal;
+      orderSku.calorie_kcal = (
+        Number(sku.calorie_kcal) * item.qty_ordered
+      ).toFixed(2);
       orderSku.packaging_obj = packaging;
 
       orderItems.push(orderSku);
@@ -1047,7 +1097,7 @@ export class OrderService {
   }
 
   async getOrderDetail(order_id): Promise<OrderDetailResponse | undefined> {
-    console.log(order_id);
+    // console.log(order_id);
     if (!order_id) {
       return undefined;
     }
@@ -1070,7 +1120,7 @@ export class OrderService {
     if (!order) {
       return undefined;
     }
-    console.log(order);
+    // console.log(order);
 
     //Get restaurant info
     const skuId = order.items[0].sku_id;
@@ -1198,47 +1248,47 @@ export class OrderService {
     //buil OrderStatusLog
     const orderStatusLog = [];
     order.order_status_log.forEach((log) => {
-      let milestone = null;
-      switch (log.order_status_id) {
-        case OrderStatus.NEW: {
-          milestone = OrderMilestones.CREATED;
-          break;
-        }
+      // let milestone = null;
+      // switch (log.order_status_id) {
+      //   case OrderStatus.NEW: {
+      //     milestone = OrderMilestones.CREATED;
+      //     break;
+      //   }
 
-        case OrderStatus.IDLE: {
-          milestone = OrderMilestones.CONFIRMED;
-          break;
-        }
+      //   case OrderStatus.IDLE: {
+      //     milestone = OrderMilestones.CONFIRMED;
+      //     break;
+      //   }
 
-        case OrderStatus.PROCESSING: {
-          milestone = OrderMilestones.START_TO_PROCESS;
-          break;
-        }
+      //   case OrderStatus.PROCESSING: {
+      //     milestone = OrderMilestones.START_TO_PROCESS;
+      //     break;
+      //   }
 
-        case OrderStatus.DELIVERING: {
-          milestone = OrderMilestones.PICKED_UP;
-          break;
-        }
+      //   case OrderStatus.DELIVERING: {
+      //     milestone = OrderMilestones.PICKED_UP;
+      //     break;
+      //   }
 
-        case OrderStatus.COMPLETED: {
-          milestone = OrderMilestones.COMPLETED;
-          break;
-        }
+      //   case OrderStatus.COMPLETED: {
+      //     milestone = OrderMilestones.COMPLETED;
+      //     break;
+      //   }
 
-        case OrderStatus.FAILED: {
-          milestone = OrderMilestones.FAILED;
-          break;
-        }
+      //   case OrderStatus.FAILED: {
+      //     milestone = OrderMilestones.FAILED;
+      //     break;
+      //   }
 
-        case OrderStatus.CANCELLED: {
-          milestone = OrderMilestones.CANCELLED;
-          break;
-        }
+      //   case OrderStatus.CANCELLED: {
+      //     milestone = OrderMilestones.CANCELLED;
+      //     break;
+      //   }
 
-        default:
-          //do nothing
-          break;
-      }
+      //   default:
+      //     //do nothing
+      //     break;
+      // }
       orderStatusLog.push({
         status: log.order_status_id,
         description: log.order_status_ext.map((i) => {
@@ -1248,7 +1298,7 @@ export class OrderService {
           };
         }),
         logged_at: log.logged_at,
-        milestone: milestone,
+        milestone: this.getOrderMilestone(log.order_status_id),
       });
     });
 
@@ -1347,160 +1397,124 @@ export class OrderService {
   async createDeliveryRequest(
     order: Order = undefined,
     cod_amount: number,
-    restaurant_id: number = undefined,
-    restaurant_address: Address = undefined,
-    customer_address: Address = undefined,
-    delivery_estimation: any = undefined,
-    expected_arrival_time: number = undefined,
-    order_total: number = undefined,
-    order_sub_total: number = undefined,
-    order_quantity_sum: number = undefined,
-    sku_list: number[] = undefined,
-    order_items: OrderSKU[] = undefined,
-    _restaurant: Restaurant = undefined,
-    _customer: Customer = undefined,
-    driver_note: string = undefined,
+    // restaurant_id: number = undefined,
+    // restaurant_address: Address = undefined,
+    // customer_address: Address = undefined,
+    // delivery_estimation: any = undefined,
+    // expected_arrival_time: number = undefined,
+    // order_total: number = undefined,
+    // order_sub_total: number = undefined,
+    // order_quantity_sum: number = undefined,
+    // sku_list: number[] = undefined,
+    // order_items: OrderSKU[] = undefined,
+    // _restaurant: Restaurant = undefined,
+    // _customer: Customer = undefined,
+    // driver_note: string = undefined,
   ): Promise<string> {
+    if (!cod_amount && cod_amount != 0) {
+      this.logger.error('COD amount is undefined/null/empty');
+      throw new Error('COD amount is undefined/null/empty');
+    }
+
     //Create the request to delivery service
     let deliveryOrderId: string = undefined;
 
     //Restaurant Info
-    let restaurant: Restaurant = undefined;
-    if (_restaurant) {
-      restaurant = _restaurant;
-    } else {
-      restaurant = await this.commonService.getRestaurantById(
-        order.restaurant_id,
-      );
-      if (!restaurant) {
-        this.logger.error('Restaurant doesnot exist');
-        throw new Error('Restaurant doesnot exist');
-      }
+    const restaurant: Restaurant = await this.commonService.getRestaurantById(
+      order.restaurant_id,
+    );
+    if (!restaurant) {
+      this.logger.error('Restaurant doesnot exist');
+      throw new Error('Restaurant doesnot exist');
     }
 
-    const restaurantId = restaurant_id
-      ? restaurant_id
-      : restaurant.restaurant_id;
+    const restaurantId = restaurant.restaurant_id;
 
     //Restaurant Address
-    let restaurantAddress: Address = undefined;
-    if (restaurant_address) {
-      restaurantAddress = restaurant_address;
-    } else {
-      restaurantAddress = await this.entityManager
-        .createQueryBuilder(Address, 'address')
-        .where('address.address_id = :address_id', {
-          address_id: restaurant.address_id,
-        })
-        .getOne();
-      if (!restaurantAddress) {
-        this.logger.error('Restaurant address doesnot exist');
-        throw new Error('Restaurant address doesnot exist');
-      }
+    const restaurantAddress = await this.entityManager
+      .createQueryBuilder(Address, 'address')
+      .where('address.address_id = :address_id', {
+        address_id: restaurant.address_id,
+      })
+      .getOne();
+    if (!restaurantAddress) {
+      this.logger.error('Restaurant address doesnot exist');
+      throw new Error('Restaurant address doesnot exist');
     }
 
     //Customer Address
-    let customerAddress: Address = undefined;
-    if (customer_address) {
-      customerAddress = customer_address;
-    } else {
-      customerAddress = await this.entityManager
-        .createQueryBuilder(Address, 'address')
-        .where('address.address_id = :address_id', {
-          address_id: order.address_id,
-        })
-        .getOne();
-      if (!customerAddress) {
-        this.logger.error('Customer address doesnot exist');
-        throw new Error('Customer address doesnot exist');
-      }
+    const customerAddress = await this.entityManager
+      .createQueryBuilder(Address, 'address')
+      .where('address.address_id = :address_id', {
+        address_id: order.address_id,
+      })
+      .getOne();
+    if (!customerAddress) {
+      this.logger.error('Customer address doesnot exist');
+      throw new Error('Customer address doesnot exist');
     }
 
     //Delivery Estimation
-    let deliveryEstimation: any = undefined;
-    if (delivery_estimation) {
-      deliveryEstimation = delivery_estimation;
-    } else {
-      deliveryEstimation = (
-        await this.ahamoveService.estimatePrice([
-          {
-            lat: restaurantAddress.latitude,
-            long: restaurantAddress.longitude,
-          },
-          {
-            lat: customerAddress.latitude,
-            long: customerAddress.longitude,
-          },
-        ])
-      )[0].data;
-      if (!deliveryEstimation) {
-        this.logger.error('Cannot get delivery estimation');
-        throw new Error('Cannot get delivery estimation');
-      }
+    const deliveryEstimation = (
+      await this.ahamoveService.estimatePrice([
+        {
+          lat: restaurantAddress.latitude,
+          long: restaurantAddress.longitude,
+        },
+        {
+          lat: customerAddress.latitude,
+          long: customerAddress.longitude,
+        },
+      ])
+    )[0].data;
+    if (!deliveryEstimation) {
+      this.logger.error('Cannot get delivery estimation');
+      throw new Error('Cannot get delivery estimation');
     }
 
-    const expectedArrivalTime: number = expected_arrival_time
-      ? expected_arrival_time
-      : order.expected_arrival_time;
+    const expectedArrivalTime: number = order.expected_arrival_time;
 
-    const orderTotal: number = order_total ? order_total : order.order_total;
+    const orderTotal: number = order.order_total;
 
-    const orderSubTotal: number = order_sub_total
-      ? order_sub_total
-      : order.order_total -
-        order.delivery_fee -
-        order.packaging_fee -
-        order.cutlery_fee -
-        order.app_fee +
-        order.coupon_value_from_platform +
-        order.coupon_value_from_restaurant;
+    const orderSubTotal: number =
+      order.order_total -
+      order.delivery_fee -
+      order.packaging_fee -
+      order.cutlery_fee -
+      order.app_fee +
+      order.coupon_value_from_platform +
+      order.coupon_value_from_restaurant;
 
     //Order Items
-    let orderItems: OrderSKU[] = undefined;
-    if (order_items) {
-      orderItems = order_items;
-    } else {
-      orderItems = await this.entityManager
-        .createQueryBuilder(OrderSKU, 'item')
-        .where('item.order_id = :order_id', { order_id: order.order_id })
-        .getMany();
-      if (!orderItems || orderItems.length <= 0) {
-        this.logger.error('Cannot found order items');
-        throw new Error('Cannot found order items');
-      }
+    const orderItems = await this.entityManager
+      .createQueryBuilder(OrderSKU, 'item')
+      .where('item.order_id = :order_id', { order_id: order.order_id })
+      .getMany();
+    if (!orderItems || orderItems.length <= 0) {
+      this.logger.error('Cannot found order items');
+      throw new Error('Cannot found order items');
     }
 
-    let skuList: number[] = undefined;
-    if (sku_list) {
-      skuList = sku_list;
-    } else {
-      skuList = [...new Set(orderItems.map((item) => item.sku_id))];
-    }
+    const skuList: number[] = [
+      ...new Set(orderItems.map((item) => item.sku_id)),
+    ];
 
-    const orderQuantitySum: number = order_quantity_sum
-      ? order_quantity_sum
-      : orderItems
-          .map((i) => i.qty_ordered)
-          .reduce((sum, val) => (sum += val), 0);
+    const orderQuantitySum: number = orderItems
+      .map((i) => i.qty_ordered)
+      .reduce((sum, val) => (sum += val), 0);
 
     //Customer Info
-    let customer: Customer = undefined;
-    if (_customer) {
-      customer = _customer;
-    } else {
-      customer = await this.entityManager
-        .createQueryBuilder(Customer, 'customer')
-        .where('customer.customer_id = :customer_id', {
-          customer_id: order.customer_id,
-        })
-        .getOne();
-      if (!customer) {
-        throw new Error('Customer is not found');
-      }
+    const customer: Customer = await this.entityManager
+      .createQueryBuilder(Customer, 'customer')
+      .where('customer.customer_id = :customer_id', {
+        customer_id: order.customer_id,
+      })
+      .getOne();
+    if (!customer) {
+      throw new Error('Customer is not found');
     }
 
-    const driverNote: string =
-      driver_note != undefined ? driver_note : order.driver_note;
+    const driverNote: string = order.driver_note;
 
     const restaurantAddressString = restaurantAddress.address_line
       ? `${restaurantAddress.address_line}, ${restaurantAddress.ward}, ${restaurantAddress.city}, ${restaurantAddress.country}`
@@ -1597,8 +1611,11 @@ export class OrderService {
     return deliveryOrderId;
   }
 
-  async getLatestOrderStatus(order_id: number): Promise<OrderStatusLog> {
-    return await this.entityManager
+  async getLatestOrderStatus(
+    order_id: number,
+    entity_manager: EntityManager = this.entityManager,
+  ): Promise<OrderStatusLog> {
+    return await entity_manager
       .createQueryBuilder(OrderStatusLog, 'log')
       .where('log.order_id = :order_id', { order_id })
       .orderBy('log.logged_at', 'DESC')
@@ -1608,13 +1625,17 @@ export class OrderService {
     order_id: number,
     new_order_status: OrderStatus,
     note: string = null,
+    entity_manager: EntityManager = this.entityManager,
   ): Promise<string> {
     this.logger.log(new_order_status);
     if (!(new_order_status in OrderStatus)) {
       this.logger.error('Invalid order status');
       throw new CustomRpcException(1, 'Invalid order status');
     }
-    const currenOrderStatus = await this.getLatestOrderStatus(order_id);
+    const currenOrderStatus = await this.getLatestOrderStatus(
+      order_id,
+      entity_manager,
+    );
     if (!currenOrderStatus) {
       throw new CustomRpcException(1, 'Order does not exist');
     }
@@ -1725,7 +1746,7 @@ export class OrderService {
     }
 
     return (
-      await this.entityManager
+      await entity_manager
         .createQueryBuilder()
         .insert()
         .into(OrderStatusLog)
@@ -1733,8 +1754,612 @@ export class OrderService {
           order_id: order_id,
           order_status_id: new_order_status,
           note,
+          logged_at: Date.now(),
         })
         .execute()
     ).identifiers[0].log_id;
+  }
+
+  async confirmOrder(order_id: number): Promise<void> {
+    await this.entityManager.transaction(async (transactionalEntityManager) => {
+      const order = await transactionalEntityManager
+        .createQueryBuilder(Order, 'order')
+        .leftJoinAndSelect('order.invoice_obj', 'invoice')
+        .leftJoinAndSelect('invoice.payment_option_obj', 'paymentOption')
+        .where('order.order_id = :order_id', { order_id })
+        .getOne();
+
+      if (order.delivery_order_id) {
+        throw new CustomRpcException(2, 'Order cannot found');
+      }
+
+      await this.setOrderStatus(
+        order_id,
+        OrderStatus.IDLE,
+        null,
+        transactionalEntityManager,
+      );
+
+      const latestInvoiceStatus = await transactionalEntityManager
+        .createQueryBuilder(InvoiceStatusHistory, 'invoiceStatus')
+        .where('invoiceStatus.invoice_id = :invoice_id', {
+          invoice_id: order.invoice_obj.invoice_id,
+        })
+        .orderBy('invoiceStatus.created_at', 'DESC')
+        .getOne();
+
+      //Create the request to delivery service
+      let deliveryOrderId = null;
+      let codAmount = 0;
+      if (order.invoice_obj.payment_option_obj.name == PaymentList.COD) {
+        codAmount = order.order_total;
+      } else {
+        if (latestInvoiceStatus.status_id != InvoiceHistoryStatusEnum.PAID) {
+          this.logger.error('Paymen is not COD and unpaid');
+          throw new CustomRpcException(3, 'Paymen is not COD and unpaid');
+        }
+        codAmount = 0;
+      }
+
+      if (order.is_preorder == FALSE) {
+        await this.setOrderStatus(
+          order_id,
+          OrderStatus.PROCESSING,
+          null,
+          transactionalEntityManager,
+        );
+        deliveryOrderId = await this.createDeliveryRequest(order, codAmount);
+      }
+
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .update(Order)
+        .set({
+          delivery_order_id: deliveryOrderId,
+        })
+        .where('order_id = :order_id', { order_id: order.order_id })
+        .execute();
+    });
+  }
+
+  async getOngoingOrders(customer_id: number): Promise<Order[]> {
+    const ongoingOrders: Order[] = [];
+    const orders = await this.entityManager
+      .createQueryBuilder(Order, 'order')
+      .leftJoinAndSelect('order.order_status_log', 'statusLog')
+      .leftJoinAndSelect('statusLog.order_status_ext', 'ext')
+      .where('order.customer_id = :customer_id', { customer_id })
+      .getMany();
+    const ongoingStatusList = (
+      await this.entityManager
+        .createQueryBuilder(OrderStatusEntity, 'status')
+        .where('status.is_active = 1')
+        .andWhere('status.is_end_status = 0')
+        .getMany()
+    ).map((i) => i.order_status_id);
+
+    for (const order of orders) {
+      const latestStatus = order.order_status_log.sort(
+        (a, b) => b.logged_at - a.logged_at,
+      )[0].order_status_id;
+      if (ongoingStatusList.includes(latestStatus)) {
+        ongoingOrders.push(order);
+      }
+    }
+
+    return ongoingOrders;
+  }
+
+  async getRestaurantInfoById(restaurant_id: number): Promise<Restaurant> {
+    return await this.entityManager
+      .createQueryBuilder(Restaurant, 'restaurant')
+      .leftJoinAndSelect('restaurant.restaurant_ext', 'ext')
+      .leftJoinAndSelect('restaurant.logo', 'logo')
+      .where('restaurant.restaurant_id = :restaurant_id', { restaurant_id })
+      .getOne();
+  }
+
+  async getOrderItems(order_id: number): Promise<OrderSKU[]> {
+    return await this.entityManager
+      .createQueryBuilder(OrderSKU, 'item')
+      .leftJoinAndSelect('item.sku_obj', 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'ext')
+      .where('item.order_id = :order_id', { order_id })
+      .getMany();
+  }
+
+  async buildGetOngoingOrdersResponse(
+    ongoing_orders: Order[],
+  ): Promise<GetOngoingOrdersResponse> {
+    const result = new GetOngoingOrdersResponse();
+    result.ongoing_oders = [];
+
+    if (ongoing_orders.length <= 0) {
+      return result;
+    }
+
+    for (const order of ongoing_orders) {
+      //Get restaurant info
+      const restaurant = await this.getRestaurantInfoById(order.restaurant_id);
+
+      //Get order_items
+      const orderItems = await this.getOrderItems(order.order_id);
+
+      //Build output
+      const ongoingOrderInfo: OngoingOrder = {
+        order_id: order.order_id,
+        order_status_log: [],
+        restaurant_info: null,
+        order_items: [],
+        order_total: order.order_total,
+      };
+
+      order.order_status_log.forEach((log) => {
+        //order_status_log
+        const statusLog: OngoignOrderStatusLog = {
+          status: log.order_status_id,
+          description: log.order_status_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.description,
+            };
+          }),
+          logged_at: log.logged_at,
+          milestone: this.getOrderMilestone(log.order_status_id),
+        };
+        ongoingOrderInfo.order_status_log.push(statusLog);
+      });
+
+      // restaurant_info
+      const restaurantName: TextByLang[] = [];
+      const specialty: TextByLang[] = [];
+      restaurant.restaurant_ext.forEach((ext) => {
+        restaurantName.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+        specialty.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.specialty,
+        });
+      });
+      ongoingOrderInfo.restaurant_info = {
+        restaurant_id: restaurant.restaurant_id,
+        restaurant_name: restaurantName,
+        restaurant_logo_img: restaurant.logo.url,
+        specialty: specialty,
+      };
+
+      // OngoingOrderItem
+      orderItems.forEach((item) => {
+        const orderItem: OngoingOrderItem = {
+          item_name: item.sku_obj.menu_item.menuItemExt.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.name,
+            };
+          }),
+          qty_ordered: item.qty_ordered,
+        };
+        ongoingOrderInfo.order_items.push(orderItem);
+      });
+
+      result.ongoing_oders.push(ongoingOrderInfo);
+    }
+    return result;
+  }
+
+  getOrderMilestone(order_status_id: OrderStatus): OrderMilestones {
+    let milestone = null;
+    switch (order_status_id) {
+      case OrderStatus.NEW: {
+        milestone = OrderMilestones.CREATED;
+        break;
+      }
+
+      case OrderStatus.IDLE: {
+        milestone = OrderMilestones.CONFIRMED;
+        break;
+      }
+
+      case OrderStatus.PROCESSING: {
+        milestone = OrderMilestones.START_TO_PROCESS;
+        break;
+      }
+
+      case OrderStatus.DELIVERING: {
+        milestone = OrderMilestones.PICKED_UP;
+        break;
+      }
+
+      case OrderStatus.COMPLETED: {
+        milestone = OrderMilestones.COMPLETED;
+        break;
+      }
+
+      case OrderStatus.FAILED: {
+        milestone = OrderMilestones.FAILED;
+        break;
+      }
+
+      case OrderStatus.CANCELLED: {
+        milestone = OrderMilestones.CANCELLED;
+        break;
+      }
+
+      default:
+        //do nothing
+        break;
+    }
+    return milestone;
+  }
+
+  async getHistoryOrders(
+    customer_id: number,
+    search_keyword_for_restaurant_name: string,
+    sort_type: string,
+    filtered_order_status: string[],
+    time_range: TimeRange,
+  ): Promise<Order[]> {
+    const historicalOrders: Order[] = [];
+
+    const orders = await this.entityManager
+      .createQueryBuilder(Order, 'order')
+      .leftJoinAndSelect('order.order_status_log', 'statusLog')
+      .leftJoinAndSelect('statusLog.order_status_ext', 'ext')
+      .where('order.customer_id = :customer_id', { customer_id })
+      .getMany();
+
+    for (const order of orders) {
+      //Sort order_status_log in ascending order
+      order.order_status_log.sort((a, b) => a.logged_at - b.logged_at);
+
+      //Filter by search keyword
+      if (search_keyword_for_restaurant_name) {
+        const restaurant = await this.getRestaurantInfoById(
+          order.restaurant_id,
+        );
+        let isMatched = false;
+        for (const ext of restaurant.restaurant_ext) {
+          if (
+            this.commonService.matchFullTextSearch(
+              search_keyword_for_restaurant_name,
+              ext.name,
+            )
+          ) {
+            isMatched = true;
+            break;
+          }
+        }
+        if (!isMatched) {
+          continue;
+        }
+      }
+
+      //Filter by status
+      const numberOfStatusLog = order.order_status_log.length - 1;
+      const latestStatus =
+        order.order_status_log[numberOfStatusLog].order_status_id;
+      if (filtered_order_status && filtered_order_status.length > 0) {
+        if (!filtered_order_status.includes(latestStatus)) {
+          continue;
+        }
+      } else {
+        if (!(latestStatus in HistoryOrderStatus)) {
+          continue;
+        }
+      }
+
+      //Filter by time_range
+      const createdAt = order.order_status_log[0].logged_at;
+      if (time_range.from && time_range.to) {
+        if (createdAt < time_range.from || createdAt > time_range.to) {
+          continue;
+        }
+      }
+
+      historicalOrders.push(order);
+    }
+
+    //Sorting
+    switch (sort_type) {
+      case RestaurantOrderSortType.DATE_DESC:
+        historicalOrders.sort(
+          (a, b) =>
+            b.order_status_log[0].logged_at - a.order_status_log[0].logged_at,
+        );
+        break;
+      case RestaurantOrderSortType.DATE_ASC:
+        historicalOrders.sort(
+          (a, b) =>
+            a.order_status_log[0].logged_at - b.order_status_log[0].logged_at,
+        );
+        break;
+      case RestaurantOrderSortType.TOTAL_DESC:
+        historicalOrders.sort((a, b) => b.order_total - a.order_total);
+        break;
+      case RestaurantOrderSortType.TOTAL_ASC:
+        historicalOrders.sort((a, b) => a.order_total - b.order_total);
+        break;
+      default:
+        break;
+    }
+
+    return historicalOrders;
+  }
+
+  async buildHistoricalOrderByRestaurant(
+    history_orders: Order[],
+  ): Promise<HistoricalOrderByRestaurant[]> {
+    const historicalOrderInfos: HistoricalOrderByRestaurant[] = [];
+
+    if (history_orders.length <= 0) {
+      return [];
+    }
+
+    for (const order of history_orders) {
+      //Get restaurant info
+      const restaurant = await this.getRestaurantInfoById(order.restaurant_id);
+
+      //Get order_items
+      const orderItems = await this.getOrderItems(order.order_id);
+
+      //Get Food rating
+      const foodRatings: FoodRating[] =
+        await this.getFoodRatingsWithOrderSkuIds(
+          orderItems.map((i) => i.order_sku_id),
+        );
+
+      //Get invoice
+      const invoice = await this.entityManager
+        .createQueryBuilder(Invoice, 'invoice')
+        .leftJoinAndSelect('invoice.payment_option_obj', 'paymentOption')
+        .where('invoice.order_id = :order_id', { order_id: order.order_id })
+        .getOne();
+
+      //Build output
+      const historicalOrderInfo: HistoricalOrderByRestaurant = {
+        order_id: order.order_id,
+        order_status_log: [],
+        restaurant_info: null,
+        order_items: [],
+        order_total: order.order_total,
+        order_score:
+          foodRatings
+            .map((i) => i.score)
+            .reduce((sum, val) => (sum += val), 0) / foodRatings.length,
+        payment_method: {
+          id: invoice?.payment_option_obj.option_id,
+          name: invoice?.payment_option_obj.name,
+        },
+      };
+
+      order.order_status_log.forEach((log) => {
+        //order_status_log
+        const statusLog = {
+          status: log.order_status_id,
+          description: log.order_status_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.description,
+            };
+          }),
+          logged_at: log.logged_at,
+          milestone: this.getOrderMilestone(log.order_status_id),
+        };
+        historicalOrderInfo.order_status_log.push(statusLog);
+      });
+
+      // restaurant_info
+      const restaurantName: TextByLang[] = [];
+      const specialty: TextByLang[] = [];
+      restaurant.restaurant_ext.forEach((ext) => {
+        restaurantName.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.name,
+        });
+        specialty.push({
+          ISO_language_code: ext.ISO_language_code,
+          text: ext.specialty,
+        });
+      });
+      historicalOrderInfo.restaurant_info = {
+        restaurant_id: restaurant.restaurant_id,
+        restaurant_name: restaurantName,
+        restaurant_logo_img: restaurant.logo.url,
+        specialty: specialty,
+      };
+
+      // OrderItem
+      orderItems.forEach((item) => {
+        const orderItem = {
+          item_name: item.sku_obj.menu_item.menuItemExt.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.name,
+            };
+          }),
+          sku_id: item.sku_id,
+          qty_ordered: item.qty_ordered,
+          advanced_taste_customization_obj:
+            item.advanced_taste_customization_obj
+              ? JSON.parse(item.advanced_taste_customization_obj)
+              : [],
+          basic_taste_customization_obj: item.basic_taste_customization_obj
+            ? JSON.parse(item.basic_taste_customization_obj)
+            : [],
+          notes: item.notes,
+          packaging_id: item.packaging_id,
+        };
+        historicalOrderInfo.order_items.push(orderItem);
+      });
+
+      historicalOrderInfos.push(historicalOrderInfo);
+    }
+    return historicalOrderInfos;
+  }
+
+  async getFoodRatingsWithOrderSkuIds(
+    order_sku_ids: number[],
+  ): Promise<FoodRating[]> {
+    this.logger.log(order_sku_ids);
+    return await this.entityManager
+      .createQueryBuilder(FoodRating, 'rating')
+      .where('rating.order_sku_id IN (:...order_sku_ids)', { order_sku_ids })
+      .getMany();
+  }
+
+  async getHistoricalFoods(
+    historical_orders: Order[],
+    search_keyword: string,
+    sort_type: string,
+  ): Promise<OrderSKU[]> {
+    const historicalFoods: OrderSKU[] = [];
+
+    if (!historical_orders || historical_orders.length <= 0) {
+      return historicalFoods;
+    }
+    const orderIds = historical_orders.map((i) => i.order_id);
+
+    const orderItems = await this.entityManager
+      .createQueryBuilder(OrderSKU, 'orderItem')
+      .leftJoinAndSelect('orderItem.food_rating_obj', 'rating')
+      .leftJoinAndSelect('orderItem.sku_obj', 'sku')
+      .leftJoinAndSelect('sku.menu_item', 'menuItem')
+      .leftJoinAndSelect('menuItem.menuItemExt', 'menuItemExt')
+      .leftJoinAndSelect('menuItem.image_obj', 'image')
+      .where('orderItem.order_id IN (:...orderIds)', { orderIds })
+      .getMany();
+
+    for (const item of orderItems) {
+      //Filter by search keyword
+      if (search_keyword) {
+        const isMatched = this.commonService.matchFullTextSearch(
+          search_keyword,
+          item.sku_obj.menu_item.menuItemExt.map((i) => i.name).join(' '),
+        );
+        if (!isMatched) {
+          continue;
+        }
+      }
+
+      //Attach order information to item
+      const order = historical_orders.find((i) => i.order_id === item.order_id);
+      item.order_obj = order;
+      //Sort order_status_log in ascending order
+      item.order_obj.order_status_log.sort((a, b) => a.logged_at - b.logged_at);
+
+      historicalFoods.push(item);
+    }
+
+    //Sorting
+    switch (sort_type) {
+      case FoodOrderSortType.DATE_DESC:
+        historicalFoods.sort(
+          (a, b) =>
+            b.order_obj.order_status_log[0].logged_at -
+            a.order_obj.order_status_log[0].logged_at,
+        );
+        break;
+      case FoodOrderSortType.DATE_ASC:
+        historicalFoods.sort(
+          (a, b) =>
+            a.order_obj.order_status_log[0].logged_at -
+            b.order_obj.order_status_log[0].logged_at,
+        );
+        break;
+      case FoodOrderSortType.TOTAL_DESC:
+        historicalFoods.sort((a, b) => b.amount() - a.amount());
+        break;
+      case FoodOrderSortType.TOTAL_ASC:
+        historicalFoods.sort((a, b) => a.amount() - b.amount());
+        break;
+      default:
+        break;
+    }
+
+    return historicalFoods;
+  }
+
+  async buildHistoricalOrderByFood(
+    historical_foods: OrderSKU[],
+  ): Promise<HistoricalOrderByFood[]> {
+    const historicalFoodsInfo: HistoricalOrderByFood[] = [];
+
+    if (!historical_foods || historical_foods.length <= 0) {
+      return [];
+    }
+    for (const food of historical_foods) {
+      //Get restaurant info
+      const restaurant = await this.getRestaurantInfoById(
+        food.order_obj.restaurant_id,
+      );
+
+      //Build output
+      const historicalFoodInfo: HistoricalOrderByFood = {
+        order_id: food.order_id,
+        order_status_log: [], //TODO
+        restaurant_info: {
+          restaurant_id: restaurant.restaurant_id,
+          restaurant_name: restaurant.restaurant_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.name,
+            };
+          }),
+        },
+        name: food.sku_obj.menu_item.menuItemExt.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.name,
+          };
+        }),
+        image: food.sku_obj.menu_item.image_obj.url,
+        main_cooking_method: food.sku_obj.menu_item.menuItemExt.map((i) => {
+          return {
+            ISO_language_code: i.ISO_language_code,
+            text: i.main_cooking_method,
+          };
+        }),
+        ingredient_brief_vie: food.sku_obj.menu_item.ingredient_brief_vie,
+        ingredient_brief_eng: food.sku_obj.menu_item.ingredient_brief_eng,
+        sku_id: food.sku_id,
+        qty_ordered: food.qty_ordered,
+        advanced_taste_customization: food.advanced_taste_customization,
+        basic_taste_customization: food.basic_taste_customization,
+        portion_customization: food.portion_customization,
+        advanced_taste_customization_obj: food.advanced_taste_customization_obj
+          ? JSON.parse(food.advanced_taste_customization_obj)
+          : [],
+        basic_taste_customization_obj: food.basic_taste_customization_obj
+          ? JSON.parse(food.basic_taste_customization_obj)
+          : [],
+        notes: food.notes,
+        packaging_id: food.packaging_id,
+        price: food.price,
+        calorie_kcal: food.calorie_kcal,
+        score: food.food_rating_obj?.score,
+      };
+      food.order_obj.order_status_log.forEach((log) => {
+        //order_status_log
+        const statusLog = {
+          status: log.order_status_id,
+          description: log.order_status_ext.map((i) => {
+            return {
+              ISO_language_code: i.ISO_language_code,
+              text: i.description,
+            };
+          }),
+          logged_at: log.logged_at,
+          milestone: this.getOrderMilestone(log.order_status_id),
+        };
+        historicalFoodInfo.order_status_log.push(statusLog);
+      });
+
+      historicalFoodsInfo.push(historicalFoodInfo);
+    }
+
+    return historicalFoodsInfo;
   }
 }
