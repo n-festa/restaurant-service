@@ -8,11 +8,19 @@
       {
         "ISO_language_code": "vie",
         "text": "Cơm Ức Gà Gạo Lứt"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "Chicken Brown Rice"
       }
     ],
     "restaurant_name": [
       {
         "ISO_language_code": "vie",
+        "text": "The Chef Town"
+      },
+      {
+        "ISO_language_code": "eng",
         "text": "The Chef Town"
       }
     ],
@@ -25,6 +33,10 @@
       {
         "ISO_language_code": "vie",
         "text": "Luộc"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "Boiled"
       }
     ],
     "ingredient_brief_vie": "Gạo lứt, Thịt gà công nghiệp, lườn; Bánh tart; Súp lơ trắng; Ớt đỏ to",
@@ -48,17 +60,25 @@
     "name": [
       {
         "ISO_language_code": "vie",
-        "text": "Cơm Ức Gà Gạo Lứt"
+        "text": "Salad Gà Cajun Balsamic"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "Cajun Chicken Salad"
       }
     ],
     "restaurant_name": [
       {
         "ISO_language_code": "vie",
-        "text": "The Chef Town"
+        "text": "An Garden"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "An Garden"
       }
     ],
     "restaurant_id": 1,
-    "calorie_kcal": 366.0,
+    "calorie_kcal": 550,
     "rating": 4.5,
     "distance_km": null,
     "delivery_time_s": null,
@@ -66,12 +86,16 @@
       {
         "ISO_language_code": "vie",
         "text": "Luộc"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "Boiled"
       }
     ],
-    "ingredient_brief_vie": "Gạo lứt, Thịt gà công nghiệp, lườn; Bánh tart; Súp lơ trắng; Ớt đỏ to",
-    "ingredient_brief_eng": "Brown rice; Chicken, breast; Egg tart; Cauliflower, raw; Peppers, red, raw",
-    "price": 95000,
-    "price_after_discount": 65000,
+    "ingredient_brief_vie": "Cajun, gà, salad, balsamic, sốt",
+    "ingredient_brief_eng": "Cajun, chicken, salad, balsamic, sauce",
+    "price": 85000,
+    "price_after_discount": 80000,
     "promotion": "Ưu đãi đến 50k",
     "preparing_time_s": 600,
     "cooking_time_s": 1200,
@@ -89,30 +113,42 @@
     "name": [
       {
         "ISO_language_code": "vie",
-        "text": "Cơm Ức Gà Gạo Lứt"
+        "text": "Bò Hầm Pate"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "Braised Beef with Pate"
       }
     ],
     "restaurant_name": [
       {
         "ISO_language_code": "vie",
         "text": "The Chef Town"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "The Chef Town"
       }
     ],
     "restaurant_id": 1,
-    "calorie_kcal": 366.0,
+    "calorie_kcal": 600,
     "rating": 4.5,
     "distance_km": null,
     "delivery_time_s": null,
     "main_cooking_method": [
       {
         "ISO_language_code": "vie",
-        "text": "Luộc"
+        "text": "Hầm"
+      },
+      {
+        "ISO_language_code": "eng",
+        "text": "Braised"
       }
     ],
-    "ingredient_brief_vie": "Gạo lứt, Thịt gà công nghiệp, lườn; Bánh tart; Súp lơ trắng; Ớt đỏ to",
-    "ingredient_brief_eng": "Brown rice; Chicken, breast; Egg tart; Cauliflower, raw; Peppers, red, raw",
+    "ingredient_brief_vie": "Bò, pate",
+    "ingredient_brief_eng": "Beef, pate",
     "price": 95000,
-    "price_after_discount": 65000,
+    "price_after_discount": 90000,
     "promotion": "Ưu đãi đến 50k",
     "preparing_time_s": 600,
     "cooking_time_s": 1200,
