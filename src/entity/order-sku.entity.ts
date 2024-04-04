@@ -41,10 +41,10 @@ export class OrderSKU {
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public portion_customization: string;
 
-  @Column({ type: 'text', nullable: true, unique: false })
+  @Column({ type: 'json', nullable: false, unique: false })
   public advanced_taste_customization_obj: string;
 
-  @Column({ type: 'text', nullable: true, unique: false })
+  @Column({ type: 'json', nullable: false, unique: false })
   public basic_taste_customization_obj: string;
 
   @Column({ type: 'text', nullable: true, unique: false })

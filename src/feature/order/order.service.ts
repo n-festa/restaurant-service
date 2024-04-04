@@ -1064,14 +1064,12 @@ export class OrderService {
           : '';
       orderSku.portion_customization =
         await this.commonService.interpretPortionCustomization(item.sku_id);
-      orderSku.advanced_taste_customization_obj =
-        item.advanced_taste_customization_obj.length > 0
-          ? JSON.stringify(item.advanced_taste_customization_obj)
-          : '';
-      orderSku.basic_taste_customization_obj =
-        item.basic_taste_customization_obj.length > 0
-          ? JSON.stringify(item.basic_taste_customization_obj)
-          : '';
+      orderSku.advanced_taste_customization_obj = JSON.stringify(
+        item.advanced_taste_customization_obj,
+      );
+      orderSku.basic_taste_customization_obj = JSON.stringify(
+        item.basic_taste_customization_obj,
+      );
       orderSku.notes = item.notes;
       orderSku.packaging_id = item.packaging_id;
       orderSku.calorie_kcal = (

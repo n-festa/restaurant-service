@@ -32,10 +32,10 @@ export class CartItem {
   @Column({ type: 'varchar', length: 255, unique: false, nullable: true })
   public portion_customization: string;
 
-  @Column({ type: 'text', unique: false, nullable: true })
+  @Column({ type: 'json', unique: false, nullable: false })
   public advanced_taste_customization_obj: string;
 
-  @Column({ type: 'text', unique: false, nullable: true })
+  @Column({ type: 'json', unique: false, nullable: false })
   public basic_taste_customization_obj: string;
 
   @Column({ type: 'text', unique: false, nullable: true })
