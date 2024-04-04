@@ -51,7 +51,7 @@ export class MenuItem {
   })
   public is_vegetarian: number;
 
-  @Column({ type: 'varchar', length: 22, nullable: false, unique: false })
+  @Column({ type: 'json', nullable: false, unique: false })
   public cooking_schedule: string;
 
   @Column({ type: 'int', nullable: false, unique: false })

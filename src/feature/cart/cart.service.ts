@@ -40,15 +40,12 @@ export class CartService {
     packaging_id: number = null,
     lang: string = 'vie',
   ): Promise<FullCartItem[]> {
-    const advanced_taste_customization_obj_txt =
-      advanced_taste_customization_obj.length > 0
-        ? JSON.stringify(advanced_taste_customization_obj)
-        : '';
-    const basic_taste_customization_obj_txt =
-      basic_taste_customization_obj.length > 0
-        ? JSON.stringify(basic_taste_customization_obj)
-        : '';
-
+    const advanced_taste_customization_obj_txt = JSON.stringify(
+      advanced_taste_customization_obj,
+    );
+    const basic_taste_customization_obj_txt = JSON.stringify(
+      basic_taste_customization_obj,
+    );
     //Check if the SKU does exist
     const sku = await this.entityManager
       .createQueryBuilder(SKU, 'sku')
@@ -432,14 +429,12 @@ export class CartService {
       }
     }
 
-    const advanced_taste_customization_obj_txt =
-      advanced_taste_customization_obj.length > 0
-        ? JSON.stringify(advanced_taste_customization_obj)
-        : '';
-    const basic_taste_customization_obj_txt =
-      basic_taste_customization_obj.length > 0
-        ? JSON.stringify(basic_taste_customization_obj)
-        : '';
+    const advanced_taste_customization_obj_txt = JSON.stringify(
+      advanced_taste_customization_obj,
+    );
+    const basic_taste_customization_obj_txt = JSON.stringify(
+      basic_taste_customization_obj,
+    );
 
     // const advanced_taste_customization_obj_txt = JSON.stringify(
     //   advanced_taste_customization_obj,
