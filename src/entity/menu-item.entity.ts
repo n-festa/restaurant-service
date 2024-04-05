@@ -51,7 +51,21 @@ export class MenuItem {
   })
   public is_vegetarian: number;
 
-  @Column({ type: 'json', nullable: false, unique: false })
+  @Column({
+    type: 'json',
+    nullable: false,
+    unique: false,
+    transformer: {
+      // used to deserialize your data from db field value
+      from(val: object) {
+        return JSON.stringify(val);
+      },
+      // used to serialize your data to db field
+      to(val) {
+        return val;
+      },
+    },
+  })
   public cooking_schedule: string;
 
   @Column({ type: 'int', nullable: false, unique: false })

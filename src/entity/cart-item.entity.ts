@@ -32,10 +32,38 @@ export class CartItem {
   @Column({ type: 'varchar', length: 255, unique: false, nullable: true })
   public portion_customization: string;
 
-  @Column({ type: 'json', unique: false, nullable: false })
+  @Column({
+    type: 'json',
+    unique: false,
+    nullable: false,
+    transformer: {
+      // used to deserialize your data from db field value
+      from(val: object) {
+        return JSON.stringify(val);
+      },
+      // used to serialize your data to db field
+      to(val) {
+        return val;
+      },
+    },
+  })
   public advanced_taste_customization_obj: string;
 
-  @Column({ type: 'json', unique: false, nullable: false })
+  @Column({
+    type: 'json',
+    unique: false,
+    nullable: false,
+    transformer: {
+      // used to deserialize your data from db field value
+      from(val: object) {
+        return JSON.stringify(val);
+      },
+      // used to serialize your data to db field
+      to(val) {
+        return val;
+      },
+    },
+  })
   public basic_taste_customization_obj: string;
 
   @Column({ type: 'text', unique: false, nullable: true })
