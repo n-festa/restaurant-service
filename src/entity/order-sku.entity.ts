@@ -41,10 +41,38 @@ export class OrderSKU {
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public portion_customization: string;
 
-  @Column({ type: 'json', nullable: false, unique: false })
+  @Column({
+    type: 'json',
+    nullable: false,
+    unique: false,
+    transformer: {
+      // used to deserialize your data from db field value
+      from(val: object) {
+        return JSON.stringify(val);
+      },
+      // used to serialize your data to db field
+      to(val) {
+        return val;
+      },
+    },
+  })
   public advanced_taste_customization_obj: string;
 
-  @Column({ type: 'json', nullable: false, unique: false })
+  @Column({
+    type: 'json',
+    nullable: false,
+    unique: false,
+    transformer: {
+      // used to deserialize your data from db field value
+      from(val: object) {
+        return JSON.stringify(val);
+      },
+      // used to serialize your data to db field
+      to(val) {
+        return val;
+      },
+    },
+  })
   public basic_taste_customization_obj: string;
 
   @Column({ type: 'text', nullable: true, unique: false })
