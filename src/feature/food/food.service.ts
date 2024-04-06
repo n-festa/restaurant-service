@@ -962,4 +962,29 @@ export class FoodService {
 
     return response;
   }
+
+  async createMenuItemFromRestaurant(
+    restaurant_id,
+    ISO_language_code,
+    name,
+    short_name,
+    description,
+    main_cooking_method,
+    preparing_time_minutes,
+    cooking_time_minutes,
+    is_vegetarian,
+    res_category_id,
+    image_url,
+    other_image_url,
+    basic_customization,
+    recipe,
+    portion_customization,
+    price,
+    taste_customization,
+    packaging,
+  ): Promise<void> {
+    await this.entityManager.transaction(async (transactionalEntityManager) => {
+      // execute queries using transactionalEntityManager
+    });
+  }
 }

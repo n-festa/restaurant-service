@@ -30,6 +30,12 @@ export class MenuItemAttributeValue {
   @Column({ type: 'varchar', length: 255, nullable: true, unique: false })
   public note: string;
 
+  @Column({ type: 'int', nullable: true, unique: false })
+  public price_variance: number;
+
+  @Column({ type: 'tinyint', nullable: true, unique: false })
+  public is_standard: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,
