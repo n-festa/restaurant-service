@@ -304,7 +304,7 @@ export class OrderService {
       where: { order_id: order_id },
     });
     const isMomo = source?.isMomo;
-    this.logger.debug('canceling Order', JSON.stringify(currentOrder));
+    // this.logger.debug('canceling Order', JSON.stringify(currentOrder));
     if (!currentOrder) {
       this.logger.warn('The order status is not existed');
       return;
@@ -634,7 +634,7 @@ export class OrderService {
     )[0].data;
     const deliveryFee = deliveryEstimation.total_price;
 
-    this.logger.debug(deliveryFee);
+    // this.logger.debug(deliveryFee);
     if (deliveryFee != delivery_fee) {
       // throw new CustomRpcException(101, 'Delivery fee is not correct');
       throw new CustomRpcException(101, {
@@ -982,12 +982,12 @@ export class OrderService {
       const menuItemWithSkuIds = skus
         .filter((sku) => sku.menu_item_id == menuItem.menu_item_id)
         .map((i) => i.sku_id);
-      this.logger.debug(menuItemWithSkuIds);
+      // this.logger.debug(menuItemWithSkuIds);
       const orderingQuantity = items
         .filter((item) => menuItemWithSkuIds.includes(item.sku_id))
         .map((i) => i.qty_ordered)
         .reduce((sum, quantity) => (sum += quantity), 0);
-      this.logger.debug(orderingQuantity);
+      // this.logger.debug(orderingQuantity);
       if (orderingQuantity > menuItem.quantity_available) {
         throw new CustomRpcException(108, {
           message: `Cannot order more than available quantity`,

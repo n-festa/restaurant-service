@@ -252,3 +252,19 @@ interface OrderItemPackaging {
   description: TextByLang[];
   price: number;
 }
+
+export interface PortionAttribute {
+  attribute_id: number;
+  values: PortionValue[];
+}
+export interface PortionValue {
+  value_id: number;
+  price_variance: number;
+  is_standard: boolean;
+}
+export interface PortionAttributeValue {
+  attribute_id: number;
+  value_id: number;
+  price_variance: number;
+  is_standard: boolean;
+}

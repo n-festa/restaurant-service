@@ -181,7 +181,6 @@ export class MomoService {
         throw new CustomRpcException(201, error.response?.data);
       }
       const momoOrderResult = response.data;
-      this.logger.debug('momoOrderResult: ', momoOrderResult);
       if (momoOrderResult.resultCode === 0) {
         // ABLE TO CALL API MOMO AND GET SUCESSFUL RESPONSE
         const momoResult = {

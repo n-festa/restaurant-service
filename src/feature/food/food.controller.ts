@@ -11,6 +11,8 @@ import { GetAvailableFoodByRestaurantResponse } from './dto/get-available-food-b
 import { GetSimilarFoodRequest } from './dto/get-similar-food-request.dto';
 import { GetSimilarFoodResponse } from './dto/get-similar-food-response.dto';
 import { CustomRpcExceptionFilter } from 'src/filters/custom-rpc-exception.filter';
+import { CreateMenuItemRequest } from './dto/create-menu-item-request.dto';
+import { CreateMenuItemResponse } from './dto/create-menu-item-response.dto';
 
 @Controller()
 export class FoodController {
@@ -105,5 +107,53 @@ export class FoodController {
       fetch_mode,
     );
     return await this.foodService.buildSimilarFoodResponse(similarMenuItemIds);
+  }
+
+  @MessagePattern({ cmd: 'create_menu_item_from_restaurant' })
+  @UseFilters(new CustomRpcExceptionFilter())
+  async createMenuItemFromRestaurant(
+    data: CreateMenuItemRequest,
+  ): Promise<CreateMenuItemResponse> {
+    const {
+      restaurant_id,
+      ISO_language_code,
+      name,
+      short_name,
+      description,
+      main_cooking_method,
+      preparing_time_minutes,
+      cooking_time_minutes,
+      is_vegetarian,
+      res_category_id,
+      image_url,
+      other_image_url = [],
+      basic_customization,
+      recipe,
+      portion_customization,
+      price,
+      taste_customization,
+      packaging,
+    } = data;
+    await this.foodService.createMenuItemFromRestaurant(
+      restaurant_id,
+      ISO_language_code,
+      name,
+      short_name,
+      description,
+      main_cooking_method,
+      preparing_time_minutes,
+      cooking_time_minutes,
+      is_vegetarian,
+      res_category_id,
+      image_url,
+      other_image_url,
+      basic_customization,
+      recipe,
+      portion_customization,
+      price,
+      taste_customization,
+      packaging,
+    );
+    return { message: 'create menu item successfullly' };
   }
 }

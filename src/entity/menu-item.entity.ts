@@ -95,6 +95,15 @@ export class MenuItem {
   @Column({ type: 'int', nullable: true, unique: false })
   public units_sold: number;
 
+  @Column({ type: 'int', nullable: true, unique: false })
+  public standard_price: number;
+
+  @Column({ type: 'int', nullable: true, unique: false })
+  public min_price: number;
+
+  @Column({ type: 'int', nullable: true, unique: false })
+  public max_price: number;
+
   @CreateDateColumn({
     type: 'datetime',
     nullable: false,

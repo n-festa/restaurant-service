@@ -13,6 +13,9 @@ import {
   Option,
   OptionValue,
   PackagingInfo,
+  PortionAttribute,
+  PortionAttributeValue,
+  PortionValue,
   PriceRange,
   RatingStatistic,
   Review,
@@ -41,6 +44,19 @@ import { readFileSync } from 'fs';
 import { MenuItemPackaging } from 'src/entity/menuitem-packaging.entity';
 import { GetSimilarFoodResponse } from './dto/get-similar-food-response.dto';
 import { CustomRpcException } from 'src/exceptions/custom-rpc.exception';
+import { MenuItemExt } from 'src/entity/menu-item-ext.entity';
+import {
+  RecipeItem,
+  PortionCustomizationItem,
+  PriceSetting,
+  TasteCustomizationItem,
+} from './dto/create-menu-item-request.dto';
+import { BasicCustomization } from 'src/entity/basic-customization.entity';
+import { MenuItemAttributeExt } from 'src/entity/menu-item-attribute-ext.entity';
+import { MenuItemAttributeValue } from 'src/entity/menu-item-attribute-value.entity';
+import { MenuItemAttributeIngredient } from 'src/entity/menu-item-attribute-ingredient.entity';
+import { SkuDetail } from 'src/entity/sku-detail.entity';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class FoodService {
@@ -530,9 +546,9 @@ export class FoodService {
         unit: priceUnit,
         is_standard: Boolean(rawSKU.is_standard),
         calorie_kcal: Number(rawSKU.calorie_kcal),
-        carb_g: rawSKU.carbohydrate_g,
-        protein_g: rawSKU.protein_g,
-        fat_g: rawSKU.fat_g,
+        carb_g: Number(rawSKU.carbohydrate_g),
+        protein_g: Number(rawSKU.protein_g),
+        fat_g: Number(rawSKU.fat_g),
         portion_customization: rawSKU.detail
           .filter((i) => i.attribute_obj.type_id == 'portion')
           .map((e) => {
@@ -961,5 +977,401 @@ export class FoodService {
     }
 
     return response;
+  }
+
+  async createMenuItemFromRestaurant(
+    restaurant_id: number,
+
+    ISO_language_code,
+
+    name: string,
+
+    short_name: string,
+
+    description: string,
+
+    main_cooking_method: string,
+
+    preparing_time_minutes: number,
+
+    cooking_time_minutes: number,
+
+    is_vegetarian: boolean,
+
+    res_category_id: number,
+
+    image_url: string,
+
+    other_image_url: string[],
+
+    basic_customization: string[],
+
+    recipe: RecipeItem[],
+
+    portion_customization: PortionCustomizationItem[],
+
+    price: PriceSetting,
+
+    taste_customization: TasteCustomizationItem[],
+
+    packaging: number[],
+  ): Promise<void> {
+    await this.entityManager.transaction(async (transactionalEntityManager) => {
+      //insert table Media
+      const menuItemImage = await transactionalEntityManager
+        .createQueryBuilder()
+        .insert()
+        .into(Media)
+        .values({
+          type: 'image',
+          name: short_name,
+          url: image_url,
+        })
+        .execute();
+      const menuItemImageId = Number(menuItemImage.identifiers[0].media_id);
+
+      //insert table Menu_Item
+      const menuItem = await transactionalEntityManager
+        .createQueryBuilder()
+        .insert()
+        .into(MenuItem)
+        .values({
+          restaurant_id: restaurant_id,
+          is_active: 1,
+          is_vegetarian: Number(is_vegetarian),
+          cooking_schedule: '[]',
+          res_category_id: res_category_id,
+          preparing_time_s: preparing_time_minutes * 60,
+          cooking_time_s: cooking_time_minutes * 60,
+          image: menuItemImageId,
+          standard_price: price.standard,
+          min_price: price.min,
+          max_price: price.max,
+        })
+        .execute();
+      const menuItemId = Number(menuItem.identifiers[0].menu_item_id);
+
+      //insert table Menu_Item_Ext
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .insert()
+        .into(MenuItemExt)
+        .values({
+          menu_item_id: menuItemId,
+          ISO_language_code: ISO_language_code,
+          name: name,
+          short_name: short_name,
+          description: description,
+          main_cooking_method: main_cooking_method,
+        })
+        .execute();
+
+      //insert table Media
+      for (let index = 0; index < other_image_url.length; index++) {
+        await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(Media)
+          .values({
+            type: 'image',
+            name: short_name + `_${index + 1}`,
+            url: other_image_url[index],
+            menu_item_id: menuItemId,
+          })
+          .execute();
+      }
+
+      //insert table Basic_Customization
+      for (const basic of basic_customization) {
+        await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(BasicCustomization)
+          .values({
+            menu_item_id: menuItemId,
+            no_adding_id: basic,
+          })
+          .execute();
+      }
+      //insert table Recipe
+      for (const recipeItem of recipe) {
+        await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(Recipe)
+          .values({
+            ingredient_id: recipeItem.ingredient_id,
+            menu_item_id: menuItemId,
+            quantity: recipeItem.quantity,
+            unit: recipeItem.unit_id,
+          })
+          .execute();
+      }
+
+      //insert Menu_Item_Attribute, Menu_Item_Attribute_Ext, Menu_Item_Attribute_Value
+      const portionAttributes: PortionAttribute[] = [];
+      for (const portionCustomizationItem of portion_customization) {
+        const portionAttribute: PortionAttribute = {
+          attribute_id: null,
+          values: [],
+        };
+
+        //insert Menu_Item_Attribute
+        const menuItemAttribute = await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(MenuItemAttribute)
+          .values({
+            menu_item_id: menuItemId,
+            type_id: 'portion',
+          })
+          .execute();
+        const menuItemAttributeId = Number(
+          menuItemAttribute.identifiers[0].attribute_id,
+        );
+        portionAttribute.attribute_id = menuItemAttributeId;
+        //insert Menu_Item_Attribute_Ext
+        await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(MenuItemAttributeExt)
+          .values({
+            attribute_id: menuItemAttributeId,
+            ISO_language_code: ISO_language_code,
+            name: portionCustomizationItem.name,
+          })
+          .execute();
+        //Menu_Item_Attribute_Value
+        for (const val of portionCustomizationItem.value) {
+          const portionValue: PortionValue = {
+            value_id: null,
+            price_variance: val.price_variance,
+            is_standard: val.is_standard,
+          };
+          const menuItemAttributeValue = await transactionalEntityManager
+            .createQueryBuilder()
+            .insert()
+            .into(MenuItemAttributeValue)
+            .values({
+              attribute_id: menuItemAttributeId,
+              value: val.value,
+              unit: val.unit_id,
+              price_variance: val.price_variance,
+              is_standard: Number(val.is_standard),
+            })
+            .execute();
+          const menuItemAttributeValueId = Number(
+            menuItemAttributeValue.identifiers[0].value_id,
+          );
+          portionValue.value_id = menuItemAttributeValueId;
+          portionAttribute.values.push(portionValue);
+        }
+
+        //insert table Menu_Item_Attribute_Ingredient
+        for (const ingredient of portionCustomizationItem.corresponding_ingredients) {
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .insert()
+            .into(MenuItemAttributeIngredient)
+            .values({
+              attribute_id: menuItemAttributeId,
+              ingredient_id: ingredient,
+            })
+            .execute();
+        }
+
+        portionAttributes.push(portionAttribute);
+      }
+
+      // insert SKU, SKU_Detail
+      await this.createSKUs(
+        transactionalEntityManager,
+        portionAttributes,
+        menuItemId,
+        price.standard,
+        price.min,
+        price.max,
+        [],
+      );
+
+      // insert table Menu_Item_Attribute, Menu_Item_Attribute_Value
+      for (const tasteCustomizationItem of taste_customization) {
+        // insert table Menu_Item_Attribute
+        const menuItemAttribute = await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(MenuItemAttribute)
+          .values({
+            menu_item_id: menuItemId,
+            type_id: 'taste',
+            taste_id: tasteCustomizationItem.taste_id,
+          })
+          .execute();
+        const menuItemAttributeId = Number(
+          menuItemAttribute.identifiers[0].attribute_id,
+        );
+        for (const tasteValue of tasteCustomizationItem.taste_values) {
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .insert()
+            .into(MenuItemAttributeValue)
+            .values({
+              attribute_id: menuItemAttributeId,
+              taste_value: tasteValue,
+            })
+            .execute();
+        }
+      }
+
+      //insert table MenuItem_Packaging
+      for (let index = 0; index < packaging.length; index++) {
+        if (index === 0) {
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .insert()
+            .into(MenuItemPackaging)
+            .values({
+              menu_item_id: menuItemId,
+              packaging_id: packaging[index],
+              is_default: 1,
+            })
+            .execute();
+          continue;
+        }
+        await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(MenuItemPackaging)
+          .values({
+            menu_item_id: menuItemId,
+            packaging_id: packaging[index],
+          })
+          .execute();
+      }
+    });
+  }
+
+  async createSKUs(
+    entity_manager: EntityManager,
+    portion_attributes: PortionAttribute[],
+    menu_item_id: number,
+    standard_price: number,
+    min_price: number,
+    max_price: number,
+    // is_standard: number,
+    // price_variance: number,
+    previous_portion_attribute_values: PortionAttributeValue[],
+  ): Promise<void> {
+    const CALORIE_KCAL = 366.0;
+    const PROTEIN_G = 4.0;
+    const FAT_G = 2.7;
+    const CARBONHYDRATE_G = 16.0;
+    if (portion_attributes.length === 1) {
+      for (const attributeValue of portion_attributes[0].values) {
+        //Calculate price for SKU
+        let price = 0;
+        let estimatedPrice = standard_price + attributeValue.price_variance;
+        // const estimatedPrice = standard_price + price_variance;
+        for (const previousPortionAttributeValue of previous_portion_attribute_values) {
+          estimatedPrice += previousPortionAttributeValue.price_variance;
+        }
+        if (estimatedPrice < min_price) {
+          price = min_price;
+        } else if (estimatedPrice > max_price) {
+          price = max_price;
+        } else {
+          price = estimatedPrice;
+        }
+
+        //Check if SKU is standard
+        let is_standard = 1;
+        if (attributeValue.is_standard) {
+          for (const previousPortionAttributeValue of previous_portion_attribute_values) {
+            if (!previousPortionAttributeValue.is_standard) {
+              is_standard = 0;
+              break;
+            }
+          }
+        } else {
+          is_standard = 0;
+        }
+
+        //Insert SKU
+        const sku = await entity_manager
+          .createQueryBuilder()
+          .insert()
+          .into(SKU)
+          .values({
+            menu_item_id: menu_item_id,
+            price: price,
+            is_active: 1,
+            is_standard: is_standard,
+            calorie_kcal: (
+              CALORIE_KCAL *
+              (estimatedPrice / standard_price)
+            ).toFixed(2),
+            protein_g: (PROTEIN_G * (estimatedPrice / standard_price)).toFixed(
+              2,
+            ),
+            fat_g: (FAT_G * (estimatedPrice / standard_price)).toFixed(2),
+            carbohydrate_g: (
+              CARBONHYDRATE_G *
+              (estimatedPrice / standard_price)
+            ).toFixed(2),
+          })
+          .execute();
+        const skuId = Number(sku.identifiers[0].sku_id);
+
+        //Insert SKU Detail
+        await entity_manager
+          .createQueryBuilder()
+          .insert()
+          .into(SkuDetail)
+          .values({
+            sku_id: skuId,
+            attribute_id: portion_attributes[0].attribute_id,
+            value_id: attributeValue.value_id,
+          })
+          .execute();
+        for (const previousPortionAttributeValue of previous_portion_attribute_values) {
+          await entity_manager
+            .createQueryBuilder()
+            .insert()
+            .into(SkuDetail)
+            .values({
+              sku_id: skuId,
+              attribute_id: previousPortionAttributeValue.attribute_id,
+              value_id: previousPortionAttributeValue.value_id,
+            })
+            .execute();
+        }
+      }
+    } else if (portion_attributes.length > 1) {
+      for (const attributeValue of portion_attributes[0].values) {
+        //Add data to sku_details
+        const previousPortionAttributeValues = [
+          ...previous_portion_attribute_values,
+        ];
+        previousPortionAttributeValues.push({
+          attribute_id: portion_attributes[0].attribute_id,
+          value_id: attributeValue.value_id,
+          price_variance: attributeValue.price_variance,
+          is_standard: attributeValue.is_standard,
+        });
+        //Recursive call
+        await this.createSKUs(
+          entity_manager,
+          portion_attributes.slice(1),
+          menu_item_id,
+          standard_price,
+          min_price,
+          max_price,
+          previousPortionAttributeValues,
+        );
+      }
+    } else {
+      this.logger.error('unknown error');
+      throw new CustomRpcException(999, 'unknown error');
+    }
   }
 }
