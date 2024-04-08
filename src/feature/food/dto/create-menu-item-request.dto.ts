@@ -3,7 +3,7 @@ enum IsoLangCode {
   ENG = 'eng',
 }
 
-interface RecipeItem {
+export interface RecipeItem {
   ingredient_id: number;
 
   quantity: number;
@@ -21,7 +21,7 @@ interface PortionCustomizationValue {
   is_standard: boolean;
 }
 
-interface PortionCustomizationItem {
+export interface PortionCustomizationItem {
   name: string;
 
   corresponding_ingredients: number[];
@@ -29,12 +29,12 @@ interface PortionCustomizationItem {
   value: PortionCustomizationValue[];
 }
 
-interface PriceSetting {
+export interface PriceSetting {
   standard: number;
   min: number;
   max: number;
 }
-interface TasteCustomizationItem {
+export interface TasteCustomizationItem {
   taste_id: string;
   taste_values: string[];
 }

@@ -57,7 +57,7 @@ export class SKU {
     nullable: true,
     unique: false,
   })
-  public protein_g: number;
+  public protein_g: string;
 
   @Column({
     type: 'decimal',
@@ -66,7 +66,7 @@ export class SKU {
     nullable: true,
     unique: false,
   })
-  public fat_g: number;
+  public fat_g: string;
 
   @Column({
     type: 'decimal',
@@ -75,7 +75,7 @@ export class SKU {
     nullable: true,
     unique: false,
   })
-  public carbohydrate_g: number;
+  public carbohydrate_g: string;
 
   @CreateDateColumn({
     type: 'datetime',
