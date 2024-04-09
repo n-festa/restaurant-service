@@ -617,8 +617,11 @@ export class FoodService {
 
     // Check if there is no sidedish for this main dish
     if (sideDishesIds.length === 0) {
-      res.statusCode = 404;
-      res.message = 'No side dishes found';
+      // res.statusCode = 404;
+      // res.message = 'No side dishes found';
+      res.statusCode = 200;
+      res.message = 'Get side dishes successfully';
+      res.data = [];
       return res;
     }
 
@@ -834,7 +837,8 @@ export class FoodService {
 
     // Check if there is no side dish for this main dish
     if (menuItemIds.length === 0) {
-      throw new HttpException('No food found', HttpStatus.NOT_FOUND);
+      // throw new HttpException('No food found', HttpStatus.NOT_FOUND);
+      return [];
     }
 
     //Get main dish schedule
