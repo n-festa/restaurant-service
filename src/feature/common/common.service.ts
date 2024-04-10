@@ -235,7 +235,6 @@ export class CommonService {
       .where('attValue.value_id IN (:...menuItemAttributeValueIds)', {
         menuItemAttributeValueIds,
       })
-      .andWhere('attValue.taste_value <> :tasteVal', { tasteVal: 'original' }) //dont generate note for original options
       .andWhere('ext.ISO_language_code = :lang', { lang })
       .getMany();
 
