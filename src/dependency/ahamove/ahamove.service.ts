@@ -84,7 +84,7 @@ export class AhamoveService implements OnModuleInit {
         this.AHA_MOVE_REFRESH_TOKEN = response.data?.refresh_token;
       })
       .catch((error) => {
-        // console.log(error);
+        console.log(error);
         this.logger.error('An error occurred ', JSON.stringify(error));
       });
   }
@@ -140,6 +140,7 @@ export class AhamoveService implements OnModuleInit {
         duration_s: result.data[0].data.duration,
       };
     } catch (error) {
+      console.log(error);
       this.logger.error('An error occurred ', JSON.stringify(error));
       return {
         distance_km: null,
@@ -234,6 +235,7 @@ export class AhamoveService implements OnModuleInit {
       this.logger.verbose('created ahamove order', JSON.stringify(result));
       return data;
     } catch (error) {
+      console.log(error);
       this.logger.error(
         'An error occurred while calling post ahamove order',
         JSON.stringify(error),
@@ -261,6 +263,7 @@ export class AhamoveService implements OnModuleInit {
     try {
       await postAhaOrderRequestSchema.validate(order);
     } catch (error) {
+      console.log(error);
       this.logger.error('An error occurred ', JSON.stringify(error));
       throw new BadRequestException(error?.message);
     }
@@ -301,6 +304,7 @@ export class AhamoveService implements OnModuleInit {
       const result = await axios.request(config);
       return result;
     } catch (error) {
+      console.log(error);
       this.logger.error('An error occurred ', JSON.stringify(error));
       throw new InternalServerErrorException(error?.message);
     }

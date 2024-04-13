@@ -2051,7 +2051,7 @@ export class OrderService {
 
       //Filter by time_range
       const createdAt = order.order_status_log[0].logged_at;
-      if (time_range.from && time_range.to) {
+      if (time_range && time_range.from && time_range.to) {
         if (createdAt < time_range.from || createdAt > time_range.to) {
           continue;
         }
