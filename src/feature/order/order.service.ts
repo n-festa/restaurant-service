@@ -1549,7 +1549,7 @@ export class OrderService {
         _id: i.sku_id.toString(),
         num: i.qty_ordered,
         name: `${name} - ${i.portion_customization} - ${i.advanced_taste_customization} - ${i.basic_taste_customization}`,
-        price: (i.price + averageOtherFee) * i.qty_ordered, //WHAT WRONG WITH AHAMOVE
+        price: Math.round((i.price + averageOtherFee) * i.qty_ordered), //WHAT WRONG WITH AHAMOVE
       });
     });
     const ahamoveOrderRequest: PostAhaOrderRequest = {
